@@ -18,7 +18,7 @@ export class EmailRefineTool implements ICopilotTool {
     let refined = '';
     let subjects: string[] = [];
     if (model) {
-      const prompt = `Refine this email draft for clarity, professionalism, and correct grammar. Suggest three concise, appropriate subject lines.\n${text}`;
+      const prompt = `Refine this email draft for clarity, professionalism, and correct grammar. Ensure all original key points are preserved unless otherwise requested. Format the email with clear paragraphs and bullet points if appropriate. Suggest three concise, appropriate subject lines.\n${text}`;
       const messages = [vscode.LanguageModelChatMessage.User(prompt)];
       const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
       let response = '';
@@ -52,6 +52,35 @@ export class EmailRefineTool implements ICopilotTool {
         editor.edit(editBuilder => {
           editBuilder.insert(selection.start, `${msg.subject}\n`);
         });
+      } else if (msg.command === 'furtherRefine' && msg.comment) {
+        // Refine again with further comments using Copilot extension API
+        (async () => {
+          const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
+          if (model) {
+            let refinedAgain = '';
+            let subjects: string[] = [];
+            // Use the previous refined email as the base for further refinement
+            const prompt = `Refine this email draft further based on the additional comments. Ensure all original key points are preserved unless otherwise requested. Format the email with clear paragraphs and bullet points if appropriate. Keep the subject line relevant and concise.\n\nEmail Draft: ${refined}\n\nFurther Comments: ${msg.comment}`;
+            const messages = [vscode.LanguageModelChatMessage.User(prompt)];
+            const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+            let response = '';
+            for await (const fragment of chatResponse.text) {
+              response += fragment;
+            }
+            // Try to parse response for refined email and subject suggestions
+            const subjectMatch = response.match(/Subject Suggestions?:?([\s\S]*)/i);
+            if (subjectMatch) {
+              refinedAgain = response.substring(0, subjectMatch.index).trim();
+              subjects = subjectMatch[1].split(/\n|\r|\d+\.|-/).map(s => s.trim()).filter(Boolean);
+            } else {
+              refinedAgain = response.trim();
+              subjects = [];
+            }
+            panel.webview.html = getEmailRefineWebviewHtml(text, refinedAgain, subjects);
+          } else {
+            vscode.window.showErrorMessage('No Copilot LLM model available.');
+          }
+        })();
       }
     });
   }
@@ -106,6 +135,26 @@ function getEmailRefineWebviewHtml(original: string, refined: string, subjects: 
           transition: background 0.2s;
         }
         .copy-btn:hover { background: #73d13d; }
+        textarea {
+          width: 100%;
+          margin-top: 6px;
+          padding: 8px;
+          border-radius: 4px;
+          border: 1px solid #ccc;
+          font-size: 1em;
+        }
+        button.refine-again {
+          background: #ffc107;
+          color: #fff;
+          border: none;
+          border-radius: 4px;
+          padding: 8px 16px;
+          font-size: 1em;
+          cursor: pointer;
+          margin-top: 8px;
+          transition: background 0.2s;
+        }
+        button.refine-again:hover { background: #ffca2c; }
       </style>
     </head>
     <body>
@@ -119,6 +168,11 @@ function getEmailRefineWebviewHtml(original: string, refined: string, subjects: 
           <div class="label">Refined:</div>
           <div class="refined" id="refinedText">${escapeHtml(refined)}</div>
           <button class="copy-btn" onclick="copyText()">Copy Refined Email</button>
+          <div style="margin-top:20px;">
+            <label for="furtherComment" style="font-size:0.95em;color:#888;">Further comment/refinement:</label><br />
+            <textarea id="furtherComment" rows="3" style="width:100%;margin-top:6px;padding:8px;border-radius:4px;border:1px solid #ccc;font-size:1em;"></textarea>
+            <button class="subject-btn refine-again" style="margin-top:8px;" onclick="sendFurtherRefine()">Refine Again</button>
+          </div>
         </div>
         ${subjects.length > 0 ? `<div class="section subjects"><div class="label">Subject Suggestions:</div>${subjects.map(s => `<button class='subject-btn' onclick='insertSubject(${JSON.stringify(s)})'>${escapeHtml(s)}</button>`).join('')}</div>` : ''}
       </div>
@@ -127,8 +181,9 @@ function getEmailRefineWebviewHtml(original: string, refined: string, subjects: 
           const text = document.getElementById('refinedText').innerText;
           navigator.clipboard.writeText(text);
         }
-        function insertSubject(subject) {
-          window.acquireVsCodeApi().postMessage({ command: 'insertSubject', subject });
+        function sendFurtherRefine() {
+          const comment = document.getElementById('furtherComment').value;
+          window.acquireVsCodeApi().postMessage({ command: 'furtherRefine', comment });
         }
       </script>
     </body>
