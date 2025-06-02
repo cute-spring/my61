@@ -375,12 +375,6 @@ export class TranslateTool implements ICopilotTool {
           // Re-render the translation webview with the new translation
           panel.webview.html = getTranslationWebviewHtml(text, translated, sourceLang, targetLang);
         })();
-      } else if (msg.command === 'switchLang' && typeof msg.original === 'string') {
-        // Swap the source and target language labels and clear the translation
-        const original = msg.original;
-        const newSourceLang = msg.targetLang;
-        const newTargetLang = msg.sourceLang;
-        panel.webview.html = getTranslationWebviewHtml(original, '', newSourceLang, newTargetLang);
       }
     });
   }
@@ -455,7 +449,6 @@ function getTranslationWebviewHtml(original: string, translated: string, sourceL
         </div>
         <div style="text-align:center;margin:8px 0;">
           <button class="subject-btn" id="translateBtn" onclick="translateOriginal()">Translate</button>
-          <button class="subject-btn" id="switchLangBtn" style="margin-left:12px;" onclick="switchLang()">Switch Language</button>
         </div>
         <div class="section">
           <div class="label">Translated:</div>
@@ -464,8 +457,6 @@ function getTranslationWebviewHtml(original: string, translated: string, sourceL
         </div>
       </div>
       <script>
-        let currentSourceLang = "${sourceLang}";
-        let currentTargetLang = "${targetLang}";
         function copyText() {
           const text = document.getElementById('translatedText').innerText;
           navigator.clipboard.writeText(text);
@@ -473,18 +464,6 @@ function getTranslationWebviewHtml(original: string, translated: string, sourceL
         function translateOriginal() {
           const original = document.getElementById('originalText').value;
           window.acquireVsCodeApi().postMessage({ command: 'translateOriginal', original });
-        }
-        function switchLang() {
-          // Swap the source and target language labels and clear the translation
-          const original = document.getElementById('originalText').value;
-          var translatedDiv = document.getElementById('translatedText');
-          if (translatedDiv) { translatedDiv.innerHTML = ''; }
-          // Swap the language variables
-          var temp = currentSourceLang;
-          currentSourceLang = currentTargetLang.replace(/ \(.*\)/, ''); // Remove (Simplified) etc
-          currentTargetLang = temp;
-          // Re-render the webview with swapped languages
-          window.acquireVsCodeApi().postMessage({ command: 'switchLang', original, sourceLang: currentSourceLang, targetLang: currentTargetLang });
         }
       </script>
     </body>
