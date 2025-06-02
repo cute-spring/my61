@@ -1,0 +1,131 @@
+{
+  "name": "nondevtaskkiller",
+  "displayName": "Copilot-Powered Productivity",
+  "description": "VS Code extension with modular tools: Email Refine, Translate (English <-> Chinese), Jira Refine. Each tool is a class implementing a common interface, registered with a ToolManager. Commands: copilotTools.refineEmail, copilotTools.translateText, copilotTools.refineJira. UI: diff/split view, quick pick, popups. Settings page for API key, translation default, feature toggles. Error handling, privacy note, extensible for new tools.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "copilotTools.refineEmail",
+        "title": "Refine Email (with Subject Suggestions)"
+      },
+      {
+        "command": "copilotTools.translateText",
+        "title": "Translate Text (English <-> Chinese)"
+      },
+      {
+        "command": "copilotTools.refineJira",
+        "title": "Refine Jira Issue Description"
+      },
+      {
+        "command": "copilotTools.annotateCode",
+        "title": "Copilot: Annotate Code for Improvements"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "copilotTools.refineEmail",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "copilotTools.translateText",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "copilotTools.refineJira",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "copilotTools.annotateCode",
+          "when": "editorHasSelection"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "copilotTools.refineEmail",
+        "key": "ctrl+alt+e",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "copilotTools.translateText",
+        "key": "ctrl+alt+t",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "copilotTools.refineJira",
+        "key": "ctrl+alt+j",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "copilotTools.annotateCode",
+        "key": "ctrl+alt+a",
+        "when": "editorTextFocus && editorHasSelection"
+      }
+    ],
+    "configuration": {
+      "properties": {
+        "copilotTools.apiKey": {
+          "type": "string",
+          "description": "API key for Copilot/LLM"
+        },
+        "copilotTools.translation.defaultChinese": {
+          "type": "string",
+          "enum": ["Simplified", "Traditional"],
+          "default": "Simplified",
+          "description": "Default Chinese output (Simplified or Traditional)"
+        },
+        "copilotTools.features.emailRefine": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable Email Refine tool"
+        },
+        "copilotTools.features.translate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable Translate tool"
+        },
+        "copilotTools.features.jiraRefine": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable Jira Refine tool"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.100.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "eslint": "^9.25.1",
+    "esbuild": "^0.25.3",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}
