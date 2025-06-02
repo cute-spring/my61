@@ -135,14 +135,6 @@ function getEmailRefineWebviewHtml(original: string, refined: string, subjects: 
           transition: background 0.2s;
         }
         .copy-btn:hover { background: #73d13d; }
-        textarea {
-          width: 100%;
-          margin-top: 6px;
-          padding: 8px;
-          border-radius: 4px;
-          border: 1px solid #ccc;
-          font-size: 1em;
-        }
         button.refine-again {
           background: #ffc107;
           color: #fff;
@@ -162,10 +154,10 @@ function getEmailRefineWebviewHtml(original: string, refined: string, subjects: 
         <h2>Refined Email</h2>
         <div class="section">
           <div class="label">Original:</div>
-          <div class="original">${escapeHtml(original)}</div>
+          <textarea id="originalText" class="original" style="min-height:80px;resize:vertical;width:100%;font-size:1.08em;padding:16px;border-radius:6px;background:#f3f3f3;margin-bottom:8px;">${original}</textarea>
         </div>
         <div class="section">
-          <div class="label">Refined:</div>
+          <div class="label">Translated:</div>
           <div class="refined" id="refinedText">${escapeHtml(refined)}</div>
           <button class="copy-btn" onclick="copyText()">Copy Refined Email</button>
           <div style="margin-top:20px;">
@@ -183,7 +175,15 @@ function getEmailRefineWebviewHtml(original: string, refined: string, subjects: 
         }
         function sendFurtherRefine() {
           const comment = document.getElementById('furtherComment').value;
+          const refinedDiv = document.getElementById('refinedText');
+          if (refinedDiv) {
+            refinedDiv.innerHTML = '<em style="color:#888;">Refining…</em>';
+          }
           window.acquireVsCodeApi().postMessage({ command: 'furtherRefine', comment });
+        }
+        function translateOriginal() {
+          const original = document.getElementById('originalText').value;
+          window.acquireVsCodeApi().postMessage({ command: 'translateOriginal', original });
         }
       </script>
     </body>
@@ -350,6 +350,39 @@ export class TranslateTool implements ICopilotTool {
       { enableScripts: true }
     );
     panel.webview.html = getTranslationWebviewHtml(text, translated, sourceLang, targetLang);
+    panel.webview.onDidReceiveMessage(msg => {
+      if (msg.command === 'translateOriginal' && typeof msg.original === 'string') {
+        (async () => {
+          // Detect language direction
+          const text = msg.original;
+          const defaultChinese = settings.get('translation.defaultChinese', 'Simplified');
+          const isEnglish = /[a-zA-Z]/.test(text) && !/[\u4e00-\u9fa5]/.test(text);
+          const sourceLang = isEnglish ? 'English' : 'Chinese';
+          const targetLang = isEnglish ? `Chinese (${defaultChinese})` : 'English';
+          const prompt = `Translate this text from ${sourceLang} to ${targetLang}:\n${text}`;
+          const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
+          let translated = '';
+          if (model) {
+            const messages = [vscode.LanguageModelChatMessage.User(prompt)];
+            const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+            for await (const fragment of chatResponse.text) {
+              translated += fragment;
+            }
+          } else {
+            vscode.window.showErrorMessage('No Copilot LLM model available.');
+            return;
+          }
+          // Re-render the translation webview with the new translation
+          panel.webview.html = getTranslationWebviewHtml(text, translated, sourceLang, targetLang);
+        })();
+      } else if (msg.command === 'switchLang' && typeof msg.original === 'string') {
+        // Swap the source and target language labels and clear the translation
+        const original = msg.original;
+        const newSourceLang = msg.targetLang;
+        const newTargetLang = msg.sourceLang;
+        panel.webview.html = getTranslationWebviewHtml(original, '', newSourceLang, newTargetLang);
+      }
+    });
   }
 }
 
@@ -388,6 +421,29 @@ function getTranslationWebviewHtml(original: string, translated: string, sourceL
           transition: background 0.2s;
         }
         .copy-btn:hover { background: #73d13d; }
+        .subject-btn {
+          background: #1890ff;
+          color: #fff;
+          border: none;
+          border-radius: 4px;
+          padding: 8px 16px;
+          font-size: 1em;
+          cursor: pointer;
+          margin-top: 8px;
+          transition: background 0.2s;
+        }
+        .subject-btn:hover { background: #40a9ff; }
+        textarea {
+          width: 100%;
+          min-height: 80px;
+          resize: vertical;
+          font-size: 1.08em;
+          padding: 16px;
+          border-radius: 6px;
+          background: #f3f3f3;
+          margin-bottom: 8px;
+          border: 1px solid #ccc;
+        }
       </style>
     </head>
     <body>
@@ -395,7 +451,11 @@ function getTranslationWebviewHtml(original: string, translated: string, sourceL
         <h2>Translation: ${sourceLang} → ${targetLang}</h2>
         <div class="section">
           <div class="label">Original:</div>
-          <div class="original">${escapeHtml(original)}</div>
+          <textarea id="originalText" class="original">${original}</textarea>
+        </div>
+        <div style="text-align:center;margin:8px 0;">
+          <button class="subject-btn" id="translateBtn" onclick="translateOriginal()">Translate</button>
+          <button class="subject-btn" id="switchLangBtn" style="margin-left:12px;" onclick="switchLang()">Switch Language</button>
         </div>
         <div class="section">
           <div class="label">Translated:</div>
@@ -404,9 +464,27 @@ function getTranslationWebviewHtml(original: string, translated: string, sourceL
         </div>
       </div>
       <script>
+        let currentSourceLang = "${sourceLang}";
+        let currentTargetLang = "${targetLang}";
         function copyText() {
           const text = document.getElementById('translatedText').innerText;
           navigator.clipboard.writeText(text);
+        }
+        function translateOriginal() {
+          const original = document.getElementById('originalText').value;
+          window.acquireVsCodeApi().postMessage({ command: 'translateOriginal', original });
+        }
+        function switchLang() {
+          // Swap the source and target language labels and clear the translation
+          const original = document.getElementById('originalText').value;
+          var translatedDiv = document.getElementById('translatedText');
+          if (translatedDiv) { translatedDiv.innerHTML = ''; }
+          // Swap the language variables
+          var temp = currentSourceLang;
+          currentSourceLang = currentTargetLang.replace(/ \(.*\)/, ''); // Remove (Simplified) etc
+          currentTargetLang = temp;
+          // Re-render the webview with swapped languages
+          window.acquireVsCodeApi().postMessage({ command: 'switchLang', original, sourceLang: currentSourceLang, targetLang: currentTargetLang });
         }
       </script>
     </body>
