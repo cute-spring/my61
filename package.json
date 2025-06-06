@@ -4,7 +4,7 @@
   "description": "VS Code extension with modular tools: Email Refine, Translate (English <-> Chinese), Jira Refine. Each tool is a class implementing a common interface, registered with a ToolManager. Commands: copilotTools.refineEmail, copilotTools.translateText, copilotTools.refineJira. UI: diff/split view, quick pick, popups. Settings page for API key, translation default, feature toggles. Error handling, privacy note, extensible for new tools.",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.100.0"
+    "vscode": "^1.96.0"
   },
   "categories": [
     "Other"
@@ -127,5 +127,9 @@
     "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cute-spring/my61.git"
   }
 }
