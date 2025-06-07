@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { BaseTool } from '../base/baseTool';
 import { escapeHtml } from '../ui/escapeHtml';
+import { getLLMResponse } from '../../llm';
 
 export class TranslateTool extends BaseTool {
   command = 'copilotTools.translateText';
@@ -117,7 +118,7 @@ export class TranslateTool extends BaseTool {
     if (msg.command === 'translateOriginal' && typeof msg.original === 'string') {
       (async () => {
         const prompt = this.buildPrompt(msg.original, settings);
-        const response = await this.getLLMResponse(prompt);
+        const response = await getLLMResponse(prompt);
         if (!response) { return; }
         const newParsed = this.parseResponse(response);
         panel.webview.html = this.getWebviewHtml(msg.original, newParsed, settings);
