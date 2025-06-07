@@ -101,6 +101,16 @@
           "type": "boolean",
           "default": true,
           "description": "Enable/disable Jira Refine tool"
+        },
+        "copilotTools.annotation.scope": {
+          "type": "string",
+          "enum": [
+            "selection",
+            "visibleArea",
+            "fullDocument"
+          ],
+          "default": "visibleArea",
+          "description": "Determines the scope of code to be annotated."
         }
       }
     }

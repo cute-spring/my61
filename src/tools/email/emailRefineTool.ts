@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import { BaseTool } from '../base/baseTool';
 import { escapeHtml } from '../ui/escapeHtml';
+import { getLLMResponse } from '../../llm';
+
+interface ParsedEmail {
+  refined: string;
+  subjects: string[];
+}
 
 export class EmailRefineTool extends BaseTool {
   command = 'copilotTools.refineEmail';
@@ -11,7 +17,7 @@ export class EmailRefineTool extends BaseTool {
   buildPrompt(text: string) {
     return `Refine this email draft for clarity, professionalism, and correct grammar. Ensure all original key points are preserved unless otherwise requested. Format the email with clear paragraphs and bullet points if appropriate. Suggest three concise, appropriate subject lines.\n${text}`;
   }
-  parseResponse(response: string) {
+  parseResponse(response: string): ParsedEmail {
     let refined = '';
     let subjects: string[] = [];
     const subjectMatch = response.match(/Subject Suggestions?:?([\s\S]*)/i);
@@ -24,7 +30,7 @@ export class EmailRefineTool extends BaseTool {
     }
     return { refined, subjects };
   }
-  getWebviewHtml(original: string, parsed: { refined: string, subjects: string[] }) {
+  getWebviewHtml(original: string, parsed: ParsedEmail) {
     const { refined, subjects } = parsed;
     return `
       <!DOCTYPE html>
@@ -128,7 +134,7 @@ export class EmailRefineTool extends BaseTool {
       </html>
     `;
   }
-  handleWebviewMessage(panel: vscode.WebviewPanel, editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration, original: string, parsed: { refined: string, subjects: string[] }, msg: any) {
+  handleWebviewMessage(panel: vscode.WebviewPanel, editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration, original: string, parsed: ParsedEmail, msg: any) {
     if (msg.command === 'insertSubject' && msg.subject) {
       editor.edit(editBuilder => {
         editBuilder.insert(selection.start, `${msg.subject}\n`);
@@ -136,14 +142,14 @@ export class EmailRefineTool extends BaseTool {
     } else if (msg.command === 'furtherRefine' && msg.comment) {
       (async () => {
         const prompt = `Refine this email draft further based on the additional comments. Ensure all original key points are preserved unless otherwise requested. Format the email with clear paragraphs and bullet points if appropriate. Keep the subject line relevant and concise.\n\nEmail Draft: ${parsed.refined}\n\nFurther Comments: ${msg.comment}`;
-        const response = await this.getLLMResponse(prompt);
+        const response = await getLLMResponse(prompt);
         if (!response) { return; }
         const newParsed = this.parseResponse(response);
         panel.webview.html = this.getWebviewHtml(original, newParsed);
       })();
     }
   }
-  static getSettingsSchema() {
+  getSettingsSchema() {
     return {
       'copilotTools.features.emailRefine': {
         type: 'boolean',

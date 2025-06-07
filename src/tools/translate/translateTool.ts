@@ -124,7 +124,7 @@ export class TranslateTool extends BaseTool {
       })();
     }
   }
-  static getSettingsSchema() {
+  getSettingsSchema() {
     return {
       'copilotTools.features.translate': {
         type: 'boolean',

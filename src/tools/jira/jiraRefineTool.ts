@@ -66,7 +66,7 @@ export class JiraRefineTool extends BaseTool {
       });
     }
   }
-  static getSettingsSchema() {
+  getSettingsSchema() {
     return {
       'copilotTools.features.jiraRefine': {
         type: 'boolean',

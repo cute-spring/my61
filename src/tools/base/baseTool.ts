@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ICopilotTool } from '../../copilotTool';
+import { getLLMResponse } from '../../llm';
 
 export abstract class BaseTool implements ICopilotTool {
   abstract command: string;
@@ -10,6 +11,8 @@ export abstract class BaseTool implements ICopilotTool {
   abstract getWebviewHtml(...args: any[]): string;
   abstract handleWebviewMessage(panel: vscode.WebviewPanel, editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration, ...args: any[]): void;
 
+  protected panel: vscode.WebviewPanel | undefined;
+
   async handleInput(editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration) {
     const text = editor.document.getText(selection);
     if (!text.trim()) {
@@ -17,33 +20,29 @@ export abstract class BaseTool implements ICopilotTool {
       return;
     }
     const prompt = this.buildPrompt(text, settings);
-    const response = await this.getLLMResponse(prompt);
+    const response = await getLLMResponse(prompt);
     if (!response) { return; }
     const parsed = this.parseResponse(response);
-    const panel = vscode.window.createWebviewPanel(
+    this.panel = vscode.window.createWebviewPanel(
       this.command,
       this.title,
       vscode.ViewColumn.Beside,
       { enableScripts: true }
     );
-    panel.webview.html = this.getWebviewHtml(text, parsed, settings);
-    panel.webview.onDidReceiveMessage(msg => {
-      this.handleWebviewMessage(panel, editor, selection, settings, text, parsed, msg);
+    this.panel.webview.html = this.getWebviewHtml(text, parsed, settings);
+    this.panel.webview.onDidReceiveMessage(msg => {
+      if (this.panel) {
+        this.handleWebviewMessage(this.panel, editor, selection, settings, text, parsed, msg);
+      }
+    });
+    this.panel.onDidDispose(() => {
+      this.panel = undefined;
     });
   }
 
-  protected async getLLMResponse(prompt: string): Promise<string | undefined> {
-    const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
-    if (!model) {
-      vscode.window.showErrorMessage('No Copilot LLM model available.');
-      return;
+  dispose() {
+    if (this.panel) {
+      this.panel.dispose();
     }
-    const messages = [vscode.LanguageModelChatMessage.User(prompt)];
-    const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
-    let response = '';
-    for await (const fragment of chatResponse.text) {
-      response += fragment;
-    }
-    return response;
   }
 }

@@ -3,17 +3,16 @@
 import * as vscode from 'vscode';
 import { openCopilotToolsSettingsWebview } from './tools/config/settingsWebview';
 import { EmailRefineTool, TranslateTool, JiraRefineTool } from './tools';
-
-const ANNOTATION_PROMPT = `You are a code tutor who helps students learn how to write better code. Your job is to evaluate a block of code that the user gives you. The user is writing You will then annotate any lines that could be improved with a brief suggestion and the reason why you are making that suggestion. Only make suggestions when you feel the severity is enough that it will impact the readibility and maintainability of the code. Be friendly with your suggestions and remember that these are students so they need gentle guidance. Format each suggestion as a single JSON object. It is not necessary to wrap your response in triple backticks. Here is an example of what your response should look like:
-
-{ "line": 1, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }{ "line": 12, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }
-`;
+import { ANNOTATION_PROMPT } from './prompts';
+import { applyDecoration, clearDecorations } from './decorations';
 
 export interface ICopilotTool {
   command: string;
   title: string;
   isEnabled(settings: vscode.WorkspaceConfiguration): boolean;
   handleInput(editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration): Promise<void>;
+  dispose?(): void;
+  getSettingsSchema(): { [key: string]: any };
 }
 
 export class ToolManager {
@@ -38,30 +37,65 @@ export class ToolManager {
       })
     );
   }
+  unregisterTool(command: string) {
+    const toolIndex = this.tools.findIndex(t => t.command === command);
+    if (toolIndex !== -1) {
+      const tool = this.tools[toolIndex];
+      if (tool.dispose) {
+        tool.dispose();
+      }
+      this.tools.splice(toolIndex, 1);
+    }
+  }
   getTools() {
     return this.tools;
   }
+  dispose() {
+    this.tools.forEach(tool => {
+      if (tool.dispose) {
+        tool.dispose();
+      }
+    });
+    this.tools = [];
+  }
 }
 
+let toolManager: ToolManager;
+
 export function activate(context: vscode.ExtensionContext) {
-  const toolManager = new ToolManager(context);
-  toolManager.registerTool(new EmailRefineTool());
-  toolManager.registerTool(new TranslateTool());
-  toolManager.registerTool(new JiraRefineTool());
+  toolManager = new ToolManager(context);
+  const tools = [
+    new EmailRefineTool(),
+    new TranslateTool(),
+    new JiraRefineTool()
+  ];
+
+  tools.forEach(tool => toolManager.registerTool(tool));
 
   // Register settings webview command
   context.subscriptions.push(
     vscode.commands.registerCommand('copilotTools.openSettings', () => {
-      openCopilotToolsSettingsWebview(context, [
-        EmailRefineTool,
-        TranslateTool,
-        JiraRefineTool
-      ]);
+      openCopilotToolsSettingsWebview(context, tools);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('copilotTools.clearAnnotations', () => {
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        clearDecorations(editor);
+      }
     })
   );
 
   const disposable = vscode.commands.registerTextEditorCommand('copilotTools.annotateCode', async (textEditor: vscode.TextEditor) => {
-    const codeWithLineNumbers = getVisibleCodeWithLineNumbers(textEditor);
+    const settings = vscode.workspace.getConfiguration('copilotTools');
+    const annotationScope = settings.get('annotation.scope', 'visibleArea');
+    const codeWithLineNumbers = getCodeWithLineNumbers(textEditor, annotationScope);
+    if (!codeWithLineNumbers) {
+      vscode.window.showInformationMessage('No code to annotate.');
+      return;
+    }
     const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
     const messages = [
       vscode.LanguageModelChatMessage.User(ANNOTATION_PROMPT),
@@ -84,38 +118,48 @@ async function parseChatResponse(chatResponse: vscode.LanguageModelChatResponse,
         const annotation = JSON.parse(accumulatedResponse);
         applyDecoration(textEditor, annotation.line, annotation.suggestion);
         accumulatedResponse = "";
-      } catch {
+      } catch(e) {
         // ignore parse errors
+        console.error("Error parsing chat response", e);
       }
     }
   }
 }
 
-function getVisibleCodeWithLineNumbers(textEditor: vscode.TextEditor) {
-  let currentLine = textEditor.visibleRanges[0].start.line;
-  const endLine = textEditor.visibleRanges[0].end.line;
+function getCodeWithLineNumbers(textEditor: vscode.TextEditor, scope: string): string | undefined {
+  let startLine: number;
+  let endLine: number;
+  const document = textEditor.document;
+
+  switch (scope) {
+    case 'selection':
+      if (textEditor.selection.isEmpty) {
+        return undefined;
+      }
+      startLine = textEditor.selection.start.line;
+      endLine = textEditor.selection.end.line;
+      break;
+    case 'visibleArea':
+      startLine = textEditor.visibleRanges[0].start.line;
+      endLine = textEditor.visibleRanges[0].end.line;
+      break;
+    case 'fullDocument':
+      startLine = 0;
+      endLine = document.lineCount - 1;
+      break;
+    default:
+      return undefined;
+  }
+
   let code = '';
-  while (currentLine < endLine) {
-    code += `${currentLine + 1}: ${textEditor.document.lineAt(currentLine).text} \n`;
-    currentLine++;
+  for (let i = startLine; i <= endLine; i++) {
+    code += `${i + 1}: ${document.lineAt(i).text} \n`;
   }
   return code;
 }
 
-function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: string) {
-  const decorationType = vscode.window.createTextEditorDecorationType({
-    after: {
-      contentText: ` ${suggestion.substring(0, 25) + "..."}`,
-      color: "grey",
-    },
-  });
-  const lineLength = editor.document.lineAt(line - 1).text.length;
-  const range = new vscode.Range(
-    new vscode.Position(line - 1, lineLength),
-    new vscode.Position(line - 1, lineLength),
-  );
-  const decoration = { range: range, hoverMessage: suggestion };
-  vscode.window.activeTextEditor?.setDecorations(decorationType, [decoration]);
+export function deactivate() {
+  if (toolManager) {
+    toolManager.dispose();
+  }
 }
-
-export function deactivate() {}
