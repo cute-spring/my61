@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { openCopilotToolsSettingsWebview } from './tools/config/settingsWebview';
 import { EmailRefineTool, TranslateTool, JiraRefineTool } from './tools';
 
 const ANNOTATION_PROMPT = `You are a code tutor who helps students learn how to write better code. Your job is to evaluate a block of code that the user gives you. The user is writing You will then annotate any lines that could be improved with a brief suggestion and the reason why you are making that suggestion. Only make suggestions when you feel the severity is enough that it will impact the readibility and maintainability of the code. Be friendly with your suggestions and remember that these are students so they need gentle guidance. Format each suggestion as a single JSON object. It is not necessary to wrap your response in triple backticks. Here is an example of what your response should look like:
@@ -47,6 +48,17 @@ export function activate(context: vscode.ExtensionContext) {
   toolManager.registerTool(new EmailRefineTool());
   toolManager.registerTool(new TranslateTool());
   toolManager.registerTool(new JiraRefineTool());
+
+  // Register settings webview command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('copilotTools.openSettings', () => {
+      openCopilotToolsSettingsWebview(context, [
+        EmailRefineTool,
+        TranslateTool,
+        JiraRefineTool
+      ]);
+    })
+  );
 
   const disposable = vscode.commands.registerTextEditorCommand('copilotTools.annotateCode', async (textEditor: vscode.TextEditor) => {
     const codeWithLineNumbers = getVisibleCodeWithLineNumbers(textEditor);

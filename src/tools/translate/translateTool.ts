@@ -124,4 +124,19 @@ export class TranslateTool extends BaseTool {
       })();
     }
   }
+  static getSettingsSchema() {
+    return {
+      'copilotTools.features.translate': {
+        type: 'boolean',
+        default: true,
+        description: 'Enable/disable Translate tool'
+      },
+      'copilotTools.translation.defaultChinese': {
+        type: 'string',
+        enum: ['Simplified', 'Traditional'],
+        default: 'Simplified',
+        description: 'Default Chinese output (Simplified or Traditional)'
+      }
+    };
+  }
 }

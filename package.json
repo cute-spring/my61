@@ -27,6 +27,10 @@
       {
         "command": "copilotTools.annotateCode",
         "title": "Copilot: Annotate Code for Improvements"
+      },
+      {
+        "command": "copilotTools.openSettings",
+        "title": "Copilot Tools: Open Settings"
       }
     ],
     "menus": {

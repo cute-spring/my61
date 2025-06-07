@@ -66,4 +66,13 @@ export class JiraRefineTool extends BaseTool {
       });
     }
   }
+  static getSettingsSchema() {
+    return {
+      'copilotTools.features.jiraRefine': {
+        type: 'boolean',
+        default: true,
+        description: 'Enable/disable Jira Refine tool'
+      },
+    };
+  }
 }

@@ -143,4 +143,14 @@ export class EmailRefineTool extends BaseTool {
       })();
     }
   }
+  static getSettingsSchema() {
+    return {
+      'copilotTools.features.emailRefine': {
+        type: 'boolean',
+        default: true,
+        description: 'Enable/disable Email Refine tool'
+      },
+      // Example: add more tool-specific settings here in the future
+    };
+  }
 }
