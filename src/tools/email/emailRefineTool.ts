@@ -108,7 +108,8 @@ export class EmailRefineTool extends BaseTool {
           <div class="section">
             <div class="label">Translated:</div>
             <div class="refined-markdown" id="refinedText">${refinedHtml}</div>
-            <button class="copy-btn" onclick="copyText()">Copy Refined Email</button>
+            <button class="copy-btn" onclick="copyText()">Copy as Rich Text</button>
+            <button class="copy-btn" style="background:#888;margin-left:8px;" onclick="copyPlainText()">Copy as Plain Text</button>
             <div style="margin-top:20px;">
               <label for="furtherComment" style="font-size:0.95em;color:#888;">Further comment/refinement:</label><br />
               <textarea id="furtherComment" rows="3" style="width:100%;margin-top:6px;padding:8px;border-radius:4px;border:1px solid #ccc;font-size:1em;"></textarea>
@@ -119,7 +120,22 @@ export class EmailRefineTool extends BaseTool {
         </div>
         <script>
           function copyText() {
-            const text = document.getElementById('refinedText').innerText;
+            const refinedDiv = document.getElementById('refinedText');
+            if (navigator.clipboard && window.ClipboardItem) {
+              // Copy as HTML (rich text)
+              const html = refinedDiv.innerHTML;
+              const blob = new Blob([html], { type: 'text/html' });
+              const data = [new window.ClipboardItem({ 'text/html': blob })];
+              navigator.clipboard.write(data);
+            } else {
+              // Fallback: copy as plain text
+              const text = refinedDiv.innerText;
+              navigator.clipboard.writeText(text);
+            }
+          }
+          function copyPlainText() {
+            const refinedDiv = document.getElementById('refinedText');
+            const text = refinedDiv.innerText;
             navigator.clipboard.writeText(text);
           }
           function sendFurtherRefine() {

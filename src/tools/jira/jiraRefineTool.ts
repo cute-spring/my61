@@ -67,15 +67,30 @@ export class JiraRefineTool extends BaseTool {
           <div class="section">
             <div class="label">Refined:</div>
             <div class="refined-markdown" id="refinedText">${refinedHtml}</div>
-            <button class="copy-btn" onclick="copyText()">Copy Refined</button>
+            <button class="copy-btn" onclick="copyText()">Copy as Rich Text</button>
+            <button class="copy-btn" style="background:#888;margin-left:8px;" onclick="copyPlainText()">Copy as Plain Text</button>
             <button class="replace-btn" onclick="replaceSelection()">Replace Selection</button>
           </div>
         </div>
         <script>
           function copyText() {
-            const text = document.getElementById('refinedText').innerText;
+            const refinedDiv = document.getElementById('refinedText');
+            if (navigator.clipboard && window.ClipboardItem) {
+              // Copy as HTML (rich text)
+              const html = refinedDiv.innerHTML;
+              const blob = new Blob([html], { type: 'text/html' });
+              const data = [new window.ClipboardItem({ 'text/html': blob })];
+              navigator.clipboard.write(data);
+            } else {
+              // Fallback: copy as plain text
+              const text = refinedDiv.innerText;
+              navigator.clipboard.writeText(text);
+            }
+          }
+          function copyPlainText() {
+            const refinedDiv = document.getElementById('refinedText');
+            const text = refinedDiv.innerText;
             navigator.clipboard.writeText(text);
-            window.acquireVsCodeApi().postMessage({ command: 'copyRefined' });
           }
           function replaceSelection() {
             window.acquireVsCodeApi().postMessage({ command: 'replaceSelection' });
