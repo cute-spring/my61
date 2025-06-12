@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { BaseTool } from '../base/baseTool';
 import { escapeHtml } from '../ui/escapeHtml';
 import { getLLMResponse } from '../../llm';
+import { marked } from 'marked';
 
 interface ParsedEmail {
   refined: string;
@@ -32,6 +33,8 @@ export class EmailRefineTool extends BaseTool {
   }
   getWebviewHtml(original: string, parsed: ParsedEmail) {
     const { refined, subjects } = parsed;
+    // Render markdown to HTML for the refined email
+    const refinedHtml = marked.parse(refined);
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -54,6 +57,7 @@ export class EmailRefineTool extends BaseTool {
             margin-bottom: 8px;
           }
           .refined { background: #e6f7ff; border-left: 4px solid #1890ff; }
+          .refined-markdown { background: #e6f7ff; border-left: 4px solid #1890ff; border-radius: 6px; padding: 16px; font-size: 1.08em; margin-bottom: 8px; }
           .subjects { margin: 16px 0; }
           .subject-btn {
             background: #1890ff;
@@ -103,7 +107,7 @@ export class EmailRefineTool extends BaseTool {
           </div>
           <div class="section">
             <div class="label">Translated:</div>
-            <div class="refined" id="refinedText">${escapeHtml(refined)}</div>
+            <div class="refined-markdown" id="refinedText">${refinedHtml}</div>
             <button class="copy-btn" onclick="copyText()">Copy Refined Email</button>
             <div style="margin-top:20px;">
               <label for="furtherComment" style="font-size:0.95em;color:#888;">Further comment/refinement:</label><br />

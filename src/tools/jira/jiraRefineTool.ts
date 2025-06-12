@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { BaseTool } from '../base/baseTool';
 import { escapeHtml } from '../ui/escapeHtml';
+import { marked } from 'marked';
 
 export class JiraRefineTool extends BaseTool {
   command = 'copilotTools.refineJira';
@@ -16,12 +17,14 @@ export class JiraRefineTool extends BaseTool {
   }
   getWebviewHtml(original: string, parsed: { refined: string }) {
     const { refined } = parsed;
+    // Render markdown to HTML for the refined Jira description
+    const refinedHtml = marked.parse(refined);
     return `
       <!DOCTYPE html>
-      <html lang=\"en\">
+      <html lang="en">
       <head>
-        <meta charset=\"UTF-8\">
-        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Refined Jira Description</title>
         <style>
           body { font-family: 'Segoe UI', Arial, sans-serif; background: #f6f8fa; margin: 0; padding: 0; }
@@ -38,6 +41,7 @@ export class JiraRefineTool extends BaseTool {
             margin-bottom: 8px;
           }
           .refined { background: #e6f7ff; border-left: 4px solid #1890ff; }
+          .refined-markdown { background: #e6f7ff; border-left: 4px solid #1890ff; border-radius: 6px; padding: 16px; font-size: 1.08em; margin-bottom: 8px; }
           .copy-btn, .replace-btn {
             background: #1890ff;
             color: #fff;
@@ -54,7 +58,32 @@ export class JiraRefineTool extends BaseTool {
         </style>
       </head>
       <body>
-        <div class=\"container\">\n          <h2>Refined Jira Description</h2>\n          <div class=\"section\">\n            <div class=\"label\">Original:</div>\n            <div class=\"original\">${escapeHtml(original)}</div>\n          </div>\n          <div class=\"section\">\n            <div class=\"label\">Refined:</div>\n            <div class=\"refined\" id=\"refinedText\">${escapeHtml(refined)}</div>\n            <button class=\"copy-btn\" onclick=\"copyText()\">Copy Refined</button>\n            <button class=\"replace-btn\" onclick=\"replaceSelection()\">Replace Selection</button>\n          </div>\n        </div>\n        <script>\n          function copyText() {\n            const text = document.getElementById('refinedText').innerText;\n            navigator.clipboard.writeText(text);\n            window.acquireVsCodeApi().postMessage({ command: 'copyRefined' });\n          }\n          function replaceSelection() {\n            window.acquireVsCodeApi().postMessage({ command: 'replaceSelection' });\n          }\n        </script>\n      </body>\n      </html>\n    `;
+        <div class="container">
+          <h2>Refined Jira Description</h2>
+          <div class="section">
+            <div class="label">Original:</div>
+            <div class="original">${escapeHtml(original)}</div>
+          </div>
+          <div class="section">
+            <div class="label">Refined:</div>
+            <div class="refined-markdown" id="refinedText">${refinedHtml}</div>
+            <button class="copy-btn" onclick="copyText()">Copy Refined</button>
+            <button class="replace-btn" onclick="replaceSelection()">Replace Selection</button>
+          </div>
+        </div>
+        <script>
+          function copyText() {
+            const text = document.getElementById('refinedText').innerText;
+            navigator.clipboard.writeText(text);
+            window.acquireVsCodeApi().postMessage({ command: 'copyRefined' });
+          }
+          function replaceSelection() {
+            window.acquireVsCodeApi().postMessage({ command: 'replaceSelection' });
+          }
+        </script>
+      </body>
+      </html>
+    `;
   }
   handleWebviewMessage(panel: vscode.WebviewPanel, editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration, original: string, parsed: { refined: string }, msg: any) {
     if (msg.command === 'copyRefined') {
