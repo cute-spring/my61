@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { openCopilotToolsSettingsWebview } from './tools/config/settingsWebview';
-import { EmailRefineTool, TranslateTool, JiraRefineTool } from './tools';
+import { EmailRefineTool, TranslateTool, JiraRefineTool, PlantUMLPreviewTool } from './tools';
 import { ANNOTATION_PROMPT } from './prompts';
 import { applyDecoration, clearDecorations } from './decorations';
 
@@ -67,7 +67,8 @@ export function activate(context: vscode.ExtensionContext) {
   const tools = [
     new EmailRefineTool(),
     new TranslateTool(),
-    new JiraRefineTool()
+    new JiraRefineTool(),
+    new PlantUMLPreviewTool()
   ];
 
   tools.forEach(tool => toolManager.registerTool(tool));
