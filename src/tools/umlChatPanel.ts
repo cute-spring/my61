@@ -116,25 +116,38 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>UML Chat Designer</title>
         <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-            #chat { height: 200px; overflow-y: auto; background: #f5f5f5; padding: 10px; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; height: 100vh; }
+            #container { display: flex; height: 100vh; }
+            #leftPanel { width: 400px; min-width: 320px; max-width: 600px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; }
+            #chat { flex: 1 1 0; overflow-y: auto; background: #f5f5f5; padding: 10px; border-bottom: 1px solid #eee; }
             .user { color: #333; }
             .bot { color: #007acc; }
-            #uml { margin-top: 10px; background: #fff; border: 1px solid #ccc; min-height: 200px; }
-            #inputArea { display: flex; margin-top: 10px; }
-            #requirementInput { flex: 1; padding: 5px; }
-            #sendBtn { padding: 5px 10px; }
-            #exportBtn { margin-left: 10px; }
+            #uml { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #eee; min-height: 120px; max-height: 200px; overflow-y: auto; padding: 8px; }
+            #inputArea { flex: 0 0 auto; display: flex; flex-direction: column; padding: 8px; border-top: 1px solid #eee; background: #f9f9f9; }
+            #requirementInput { width: 100%; min-height: 60px; max-height: 120px; padding: 8px; font-size: 1.1em; resize: vertical; margin-bottom: 8px; }
+            #buttonRow { display: flex; flex-direction: row; }
+            #sendBtn { padding: 8px 16px; font-size: 1em; margin-left: 0; }
+            #exportBtn { margin-left: 10px; padding: 8px 16px; font-size: 1em; }
+            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; }
+            #svgPreview { width: 100%; height: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; }
         </style>
     </head>
     <body>
-        <div id="chat">${chatHtml}</div>
-        <div id="uml"><pre>${plantUML}</pre></div>
-        <div id="svgPreview"></div>
-        <div id="inputArea">
-            <input id="requirementInput" type="text" placeholder="Describe your UML requirement..." />
-            <button id="sendBtn">Send</button>
-            <button id="exportBtn">Export SVG</button>
+        <div id="container">
+            <div id="leftPanel">
+                <div id="chat">${chatHtml}</div>
+                <div id="uml"><pre>${plantUML}</pre></div>
+                <div id="inputArea">
+                    <textarea id="requirementInput" placeholder="Describe your UML requirement..."></textarea>
+                    <div id="buttonRow">
+                        <button id="sendBtn">Send</button>
+                        <button id="exportBtn">Export SVG</button>
+                    </div>
+                </div>
+            </div>
+            <div id="rightPanel">
+                <div id="svgPreview"></div>
+            </div>
         </div>
         <script>
             const vscode = acquireVsCodeApi();
