@@ -6,28 +6,14 @@ import * as os from "os";
 
 // --- Inlined config, common, tools ---
 
-const findPlantUMLJar = () => {
-    // Try dist, out, and src/tools
-    const candidates = [
-        path.join(__dirname, '..', '..', 'plantuml.jar'), // dist/ or out/
-        path.join(__dirname, '..', 'tools', 'plantuml.jar'), // src/tools/ if running from src
-        path.join(__dirname, 'plantuml.jar'),
-        path.join(__dirname, '..', '..', 'src', 'tools', 'plantuml.jar'), // fallback for dev
-    ];
-    for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) {
-            return candidate;
-        }
-    }
-    return null;
-};
+let extensionRoot: string | undefined;
 
 const config = {
     java: "java",
-    jar: (_parentUri: vscode.Uri) => {
-        const jarPath = findPlantUMLJar();
-        if (!jarPath) { throw new Error('PlantUML JAR not found'); }
-        return jarPath;
+    jar: (parentUri: vscode.Uri) => {
+        // Use extensionRoot if available, fallback to __dirname
+        const base = extensionRoot || __dirname;
+        return path.join(base, "plantuml-mit-1.2025.3.jar");
     },
     includepaths: (_parentUri: vscode.Uri) => [],
     diagramsRoot: (_parentUri: vscode.Uri) => null,
@@ -35,12 +21,9 @@ const config = {
     jarArgs: (_parentUri: vscode.Uri) => [],
 };
 
-function localize(_id: number, defaultValue: any, ...args: any[]): string {
-    // Show the actual error if provided
-    if (args && args.length > 0 && args[0]) {
-        return String(args[0]);
-    }
-    return defaultValue || "PlantUML rendering error";
+function localize(_id: number, _defaultValue: any, ...args: any[]): string {
+    // Simple fallback
+    return "PlantUML rendering error";
 }
 
 function addFileIndex(filePath: string, index: number, pageCount: number): string {
@@ -62,17 +45,14 @@ function processWrapper(process: childProcess.ChildProcess, savePath: string): P
         if (process.stderr) {
             process.stderr.on("data", (data: Buffer) => stderr.push(data));
         }
-        process.on("error", (err) => {
-            reject({ error: `Process error: ${err && err.message ? err.message : err}` });
-        });
+        process.on("error", reject);
         process.on("close", (code) => {
             if (code === 0) {
                 const out = Buffer.concat(stdout);
                 if (savePath) { fs.writeFileSync(savePath, out); }
                 resolve(out);
             } else {
-                const errorMsg = Buffer.concat(stderr).toString() || `PlantUML process exited with code ${code}`;
-                reject({ error: errorMsg });
+                reject({ error: Buffer.concat(stderr).toString() });
             }
         });
     });
@@ -98,16 +78,26 @@ class LocalRender {
     }
 
     private createTask(diagram: any, taskType: string, savePath: string, format?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
-        if (!config.java || !fs.existsSync(config.jar(diagram.parentUri))) {
-            return { processes: [], promise: Promise.reject(new Error('PlantUML JAR not found or Java not configured')) };
+        const jarPath = config.jar(diagram.parentUri);
+        let javaExists = true;
+        try {
+            childProcess.spawnSync(config.java, ['-version']);
+        } catch (e) {
+            javaExists = false;
+        }
+        if (!javaExists) {
+            return { processes: [], promise: Promise.reject(new Error('Java executable not found in PATH.')) };
+        }
+        if (!fs.existsSync(jarPath)) {
+            return { processes: [], promise: Promise.reject(new Error(`PlantUML JAR not found at: ${jarPath}`)) };
         }
 
         let processes: childProcess.ChildProcess[] = [];
         let buffers: Buffer[] = [];
+        let cancelled = false;
 
-        // Use for...of with async/await to handle promises sequentially
-        const runTasks = async () => {
-            for (let index = 0; index < diagram.pageCount; index++) {
+        let pms = [...Array(diagram.pageCount).keys()].reduce<Promise<void>>((pChain, index) => {
+            return pChain.then(() => {
                 let params = [
                     '-Djava.awt.headless=true',
                     '-jar',
@@ -130,9 +120,9 @@ class LocalRender {
                     includePath += path.delimiter + (path.isAbsolute(folderPath) ? folderPath : path.join(ws?.uri.fsPath ?? "", folderPath));
                 }
 
-                let diagramsRoot = config.diagramsRoot(diagram.parentUri);
-                if (diagramsRoot && (diagramsRoot as vscode.Uri).fsPath) {
-                    includePath += path.delimiter + (diagramsRoot as vscode.Uri).fsPath;
+                let diagramsRoot = config.diagramsRoot(diagram.parentUri) as vscode.Uri | null;
+                if (diagramsRoot) {
+                    includePath += path.delimiter + diagramsRoot.fsPath;
                 }
 
                 params.unshift('-Dplantuml.include.path=' + includePath);
@@ -143,44 +133,39 @@ class LocalRender {
                 processes.push(proc);
 
                 if (proc.killed) {
-                    buffers = [];
-                    return;
+                    cancelled = true;
+                    return Promise.resolve();
                 }
 
                 proc.stdin.write(diagram.content);
                 proc.stdin.end();
 
                 let savePath2 = savePath ? addFileIndex(savePath, index, diagram.pageCount) : "";
-                try {
-                    let stdout = await processWrapper(proc, savePath2);
-                    buffers.push(stdout);
-                } catch (err: any) {
-                    // Pass through the actual error message
-                    throw new Error(err && err.error ? err.error : JSON.stringify(err));
-                }
-            }
-        };
+                return processWrapper(proc, savePath2).then(stdout => {
+                    if (!cancelled) {
+                        buffers.push(stdout);
+                    }
+                }, (err: any) => Promise.reject(new Error(localize(10, null, diagram.name, err.error))));
+            });
+        }, Promise.resolve());
 
         return {
             processes: processes,
-            promise: (async () => {
-                try {
-                    await runTasks();
-                    return buffers;
-                } catch (err) {
-                    throw err;
-                }
-            })()
+            promise: new Promise<Buffer[]>((resolve, reject) => {
+                pms.then(() => resolve(buffers)).catch((err: any) => reject(err));
+            })
         };
     }
 }
 
-export const localRender = new LocalRender();
+const localRender = new LocalRender();
 
 // --- VSCode extension activation ---
 
 export function activate(context: vscode.ExtensionContext) {
-    let disposable = vscode.commands.registerCommand('copilotTools.previewAntUML', async () => {
+    extensionRoot = context.extensionPath;
+
+    let disposable = vscode.commands.registerCommand('extension.previewAntUML', async () => {
         let editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showErrorMessage("No active editor.");
@@ -205,7 +190,7 @@ export function activate(context: vscode.ExtensionContext) {
             { enableScripts: true, retainContextWhenHidden: true }
         );
 
-        panel.webview.html = getWebviewContent(plantUMLText, panel);
+        panel.webview.html = getWebviewContent(plantUMLText);
 
         panel.webview.onDidReceiveMessage(async message => {
             if (message.command === 'render') {
@@ -226,7 +211,8 @@ export function activate(context: vscode.ExtensionContext) {
                         panel.webview.postMessage({ command: 'updatePreview', svgContent: svgContent });
                     }
                 } catch (err: any) {
-                    vscode.window.showErrorMessage(`Failed to render PlantUML diagram: ${err.message}`);
+                    let errorMsg = err && err.stack ? err.stack : (err && err.message ? err.message : JSON.stringify(err));
+                    vscode.window.showErrorMessage(`Failed to render PlantUML diagram: ${errorMsg}`);
                 }
             }
         }, undefined, context.subscriptions);
@@ -237,10 +223,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {}
 
-function getWebviewContent(plantUMLText: string, panel?: vscode.WebviewPanel): string {
-    // Get URIs for JS and CSS
-    let jsUri = panel ? panel.webview.asWebviewUri(vscode.Uri.file(path.join(__dirname, 'ui/js/plantumlPreview.js'))) : '';
-    let cssUri = panel ? panel.webview.asWebviewUri(vscode.Uri.file(path.join(__dirname, 'ui/css/plantumlPreview.css'))) : '';
+function getWebviewContent(plantUMLText: string): string {
     return `
     <!DOCTYPE html>
     <html lang="en">
@@ -248,15 +231,48 @@ function getWebviewContent(plantUMLText: string, panel?: vscode.WebviewPanel): s
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>PlantUML Preview</title>
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; script-src 'self' vscode-resource:; style-src 'self' vscode-resource:;">
-        <link rel="stylesheet" href="${cssUri}">
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+            }
+            #preview {
+                margin-top: 20px;
+                border: 1px solid #ccc;
+                padding: 10px;
+                background-color: #f9f9f9;
+            }
+        </style>
     </head>
     <body>
         <textarea id="plantumlText" rows="10" cols="50" style="width: 100%; height: 200px; margin-top: 20px;">${plantUMLText}</textarea>
         <button id="renderButton" style="margin-top: 10px;">Render Diagram</button>
         <div id="preview"></div>
-        <script src="${jsUri}"></script>
+
+        <script>
+            const vscode = acquireVsCodeApi();
+
+            document.getElementById('renderButton').addEventListener('click', () => {
+                const plantumlText = document.getElementById('plantumlText').value;
+                vscode.postMessage({ command: 'render', plantumlText: plantumlText });
+            });
+
+            window.addEventListener('message', event => {
+                const message = event.data;
+                if (message.command === 'updatePreview') {
+                    document.getElementById('preview').innerHTML = \`<svg>\${message.svgContent}</svg>\`;
+                }
+            });
+        </script>
     </body>
     </html>
     `;
 }
+
+export { localRender };
