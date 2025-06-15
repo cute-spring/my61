@@ -128,8 +128,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             #buttonRow { display: flex; flex-direction: row; }
             #sendBtn { padding: 8px 16px; font-size: 1em; margin-left: 0; }
             #exportBtn { margin-left: 10px; padding: 8px 16px; font-size: 1em; }
-            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; }
-            #svgPreview { width: 100%; height: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; }
+            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; }
+            #svgPreview { width: 100%; height: 100vh; min-height: 0; min-width: 0; overflow: auto; display: flex; align-items: center; justify-content: center; background: #fff; }
         </style>
     </head>
     <body>
@@ -149,6 +149,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 <div id="svgPreview"></div>
             </div>
         </div>
+        <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
         <script>
             const vscode = acquireVsCodeApi();
             document.getElementById('sendBtn').onclick = () => {
@@ -160,10 +161,28 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 const svgContent = document.getElementById('svgPreview').innerHTML;
                 vscode.postMessage({ command: 'exportSVG', svgContent });
             };
+            function enablePanZoom() {
+                const svgEl = document.querySelector('#svgPreview svg');
+                if (svgEl && window.svgPanZoom) {
+                    svgEl.style.width = '100%';
+                    svgEl.style.height = '100%';
+                    svgEl.removeAttribute('viewBox');
+                    window.svgPanZoom(svgEl, {
+                        zoomEnabled: true,
+                        controlIconsEnabled: true,
+                        fit: true,
+                        center: true,
+                        minZoom: 0.1,
+                        maxZoom: 20,
+                        contain: false // allow panning outside container
+                    });
+                }
+            }
             window.addEventListener('message', event => {
                 const message = event.data;
                 if (message.command === 'updatePreview') {
                     document.getElementById('svgPreview').innerHTML = message.svgContent;
+                    setTimeout(enablePanZoom, 100); // Wait for SVG to render
                 } else if (message.command === 'error') {
                     alert('Error: ' + message.error);
                 }
