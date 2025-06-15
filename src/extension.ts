@@ -5,6 +5,8 @@ import { openCopilotToolsSettingsWebview } from './tools/config/settingsWebview'
 import { EmailRefineTool, TranslateTool, JiraRefineTool, PlantUMLPreviewTool } from './tools';
 import { ANNOTATION_PROMPT } from './prompts';
 import { applyDecoration, clearDecorations } from './decorations';
+import { activateUMLChatPanel } from './tools/umlChatPanel';
+import { localRender } from './tools/preview';
 
 export interface ICopilotTool {
   command: string;
@@ -108,6 +110,8 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
   context.subscriptions.push(disposable);
+
+  activateUMLChatPanel(context);
 }
 
 async function parseChatResponse(chatResponse: vscode.LanguageModelChatResponse, textEditor: vscode.TextEditor) {
