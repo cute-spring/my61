@@ -4,11 +4,17 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { localRender } from './preview';
 
-// Use Copilot API to generate PlantUML code from requirement and history
-async function generatePlantUMLFromRequirement(requirement: string, history: string[]): Promise<string> {
+// Use Copilot API to generate PlantUML code from requirement, history, and diagram type
+async function generatePlantUMLFromRequirement(requirement: string, history: string[], diagramType?: string): Promise<string> {
+    let typeInstruction = '';
+    if (diagramType && diagramType !== '') {
+        typeInstruction = `Generate a PlantUML ${diagramType} diagram.`;
+    } else {
+        typeInstruction = 'Generate the most appropriate UML diagram for the requirement.';
+    }
     const prompt = [
         vscode.LanguageModelChatMessage.User(
-            'You are an expert software architect. Given a user requirement, generate the corresponding PlantUML code for a UML diagram. Only output valid PlantUML code. If the user provides an update, modify the previous diagram accordingly.'
+            `You are an expert software architect. ${typeInstruction} Only output valid PlantUML code. If the user provides an update, modify the previous diagram accordingly.`
         ),
         ...history.map(msg => vscode.LanguageModelChatMessage.User(msg)),
         vscode.LanguageModelChatMessage.User(requirement)
@@ -49,12 +55,13 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             panel.webview.onDidReceiveMessage(async message => {
                 if (message.command === 'sendRequirement') {
                     const userInput = message.text.trim();
+                    const diagramType = message.diagramType || '';
                     if (!userInput) { return; }
                     chatHistory.push({ role: 'user', message: userInput });
                     panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, true);
                     try {
                         // Call Copilot API or placeholder
-                        const plantuml = await generatePlantUMLFromRequirement(userInput, chatHistory.map(h => h.message));
+                        const plantuml = await generatePlantUMLFromRequirement(userInput, chatHistory.map(h => h.message), diagramType);
                         currentPlantUML = plantuml;
                         chatHistory.push({ role: 'bot', message: plantuml });
                         panel.webview.html = getWebviewContent(chatHistory, currentPlantUML);
@@ -75,6 +82,11 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         fs.writeFileSync(fileUri.fsPath, svgContent, 'utf-8');
                         vscode.window.showInformationMessage('SVG exported successfully!');
                     }
+                } else if (message.command === 'clearChat') {
+                    chatHistory = [];
+                    currentPlantUML = '@startuml\n\n@enduml';
+                    panel.webview.html = getWebviewContent(chatHistory, currentPlantUML);
+                    panel.webview.postMessage({ command: 'updatePreview', svgContent: '' });
                 }
             }, undefined, context.subscriptions);
         })
@@ -108,6 +120,17 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
 
 function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string }[], plantUML: string, loading = false): string {
     const chatHtml = chatHistory.map(h => `<div class="${h.role}"><b>${h.role === 'user' ? 'You' : 'Bot'}:</b> <pre>${h.message}</pre></div>`).join('');
+    const diagramTypes = [
+        { value: '', label: 'Auto-detect' },
+        { value: 'class', label: 'Class Diagram' },
+        { value: 'sequence', label: 'Sequence Diagram' },
+        { value: 'activity', label: 'Activity Diagram' },
+        { value: 'usecase', label: 'Use Case Diagram' },
+        { value: 'state', label: 'State Diagram' },
+        { value: 'component', label: 'Component Diagram' },
+        { value: 'deployment', label: 'Deployment Diagram' }
+    ];
+    const diagramTypeOptions = diagramTypes.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
     return `
     <!DOCTYPE html>
     <html lang="en">
@@ -125,7 +148,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             #uml { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #eee; min-height: 120px; max-height: 200px; overflow-y: auto; padding: 8px; }
             #inputArea { flex: 0 0 auto; display: flex; flex-direction: column; padding: 8px; border-top: 1px solid #eee; background: #f9f9f9; }
             #requirementInput { width: 100%; min-height: 60px; max-height: 120px; padding: 8px; font-size: 1.1em; resize: vertical; margin-bottom: 8px; }
-            #buttonRow { display: flex; flex-direction: row; }
+            #buttonRow { display: flex; flex-direction: row; align-items: center; }
+            #diagramType { margin-right: 10px; padding: 6px; font-size: 1em; }
             #sendBtn { padding: 8px 16px; font-size: 1em; margin-left: 0; }
             #exportBtn { margin-left: 10px; padding: 8px 16px; font-size: 1em; }
             #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; }
@@ -140,8 +164,10 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 <div id="inputArea">
                     <textarea id="requirementInput" placeholder="Describe your UML requirement..."></textarea>
                     <div id="buttonRow">
+                        <select id="diagramType">${diagramTypeOptions}</select>
                         <button id="sendBtn">Send</button>
                         <button id="exportBtn">Export SVG</button>
+                        <button id="clearChatBtn" style="margin-left:10px;">Clear Chat</button>
                     </div>
                 </div>
             </div>
@@ -154,12 +180,16 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             const vscode = acquireVsCodeApi();
             document.getElementById('sendBtn').onclick = () => {
                 const text = document.getElementById('requirementInput').value;
-                vscode.postMessage({ command: 'sendRequirement', text });
+                const diagramType = document.getElementById('diagramType').value;
+                vscode.postMessage({ command: 'sendRequirement', text, diagramType });
                 document.getElementById('requirementInput').value = '';
             };
             document.getElementById('exportBtn').onclick = () => {
                 const svgContent = document.getElementById('svgPreview').innerHTML;
                 vscode.postMessage({ command: 'exportSVG', svgContent });
+            };
+            document.getElementById('clearChatBtn').onclick = () => {
+                vscode.postMessage({ command: 'clearChat' });
             };
             function enablePanZoom() {
                 const svgEl = document.querySelector('#svgPreview svg');
@@ -174,7 +204,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         center: true,
                         minZoom: 0.1,
                         maxZoom: 20,
-                        contain: false // allow panning outside container
+                        contain: false
                     });
                 }
             }
@@ -182,7 +212,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 const message = event.data;
                 if (message.command === 'updatePreview') {
                     document.getElementById('svgPreview').innerHTML = message.svgContent;
-                    setTimeout(enablePanZoom, 100); // Wait for SVG to render
+                    setTimeout(enablePanZoom, 100);
                 } else if (message.command === 'error') {
                     alert('Error: ' + message.error);
                 }
