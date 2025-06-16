@@ -35,6 +35,10 @@
       {
         "command": "copilotTools.previewAntUML",
         "title": "Preview PlantUML Diagram"
+      },
+      {
+        "command": "extension.umlChatPanel",
+        "title": "UML Chat Designer (AI-powered)"
       }
     ],
     "menus": {
