@@ -14,7 +14,7 @@ async function generatePlantUMLFromRequirement(requirement: string, history: str
     }
     const prompt = [
         vscode.LanguageModelChatMessage.User(
-            `You are an expert software architect. ${typeInstruction} Only output valid PlantUML code. If the user provides an update, modify the previous diagram accordingly.`
+            `You are an expert software architect and technical writer.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\nFormat your response as:\nExplanation:\n<your explanation here>\n\n@startuml\n<PlantUML code here>\n@enduml\n`
         ),
         ...history.map(msg => vscode.LanguageModelChatMessage.User(msg)),
         vscode.LanguageModelChatMessage.User(requirement)
@@ -119,7 +119,7 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
 }
 
 function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string }[], plantUML: string, loading = false): string {
-    const chatHtml = chatHistory.map(h => `<div class="${h.role}"><b>${h.role === 'user' ? 'You' : 'Bot'}:</b> <pre>${h.message}</pre></div>`).join('');
+    const chatHtml = chatHistory.map(h => `<div class="${h.role}"><b>${h.role === 'user' ? 'You' : 'Bot'}:</b> <pre style="white-space: pre-wrap; word-break: break-word;">${h.message}</pre></div>`).join('');
     const diagramTypes = [
         { value: '', label: 'Auto-detect' },
         { value: 'class', label: 'Class Diagram' },
@@ -141,8 +141,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 0; height: 100vh; }
             #container { display: flex; height: 100vh; }
-            #leftPanel { width: 400px; min-width: 320px; max-width: 600px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; }
-            #chat { flex: 1 1 0; overflow-y: auto; background: #f5f5f5; padding: 10px; border-bottom: 1px solid #eee; }
+            #leftPanel { width: 500px; min-width: 320px; max-width: 900px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; resize: horizontal; overflow: auto; }
+            #chat { flex: 1 1 0; overflow-y: auto; background: #f5f5f5; padding: 10px; border-bottom: 1px solid #eee; min-height: 200px; max-height: 60vh; }
             .user { color: #333; }
             .bot { color: #007acc; }
             #uml { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #eee; min-height: 120px; max-height: 200px; overflow-y: auto; padding: 8px; }
@@ -152,8 +152,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             #diagramType { margin-right: 10px; padding: 6px; font-size: 1em; }
             #sendBtn { padding: 8px 16px; font-size: 1em; margin-left: 0; }
             #exportBtn { margin-left: 10px; padding: 8px 16px; font-size: 1em; }
+            #expandChatBtn { margin-left: 10px; padding: 8px 16px; font-size: 1em; }
             #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; }
             #svgPreview { width: 100%; height: 100vh; min-height: 0; min-width: 0; overflow: auto; display: flex; align-items: center; justify-content: center; background: #fff; }
+            /* Hide scrollbar for chat if expanded */
+            #leftPanel.fullscreen { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; background: #fafbfc; box-shadow: 0 0 10px #888; }
+            #rightPanel.hide { display: none !important; }
         </style>
     </head>
     <body>
@@ -168,6 +172,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         <button id="sendBtn">Send</button>
                         <button id="exportBtn">Export SVG</button>
                         <button id="clearChatBtn" style="margin-left:10px;">Clear Chat</button>
+                        <button id="expandChatBtn" title="Expand/Collapse Chat">Expand</button>
                     </div>
                 </div>
             </div>
@@ -190,6 +195,20 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             };
             document.getElementById('clearChatBtn').onclick = () => {
                 vscode.postMessage({ command: 'clearChat' });
+            };
+            // Expand/collapse chat panel
+            document.getElementById('expandChatBtn').onclick = () => {
+                const leftPanel = document.getElementById('leftPanel');
+                const rightPanel = document.getElementById('rightPanel');
+                if (!leftPanel.classList.contains('fullscreen')) {
+                    leftPanel.classList.add('fullscreen');
+                    rightPanel.classList.add('hide');
+                    document.getElementById('expandChatBtn').innerText = 'Collapse';
+                } else {
+                    leftPanel.classList.remove('fullscreen');
+                    rightPanel.classList.remove('hide');
+                    document.getElementById('expandChatBtn').innerText = 'Expand';
+                }
             };
             function enablePanZoom() {
                 const svgEl = document.querySelector('#svgPreview svg');
