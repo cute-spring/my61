@@ -141,7 +141,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 0; height: 100vh; }
             #container { display: flex; height: 100vh; }
-            #leftPanel { width: 500px; min-width: 320px; max-width: 900px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; resize: horizontal; overflow: auto; }
+            #leftPanel { width: 500px; min-width: 320px; max-width: 900px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; resize: horizontal; overflow: auto; position: relative; }
             #chat { flex: 1 1 0; overflow-y: auto; background: #f5f5f5; padding: 10px; border-bottom: 1px solid #eee; min-height: 200px; max-height: 60vh; }
             .user { color: #333; }
             .bot { color: #007acc; }
@@ -153,8 +153,10 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             #sendBtn { padding: 8px 16px; font-size: 1em; margin-left: 0; }
             #exportBtn { margin-left: 10px; padding: 8px 16px; font-size: 1em; }
             #expandChatBtn { margin-left: 10px; padding: 8px 16px; font-size: 1em; }
+            #clearChatBtn { position: absolute; left: 16px; bottom: 16px; margin: 0; z-index: 10; padding: 8px 16px; font-size: 1em; }
             #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; }
-            #svgPreview { width: 100%; height: 100vh; min-height: 0; min-width: 0; overflow: auto; display: flex; align-items: center; justify-content: center; background: #fff; }
+            #svgPreview { width: 100%; height: 98vh; min-height: 0; min-width: 0; overflow: auto; display: flex; align-items: center; justify-content: center; background: #fff; margin: auto; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 8px #eee; }
+            #svgPreview svg text { white-space: pre-wrap !important; word-break: break-all !important; }
             /* Hide scrollbar for chat if expanded */
             #leftPanel.fullscreen { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; background: #fafbfc; box-shadow: 0 0 10px #888; }
             #rightPanel.hide { display: none !important; }
@@ -171,10 +173,10 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         <select id="diagramType">${diagramTypeOptions}</select>
                         <button id="sendBtn">Send</button>
                         <button id="exportBtn">Export SVG</button>
-                        <button id="clearChatBtn" style="margin-left:10px;">Clear Chat</button>
                         <button id="expandChatBtn" title="Expand/Collapse Chat">Expand</button>
                     </div>
                 </div>
+                <button id="clearChatBtn">Clear Chat</button>
             </div>
             <div id="rightPanel">
                 <div id="svgPreview"></div>
