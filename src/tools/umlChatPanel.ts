@@ -141,7 +141,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 0; height: 100vh; }
             #container { display: flex; height: 100vh; }
-            #leftPanel { width: 500px; min-width: 320px; max-width: 900px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; resize: horizontal; overflow: auto; position: relative; }
+            #leftPanel { width: 20vw; min-width: 320px; max-width: 900px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; resize: none; overflow: auto; position: relative; transition: width 0.1s; }
+            #dragbar { width: 5px; cursor: ew-resize; background: #e0e0e0; height: 100vh; z-index: 10; }
             #chat { flex: 1 1 0; overflow-y: auto; background: #f5f5f5; padding: 10px; border-bottom: 1px solid #eee; min-height: 200px; max-height: 60vh; }
             .user { color: #333; }
             .bot { color: #007acc; }
@@ -178,6 +179,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 </div>
                 <button id="clearChatBtn">Clear Chat</button>
             </div>
+            <div id="dragbar"></div>
             <div id="rightPanel">
                 <div id="svgPreview"></div>
             </div>
@@ -212,6 +214,29 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     document.getElementById('expandChatBtn').innerText = 'Expand';
                 }
             };
+            // Drag to resize leftPanel
+            const dragbar = document.getElementById('dragbar');
+            const leftPanel = document.getElementById('leftPanel');
+            const rightPanel = document.getElementById('rightPanel');
+            let isDragging = false;
+            dragbar.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                document.body.style.cursor = 'ew-resize';
+            });
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                let containerRect = document.getElementById('container').getBoundingClientRect();
+                let newWidth = e.clientX - containerRect.left;
+                if (newWidth < 320) newWidth = 320;
+                if (newWidth > 900) newWidth = 900;
+                leftPanel.style.width = newWidth + 'px';
+            });
+            document.addEventListener('mouseup', function(e) {
+                if (isDragging) {
+                    isDragging = false;
+                    document.body.style.cursor = '';
+                }
+            });
             function enablePanZoom() {
                 const svgEl = document.querySelector('#svgPreview svg');
                 if (svgEl && window.svgPanZoom) {
