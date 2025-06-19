@@ -77,11 +77,10 @@ export class PlantUMLPreviewTool implements ICopilotTool {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             height: 100vh;
         }
         #preview {
-            margin-top: 20px;
             border: 1px solid #ccc;
             padding: 10px;
             background-color: #f9f9f9;
@@ -89,7 +88,7 @@ export class PlantUMLPreviewTool implements ICopilotTool {
     </style>
 </head>
 <body>
-    <textarea id="plantumlText" rows="10" cols="50" style="width: 100%; height: 200px; margin-top: 20px;">${plantUMLText}</textarea>
+    <textarea id="plantumlText" rows="10" cols="50" style="width: 100%; height: 200px;">${plantUMLText}</textarea>
     <button id="renderButton" style="margin-top: 10px;">Render Diagram</button>
     <div id="preview"></div>
     <script>
