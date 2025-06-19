@@ -97,6 +97,11 @@ export class PlantUMLPreviewTool implements ICopilotTool {
             const plantumlText = document.getElementById('plantumlText').value;
             vscode.postMessage({ command: 'render', plantumlText });
         });
+        // Automatically render on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const plantumlText = document.getElementById('plantumlText').value;
+            vscode.postMessage({ command: 'render', plantumlText });
+        });
         window.addEventListener('message', event => {
             const message = event.data;
             if (message.command === 'updatePreview') {
