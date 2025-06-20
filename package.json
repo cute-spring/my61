@@ -131,6 +131,14 @@
           ],
           "default": "visibleArea",
           "description": "Determines the scope of code to be annotated."
+        },
+        "plantuml.jarPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Optional. The full path to a local plantuml.jar file. If not set, the extension will attempt to download the latest version automatically."
         }
       }
     }
@@ -168,6 +176,7 @@
     "url": "https://github.com/cute-spring/my61.git"
   },
   "dependencies": {
+    "axios": "^1.10.0",
     "marked": "^15.0.12"
   }
 }

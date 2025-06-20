@@ -7,11 +7,14 @@ import * as os from "os";
 // --- Inlined config, common, tools ---
 
 let extensionRoot: string | undefined;
+let resolvedPlantumlJarPath: string | undefined;
 
 const config = {
     java: "java",
-    jar: (parentUri: vscode.Uri) => {
-        // Use extensionRoot if available, fallback to __dirname
+    jar: () => {
+        // Use the resolved JAR path if available
+        if (resolvedPlantumlJarPath) { return resolvedPlantumlJarPath; }
+        // fallback: try to use extensionRoot or __dirname (legacy)
         const base = extensionRoot || __dirname;
         return path.join(base, "plantuml-mit-1.2025.3.jar");
     },
@@ -61,6 +64,7 @@ function processWrapper(process: childProcess.ChildProcess, savePath: string): P
 // --- Main LocalRender class ---
 
 class LocalRender {
+    constructor(private getJarPath: () => string) {}
     limitConcurrency(): boolean {
         return true;
     }
@@ -78,7 +82,7 @@ class LocalRender {
     }
 
     private createTask(diagram: any, taskType: string, savePath: string, format?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
-        const jarPath = config.jar(diagram.parentUri);
+        const jarPath = this.getJarPath();
         let javaExists = true;
         try {
             childProcess.spawnSync(config.java, ['-version']);
@@ -101,7 +105,7 @@ class LocalRender {
                 let params = [
                     '-Djava.awt.headless=true',
                     '-jar',
-                    config.jar(diagram.parentUri),
+                    jarPath,
                     "-pipeimageindex",
                     `${index}`,
                     '-charset',
@@ -158,12 +162,14 @@ class LocalRender {
     }
 }
 
-const localRender = new LocalRender();
+let localRender: LocalRender;
 
 // --- VSCode extension activation ---
 
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: vscode.ExtensionContext, plantumlJarPathFromMain?: string) {
     extensionRoot = context.extensionPath;
+    resolvedPlantumlJarPath = plantumlJarPathFromMain;
+    localRender = new LocalRender(() => config.jar());
 
     let disposable = vscode.commands.registerCommand('extension.previewAntUML', async () => {
         let editor = vscode.window.activeTextEditor;
