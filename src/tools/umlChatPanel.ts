@@ -225,7 +225,16 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             #svgPreview svg text { white-space: pre-wrap !important; word-break: break-all !important; }
 
             /* --- Left Panel Content --- */
-            #chat { flex: 1 1 0; overflow-y: auto; background: #f5f5f5; padding: 10px; border-bottom: 1px solid #eee; min-height: 200px; max-height: 60vh; }
+            /* --- Left Panel Content --- */
+            #chat {
+                flex: 1 1 0;
+                overflow-y: auto;
+                background: #f5f5f5;
+                padding: 10px;
+                border-bottom: 1px solid #eee;
+                min-height: 200px;
+                /* max-height 属性已被移除 */
+            }
             .user, .bot-message { padding: 8px; margin-bottom: 8px; border-radius: 6px; }
             .user { background-color: #e9e9e9; }
             .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
@@ -234,7 +243,15 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             #uml { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #eee; min-height: 120px; max-height: 200px; overflow-y: auto; padding: 8px; }
 
             /* --- Input Area & Actions --- */
-            #inputArea { flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px; border-top: 1px solid #eee; background: #f9f9f9; }
+            /* --- Input Area & Actions --- */
+            #inputArea { 
+                flex: 0 0 auto; 
+                display: flex; 
+                flex-direction: column; 
+                padding: 10px 10px 4px 10px; /* UPDATED: Reduced bottom padding */
+                border-top: 1px solid #eee; 
+                background: #f9f9f9; 
+            }
             #requirementInput { width: 100%; box-sizing: border-box; min-height: 60px; max-height: 120px; padding: 8px; font-size: 1.1em; resize: vertical; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
             
             /* --- UPDATED: Button Layout and Styling --- */
