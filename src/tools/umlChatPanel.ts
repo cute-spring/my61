@@ -182,6 +182,14 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
         return '<svg><!-- No content --></svg>';
     } catch (err: any) {
         return `<svg><!-- Error: ${err.message || String(err)} --></svg>`;
+    } finally {
+        // Clean up the temp directory and its contents
+        try {
+            if (fs.existsSync(savePath)) { fs.unlinkSync(savePath); }
+            if (fs.existsSync(tempDir)) { fs.rmdirSync(tempDir); }
+        } catch (cleanupErr) {
+            // Ignore cleanup errors
+        }
     }
 }
 
