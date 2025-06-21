@@ -293,22 +293,20 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 <div id="chat">${chatHtml}</div>
                 <div id="uml"><pre>${plantUML}</pre></div>
                 <div id="inputArea">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <label for="diagramType" style="margin-right: 8px; font-weight: 500;">Diagram Type:</label>
+                        <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
+                    </div>
                     <textarea id="requirementInput" placeholder="Describe your UML requirement..."></textarea>
                     
                     <!-- NEW: Simplified and Optimized Button Row -->
                     <div id="buttonRow">
                         <div class="primary-actions">
-                            <button id="importBtn" title="Import a .umlchat session file" aria-label="Import Chat Session">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                <span>Import</span>
-                            </button>
-                            <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
                             <button id="sendBtn" class="primary" title="Send (Enter)" aria-label="Send Requirement">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 <span>Send</span>
                             </button>
                         </div>
-
                         <div class="utility-actions">
                             <button id="expandChatBtn" class="icon-only" title="Expand Chat Panel" aria-label="Expand or Collapse Chat Panel"></button>
                             <div class="dropdown">
@@ -319,6 +317,10 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                                     <button id="saveChatBtn" title="Save current session to a .umlchat file" aria-label="Save Chat Session">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                                         <span>Save Session</span>
+                                    </button>
+                                    <button id="importBtn" title="Import a .umlchat session file" aria-label="Import Chat Session">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        <span>Import</span>
                                     </button>
                                     <button id="exportSVGBtn" title="Export diagram as SVG" aria-label="Export SVG">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
