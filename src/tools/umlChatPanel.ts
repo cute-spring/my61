@@ -291,15 +291,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         <div id="container">
             <div id="leftPanel">
                 <div id="chat">${chatHtml}</div>
-                <div id="uml"><pre>${plantUML}</pre></div>
-                <div id="inputArea">
+                <div id="inputArea" style="flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px; border-top: 1px solid #eee; background: #f9f9f9;">
                     <div style="display: flex; align-items: center; margin-bottom: 8px;">
                         <label for="diagramType" style="margin-right: 8px; font-weight: 500;">Diagram Type:</label>
                         <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
                     </div>
                     <textarea id="requirementInput" placeholder="Describe your UML requirement..."></textarea>
-                    
-                    <!-- NEW: Simplified and Optimized Button Row -->
                     <div id="buttonRow">
                         <div class="primary-actions">
                             <button id="sendBtn" class="primary" title="Send (Enter)" aria-label="Send Requirement">
