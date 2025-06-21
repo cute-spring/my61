@@ -2,11 +2,14 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+
+// THIS IS THE CORRECTED LINE.
+// It assumes you have a `preview.ts` file in the same directory with a `localRender` export.
 import { localRender } from './preview';
 
-// This function remains the same
+
+// Use Copilot API to generate PlantUML code from requirement, history, and diagram type
 async function generatePlantUMLFromRequirement(requirement: string, history: string[], diagramType?: string): Promise<string> {
-    // ... (no changes here)
     let typeInstruction = '';
     if (diagramType && diagramType !== '') {
         typeInstruction = `Generate a PlantUML ${diagramType} diagram.`;
@@ -51,33 +54,42 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             let chatHistory: { role: 'user' | 'bot', message: string }[] = [];
             let currentPlantUML = '@startuml\n\n@enduml';
 
-            // Helper function to update the full UI
-            const updateFullUI = async () => {
+            // Helper function to update the full UI state
+            const updateFullUI = async (plantUMLToRender: string) => {
                 panel.webview.html = getWebviewContent(chatHistory, currentPlantUML);
-                const svg = await renderPlantUMLToSVG(currentPlantUML);
+                const svg = await renderPlantUMLToSVG(plantUMLToRender);
                 panel.webview.postMessage({ command: 'updatePreview', svgContent: svg });
             };
 
+            // Initial UI load
             panel.webview.html = getWebviewContent(chatHistory, currentPlantUML);
 
+            // Handle messages from the webview
             panel.webview.onDidReceiveMessage(async message => {
                 switch (message.command) {
                     case 'sendRequirement': {
                         const userInput = message.text.trim();
                         if (!userInput) { return; }
                         chatHistory.push({ role: 'user', message: userInput });
-                        // Show loading state if desired (optional)
-                        panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, true);
+                        panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, true); // show loading state
                         try {
-                            const plantuml = await generatePlantUMLFromRequirement(userInput, chatHistory.map(h => h.message), message.diagramType || '');
-                            currentPlantUML = plantuml;
-                            chatHistory.push({ role: 'bot', message: plantuml });
-                            await updateFullUI();
+                            const plantumlResponse = await generatePlantUMLFromRequirement(userInput, chatHistory.map(h => h.message), message.diagramType || '');
+                            currentPlantUML = plantumlResponse; // This is now the latest version
+                            chatHistory.push({ role: 'bot', message: plantumlResponse });
+                            await updateFullUI(currentPlantUML); // Render the new latest version
                         } catch (err: any) {
                             panel.webview.postMessage({ command: 'error', error: err.message || String(err) });
                         }
                         break;
                     }
+
+                    case 'renderSpecificUML': {
+                        const svg = await renderPlantUMLToSVG(message.umlCode);
+                        panel.webview.postMessage({ command: 'updatePreview', svgContent: svg });
+                        // We don't update `currentPlantUML` here as we are just previewing a past version.
+                        break;
+                    }
+
                     case 'exportSVG': {
                         const fileUri = await vscode.window.showSaveDialog({
                             filters: { 'SVG Image': ['svg'] },
@@ -89,13 +101,14 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         }
                         break;
                     }
+
                     case 'clearChat': {
                         chatHistory = [];
                         currentPlantUML = '@startuml\n\n@enduml';
-                        await updateFullUI();
+                        await updateFullUI(currentPlantUML);
                         break;
                     }
-                    // --- NEW: EXPORT CHAT LOGIC ---
+
                     case 'exportChat': {
                         const sessionData = {
                             version: 1,
@@ -112,7 +125,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         }
                         break;
                     }
-                    // --- NEW: IMPORT CHAT LOGIC ---
+
                     case 'importChat': {
                         const fileUris = await vscode.window.showOpenDialog({
                             canSelectMany: false,
@@ -123,11 +136,10 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                             try {
                                 const content = fs.readFileSync(fileUris[0].fsPath, 'utf-8');
                                 const data = JSON.parse(content);
-                                // Basic validation
                                 if (data && data.chatHistory && data.currentPlantUML) {
                                     chatHistory = data.chatHistory;
                                     currentPlantUML = data.currentPlantUML;
-                                    await updateFullUI();
+                                    await updateFullUI(currentPlantUML); // Update with the loaded session's latest UML
                                     vscode.window.showInformationMessage('Chat session loaded successfully!');
                                 } else {
                                     throw new Error('Invalid or corrupted session file.');
@@ -144,9 +156,8 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
     );
 }
 
-// This function remains the same
+// Render PlantUML to SVG using the local renderer
 async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
-    // ... (no changes here)
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plantuml-chat-'));
     const savePath = path.join(tempDir, 'chat-preview.svg');
     const diagram = {
@@ -169,11 +180,22 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
     }
 }
 
-
-// --- UPDATED: getWebviewContent ---
-// I've added the new buttons and their corresponding JS handlers
+// Generates the full HTML content for the webview panel
 function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string }[], plantUML: string, loading = false): string {
-    const chatHtml = chatHistory.map(h => `<div class="${h.role}"><b>${h.role === 'user' ? 'You' : 'Bot'}:</b> <pre style="white-space: pre-wrap; word-break: break-word;">${h.message}</pre></div>`).join('');
+    const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
+
+    const chatHtml = chatHistory.map((h, index) => {
+        const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word;">${h.message}</pre>`;
+        if (h.role === 'bot') {
+            const isActive = index === lastBotMessageIndex;
+            return `
+                <div class="bot-message ${isActive ? 'active-message' : ''}" onclick="handleBotMessageClick(this)">
+                    <b>Bot:</b> ${messageContent}
+                </div>`;
+        }
+        return `<div class="user"><b>You:</b> ${messageContent}</div>`;
+    }).join('');
+    
     const diagramTypes = [
         { value: '', label: 'Auto-detect' },
         { value: 'class', label: 'Class Diagram' },
@@ -194,7 +216,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>UML Chat Designer</title>
         <style>
-            /* All CSS remains the same as the previous enhanced version */
+            /* --- General Body and Layout --- */
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; margin: 0; padding: 0; height: 100vh; }
             #container { display: flex; height: 100vh; }
             #leftPanel { width: 20vw; min-width: 320px; max-width: 900px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; resize: none; overflow: auto; position: relative; transition: width 0.1s; }
@@ -202,16 +224,26 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; }
             #svgPreview { width: 100%; height: 98vh; overflow: auto; display: flex; align-items: center; justify-content: center; background: #fff; margin: auto; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 8px #eee; }
             #svgPreview svg text { white-space: pre-wrap !important; word-break: break-all !important; }
+
+            /* --- Left Panel Content --- */
             #chat { flex: 1 1 0; overflow-y: auto; background: #f5f5f5; padding: 10px; border-bottom: 1px solid #eee; min-height: 200px; max-height: 60vh; }
-            .user { color: #333; }
-            .bot { color: #007acc; }
+            .user, .bot-message { padding: 8px; margin-bottom: 8px; border-radius: 6px; }
+            .user { background-color: #e9e9e9; }
+            .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
+            .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
+            .bot-message.active-message { border-color: #007acc; background-color: #cde0f0; }
+
             #uml { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #eee; min-height: 120px; max-height: 200px; overflow-y: auto; padding: 8px; }
+
+            /* --- Input Area & Actions --- */
             #inputArea { flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px; border-top: 1px solid #eee; background: #f9f9f9; }
             #requirementInput { width: 100%; box-sizing: border-box; min-height: 60px; max-height: 120px; padding: 8px; font-size: 1.1em; resize: vertical; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+
+            /* --- Button Layout and Styling --- */
             #buttonRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
             .primary-actions, .secondary-actions { display: flex; align-items: center; gap: 8px; }
             .secondary-actions { margin-left: auto; }
-            button, select { border-radius: 4px; border: 1px solid #ccc; background: #f5f5f5; padding: 6px 12px; font-size: 1em; transition: background 0.2s; cursor: pointer; outline: none; display: flex; align-items: center; gap: 6px; }
+            button, select { border-radius: 4px; border: 1px solid #ccc; background: #f5f5f5; padding: 6px 12px; font-size: 1em; transition: background 0.2s, border 0.2s, color 0.2s; cursor: pointer; outline: none; display: flex; align-items: center; gap: 6px; }
             button:hover, button:focus, select:hover, select:focus { background: #e0e0e0; border-color: #bdbdbd; }
             button svg { width: 16px; height: 16px; display: block; }
             button.primary { background: #007acc; color: #fff; border-color: #007acc; font-weight: 600; }
@@ -219,9 +251,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             button.danger { background: #fff0f0; color: #d32f2f; border: 1px solid #d32f2f; }
             button.danger:hover, button.danger:focus { background: #d32f2f; color: #fff; }
             button.icon-only { padding: 6px; }
+
+            /* --- Fullscreen & Responsive --- */
             #leftPanel.fullscreen { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; background: #fafbfc; box-shadow: 0 0 10px #888; }
             #rightPanel.hide { display: none !important; }
-            @media (max-width: 800px) { /* Adjusted breakpoint for more buttons */
+            @media (max-width: 800px) {
                 #buttonRow, .primary-actions, .secondary-actions { flex-direction: column; align-items: stretch; }
                 .secondary-actions { margin-left: 0; }
             }
@@ -234,8 +268,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 <div id="uml"><pre>${plantUML}</pre></div>
                 <div id="inputArea">
                     <textarea id="requirementInput" placeholder="Describe your UML requirement..."></textarea>
-
-                    <!-- UPDATED: Button Row with Import/Save -->
                     <div id="buttonRow">
                         <div class="primary-actions">
                              <button id="importBtn" title="Import a .umlchat session file" aria-label="Import Chat Session">
@@ -257,10 +289,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                 <span>Export SVG</span>
                             </button>
-                            <button id="expandChatBtn" class="icon-only" title="Expand Chat Panel" aria-label="Expand or Collapse Chat Panel">
-                                <!-- Icon will be set by JS -->
-                            </button>
-                            <button id="clearChatBtn" class="danger" title="Clear Chat History" aria-label="Clear Chat">
+                            <button id="expandChatBtn" class="icon-only" title="Expand Chat Panel" aria-label="Expand or Collapse Chat Panel"></button>
+                            <button id="clearChatBtn" class="danger icon-only" title="Clear Chat History" aria-label="Clear Chat">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                         </div>
@@ -279,12 +309,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             // --- Elements ---
             const requirementInput = document.getElementById('requirementInput');
             const sendBtn = document.getElementById('sendBtn');
-            const exportSVGBtn = document.getElementById('exportSVGBtn'); // Renamed from exportBtn
+            const exportSVGBtn = document.getElementById('exportSVGBtn');
             const clearChatBtn = document.getElementById('clearChatBtn');
             const expandBtn = document.getElementById('expandChatBtn');
-            const importBtn = document.getElementById('importBtn'); // NEW
-            const saveChatBtn = document.getElementById('saveChatBtn'); // NEW
-
+            const importBtn = document.getElementById('importBtn');
+            const saveChatBtn = document.getElementById('saveChatBtn');
             const leftPanel = document.getElementById('leftPanel');
             const rightPanel = document.getElementById('rightPanel');
 
@@ -292,46 +321,75 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             const expandIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
             const collapseIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="10" y1="14" x2="3" y2="21"/></svg>';
 
+            // --- Click handler for historical bot messages ---
+            function handleBotMessageClick(element) {
+                document.querySelectorAll('.bot-message').forEach(el => el.classList.remove('active-message'));
+                element.classList.add('active-message');
+
+                const messageText = element.querySelector('pre').textContent;
+                const umlRegex = /@startuml([\\s\\S]*?)@enduml/;
+                const match = messageText.match(umlRegex);
+
+                if (match && match[0]) {
+                    const umlCode = match[0];
+                    vscode.postMessage({ command: 'renderSpecificUML', umlCode: umlCode });
+                    document.querySelector('#uml pre').textContent = umlCode;
+                }
+            }
+
             // --- Event Listeners ---
             sendBtn.onclick = () => {
-                const text = requirementInput.value;
-                const diagramType = document.getElementById('diagramType').value;
-                vscode.postMessage({ command: 'sendRequirement', text, diagramType });
+                vscode.postMessage({ command: 'sendRequirement', text: requirementInput.value, diagramType: document.getElementById('diagramType').value });
                 requirementInput.value = '';
             };
-
             requirementInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
             });
-
             exportSVGBtn.onclick = () => {
-                const svgContent = document.getElementById('svgPreview').innerHTML;
-                vscode.postMessage({ command: 'exportSVG', svgContent });
+                vscode.postMessage({ command: 'exportSVG', svgContent: document.getElementById('svgPreview').innerHTML });
             };
-
             clearChatBtn.onclick = () => vscode.postMessage({ command: 'clearChat' });
-            
-            // NEW: Import/Save button handlers
             importBtn.onclick = () => vscode.postMessage({ command: 'importChat' });
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });
-
             expandBtn.onclick = () => {
                 const isFullscreen = leftPanel.classList.toggle('fullscreen');
                 rightPanel.classList.toggle('hide', isFullscreen);
                 expandBtn.innerHTML = isFullscreen ? collapseIcon : expandIcon;
                 expandBtn.title = isFullscreen ? "Collapse Chat Panel" : "Expand Chat Panel";
-                expandBtn.setAttribute('aria-label', isFullscreen ? "Collapse Chat Panel" : "Expand Chat Panel");
             };
-            
-            // Draggable Resizer & SVG Pan/Zoom scripts (same as before)
-            // ... (no changes here)
+
+            // --- Draggable Resizer ---
+            const dragbar = document.getElementById('dragbar');
+            let isDragging = false;
+            dragbar.addEventListener('mousedown', (e) => { isDragging = true; document.body.style.cursor = 'ew-resize'; });
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const containerRect = document.getElementById('container').getBoundingClientRect();
+                let newWidth = e.clientX - containerRect.left;
+                if (newWidth < 320) newWidth = 320;
+                if (newWidth > 900) newWidth = 900;
+                leftPanel.style.width = newWidth + 'px';
+            });
+            document.addEventListener('mouseup', () => { isDragging = false; document.body.style.cursor = ''; });
+
+            // --- SVG Pan & Zoom ---
+            let panZoomInstance;
+            function enablePanZoom() {
+                if(panZoomInstance) { panZoomInstance.destroy(); }
+                const svgEl = document.querySelector('#svgPreview svg');
+                if (svgEl && window.svgPanZoom) {
+                    svgEl.style.width = '100%';
+                    svgEl.style.height = '100%';
+                    panZoomInstance = window.svgPanZoom(svgEl, { zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.1 });
+                }
+            }
 
             // --- VS Code Message Handling ---
             window.addEventListener('message', event => {
                 const message = event.data;
                 if (message.command === 'updatePreview') {
                     document.getElementById('svgPreview').innerHTML = message.svgContent;
-                    // ... enablePanZoom logic ...
+                    setTimeout(enablePanZoom, 100);
                 } else if (message.command === 'error') {
                     alert('Error: ' + message.error);
                 }
@@ -341,5 +399,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             expandBtn.innerHTML = expandIcon;
         </script>
     </body>
-    </html>`;
+    </html>
+    `;
 }
