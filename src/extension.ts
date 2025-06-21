@@ -121,7 +121,6 @@ export async function activate(context: vscode.ExtensionContext) {
   try {
     plantumlJarPath = await getPlantumlJar(context);
     if (plantumlJarPath) {
-      vscode.window.showInformationMessage(`PlantUML JAR found at: ${plantumlJarPath}`);
       activatePreview(context, plantumlJarPath); // Pass the JAR path to preview
     } else {
       vscode.window.showErrorMessage('Could not find or download PlantUML.jar. Please set the path in settings.');

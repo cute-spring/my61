@@ -248,6 +248,13 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 vscode.postMessage({ command: 'sendRequirement', text, diagramType });
                 document.getElementById('requirementInput').value = '';
             };
+            // Add Enter key support for sending
+            document.getElementById('requirementInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    document.getElementById('sendBtn').click();
+                }
+            });
             document.getElementById('exportBtn').onclick = () => {
                 const svgContent = document.getElementById('svgPreview').innerHTML;
                 vscode.postMessage({ command: 'exportSVG', svgContent });
