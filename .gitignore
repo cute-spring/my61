@@ -4,5 +4,6 @@ node_modules
 .vscode-test/
 *.vsix
 *.js
+!src/tools/ui/js/svg-pan-zoom.min.js
 *.js.map
 *.map

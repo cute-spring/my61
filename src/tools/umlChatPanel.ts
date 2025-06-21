@@ -51,6 +51,11 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                 }
             );
 
+            // Get local URI for svg-pan-zoom
+            const svgPanZoomUri = panel.webview.asWebviewUri(vscode.Uri.file(
+                path.join(context.extensionPath, 'src', 'tools', 'ui', 'js', 'svg-pan-zoom.min.js')
+            ));
+
             let chatHistory: { role: 'user' | 'bot', message: string }[] = [];
             let currentPlantUML = '@startuml\n\n@enduml';
 
@@ -180,7 +185,7 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
     }
 }
 
-function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string }[], plantUML: string, loading = false): string {
+function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string }[], plantUML: string, loading = false, svgPanZoomUri?: vscode.Uri): string {
     const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
 
     const chatHtml = chatHistory.map((h, index) => {
@@ -355,7 +360,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 <div id="svgPreview"></div>
             </div>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+        <script src="${svgPanZoomUri}"></script>
         <script>
             const vscode = acquireVsCodeApi();
 
