@@ -180,7 +180,6 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
     }
 }
 
-// Generates the full HTML content for the webview panel
 function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string }[], plantUML: string, loading = false): string {
     const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
 
@@ -232,17 +231,17 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
             .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
             .bot-message.active-message { border-color: #007acc; background-color: #cde0f0; }
-
             #uml { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #eee; min-height: 120px; max-height: 200px; overflow-y: auto; padding: 8px; }
 
             /* --- Input Area & Actions --- */
             #inputArea { flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px; border-top: 1px solid #eee; background: #f9f9f9; }
             #requirementInput { width: 100%; box-sizing: border-box; min-height: 60px; max-height: 120px; padding: 8px; font-size: 1.1em; resize: vertical; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
-
-            /* --- Button Layout and Styling --- */
+            
+            /* --- UPDATED: Button Layout and Styling --- */
             #buttonRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-            .primary-actions, .secondary-actions { display: flex; align-items: center; gap: 8px; }
-            .secondary-actions { margin-left: auto; }
+            .primary-actions { display: flex; align-items: center; gap: 8px; }
+            .utility-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+            
             button, select { border-radius: 4px; border: 1px solid #ccc; background: #f5f5f5; padding: 6px 12px; font-size: 1em; transition: background 0.2s, border 0.2s, color 0.2s; cursor: pointer; outline: none; display: flex; align-items: center; gap: 6px; }
             button:hover, button:focus, select:hover, select:focus { background: #e0e0e0; border-color: #bdbdbd; }
             button svg { width: 16px; height: 16px; display: block; }
@@ -252,13 +251,40 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             button.danger:hover, button.danger:focus { background: #d32f2f; color: #fff; }
             button.icon-only { padding: 6px; }
 
+            /* --- NEW: Dropdown Menu for 'More Actions' --- */
+            .dropdown { position: relative; display: inline-block; }
+            .dropdown-content {
+                display: none;
+                position: absolute;
+                bottom: calc(100% + 5px); /* Position above the button with a 5px gap */
+                right: 0;
+                background-color: #ffffff;
+                min-width: 180px;
+                box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                z-index: 100;
+                padding: 4px;
+                overflow: hidden;
+            }
+            .dropdown-content button {
+                color: black;
+                padding: 8px 12px;
+                text-decoration: none;
+                display: flex;
+                width: 100%;
+                text-align: left;
+                background: none;
+                border: none;
+                border-radius: 4px;
+            }
+            .dropdown-content button:hover { background-color: #f1f1f1; }
+            .dropdown-content button.danger:hover { background-color: #d32f2f; color: #fff; }
+            .show { display: block; }
+
             /* --- Fullscreen & Responsive --- */
             #leftPanel.fullscreen { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; background: #fafbfc; box-shadow: 0 0 10px #888; }
             #rightPanel.hide { display: none !important; }
-            @media (max-width: 800px) {
-                #buttonRow, .primary-actions, .secondary-actions { flex-direction: column; align-items: stretch; }
-                .secondary-actions { margin-left: 0; }
-            }
         </style>
     </head>
     <body>
@@ -268,9 +294,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 <div id="uml"><pre>${plantUML}</pre></div>
                 <div id="inputArea">
                     <textarea id="requirementInput" placeholder="Describe your UML requirement..."></textarea>
+                    
+                    <!-- NEW: Simplified and Optimized Button Row -->
                     <div id="buttonRow">
                         <div class="primary-actions">
-                             <button id="importBtn" title="Import a .umlchat session file" aria-label="Import Chat Session">
+                            <button id="importBtn" title="Import a .umlchat session file" aria-label="Import Chat Session">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                 <span>Import</span>
                             </button>
@@ -280,19 +308,28 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                                 <span>Send</span>
                             </button>
                         </div>
-                        <div class="secondary-actions">
-                             <button id="saveChatBtn" title="Save current session to a .umlchat file" aria-label="Save Chat Session">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                                <span>Save</span>
-                            </button>
-                            <button id="exportSVGBtn" title="Export diagram as SVG" aria-label="Export SVG">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                <span>Export SVG</span>
-                            </button>
+
+                        <div class="utility-actions">
                             <button id="expandChatBtn" class="icon-only" title="Expand Chat Panel" aria-label="Expand or Collapse Chat Panel"></button>
-                            <button id="clearChatBtn" class="danger icon-only" title="Clear Chat History" aria-label="Clear Chat">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
-                            </button>
+                            <div class="dropdown">
+                                <button id="moreActionsBtn" class="icon-only" title="More Actions">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                                </button>
+                                <div id="moreActionsDropdown" class="dropdown-content">
+                                    <button id="saveChatBtn" title="Save current session to a .umlchat file" aria-label="Save Chat Session">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                        <span>Save Session</span>
+                                    </button>
+                                    <button id="exportSVGBtn" title="Export diagram as SVG" aria-label="Export SVG">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                        <span>Export SVG</span>
+                                    </button>
+                                    <button id="clearChatBtn" class="danger" title="Clear Chat History" aria-label="Clear Chat">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+                                        <span>Clear Chat</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -314,6 +351,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             const expandBtn = document.getElementById('expandChatBtn');
             const importBtn = document.getElementById('importBtn');
             const saveChatBtn = document.getElementById('saveChatBtn');
+            const moreActionsBtn = document.getElementById('moreActionsBtn');
+            const moreActionsDropdown = document.getElementById('moreActionsDropdown');
             const leftPanel = document.getElementById('leftPanel');
             const rightPanel = document.getElementById('rightPanel');
 
@@ -325,17 +364,28 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             function handleBotMessageClick(element) {
                 document.querySelectorAll('.bot-message').forEach(el => el.classList.remove('active-message'));
                 element.classList.add('active-message');
-
                 const messageText = element.querySelector('pre').textContent;
                 const umlRegex = /@startuml([\\s\\S]*?)@enduml/;
                 const match = messageText.match(umlRegex);
-
                 if (match && match[0]) {
                     const umlCode = match[0];
                     vscode.postMessage({ command: 'renderSpecificUML', umlCode: umlCode });
                     document.querySelector('#uml pre').textContent = umlCode;
                 }
             }
+
+            // --- Dropdown Menu Logic ---
+            moreActionsBtn.addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent the window click listener from firing immediately
+                moreActionsDropdown.classList.toggle('show');
+            });
+            window.addEventListener('click', (event) => {
+                if (!moreActionsBtn.contains(event.target)) {
+                    if (moreActionsDropdown.classList.contains('show')) {
+                        moreActionsDropdown.classList.remove('show');
+                    }
+                }
+            });
 
             // --- Event Listeners ---
             sendBtn.onclick = () => {
@@ -345,9 +395,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             requirementInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
             });
-            exportSVGBtn.onclick = () => {
-                vscode.postMessage({ command: 'exportSVG', svgContent: document.getElementById('svgPreview').innerHTML });
-            };
+            exportSVGBtn.onclick = () => vscode.postMessage({ command: 'exportSVG', svgContent: document.getElementById('svgPreview').innerHTML });
             clearChatBtn.onclick = () => vscode.postMessage({ command: 'clearChat' });
             importBtn.onclick = () => vscode.postMessage({ command: 'importChat' });
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });
