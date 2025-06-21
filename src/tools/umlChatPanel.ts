@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import * as os from 'os';
+import * as fs from 'fs';
+import { promises as fsp } from 'fs';
 
 // THIS IS THE CORRECTED LINE.
 // It assumes you have a `preview.ts` file in the same directory with a `localRender` export.
@@ -125,7 +126,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                             saveLabel: 'Save Session'
                         });
                         if (fileUri) {
-                            fs.writeFileSync(fileUri.fsPath, JSON.stringify(sessionData, null, 2), 'utf-8');
+                            await fsp.writeFile(fileUri.fsPath, JSON.stringify(sessionData, null, 2), 'utf-8');
                             vscode.window.showInformationMessage('Chat session saved successfully!');
                         }
                         break;
@@ -139,7 +140,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         });
                         if (fileUris && fileUris.length > 0) {
                             try {
-                                const content = fs.readFileSync(fileUris[0].fsPath, 'utf-8');
+                                const content = await fsp.readFile(fileUris[0].fsPath, 'utf-8');
                                 const data = JSON.parse(content);
                                 if (data && data.chatHistory && data.currentPlantUML) {
                                     chatHistory = data.chatHistory;
