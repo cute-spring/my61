@@ -39,6 +39,15 @@ async function generatePlantUMLFromRequirement(requirement: string, history: str
     }
 }
 
+// Add debounce utility
+function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {
+    let timer: NodeJS.Timeout | undefined;
+    return function(this: any, ...args: any[]) {
+        if (timer) { clearTimeout(timer); }
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    } as T;
+}
+
 export function activateUMLChatPanel(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.umlChatPanel', async () => {
@@ -60,15 +69,14 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             let chatHistory: { role: 'user' | 'bot', message: string }[] = [];
             let currentPlantUML = '@startuml\n\n@enduml';
 
-            // Helper function to update the full UI state
-            const updateFullUI = async (plantUMLToRender: string) => {
-                panel.webview.html = getWebviewContent(chatHistory, currentPlantUML);
+            // Debounced render function
+            const debouncedRender = debounce(async (plantUMLToRender: string) => {
                 const svg = await renderPlantUMLToSVG(plantUMLToRender);
                 panel.webview.postMessage({ command: 'updatePreview', svgContent: svg });
-            };
+            }, 300);
 
             // Initial UI load
-            panel.webview.html = getWebviewContent(chatHistory, currentPlantUML);
+            panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, false, svgPanZoomUri);
 
             // Handle messages from the webview
             panel.webview.onDidReceiveMessage(async message => {
@@ -77,12 +85,12 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         const userInput = message.text.trim();
                         if (!userInput) { return; }
                         chatHistory.push({ role: 'user', message: userInput });
-                        panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, true); // show loading state
+                        // Only show loading state if desired, do not reload full HTML
                         try {
                             const plantumlResponse = await generatePlantUMLFromRequirement(userInput, chatHistory.map(h => h.message), message.diagramType || '');
-                            currentPlantUML = plantumlResponse; // This is now the latest version
+                            currentPlantUML = plantumlResponse;
                             chatHistory.push({ role: 'bot', message: plantumlResponse });
-                            await updateFullUI(currentPlantUML); // Render the new latest version
+                            debouncedRender(currentPlantUML); // Debounced SVG update
                         } catch (err: any) {
                             panel.webview.postMessage({ command: 'error', error: err.message || String(err) });
                         }
@@ -111,7 +119,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                     case 'clearChat': {
                         chatHistory = [];
                         currentPlantUML = '@startuml\n\n@enduml';
-                        await updateFullUI(currentPlantUML);
+                        debouncedRender(currentPlantUML);
                         break;
                     }
 
@@ -145,7 +153,8 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                                 if (data && data.chatHistory && data.currentPlantUML) {
                                     chatHistory = data.chatHistory;
                                     currentPlantUML = data.currentPlantUML;
-                                    await updateFullUI(currentPlantUML); // Update with the loaded session's latest UML
+                                    panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, false, svgPanZoomUri);
+                                    debouncedRender(currentPlantUML);
                                     vscode.window.showInformationMessage('Chat session loaded successfully!');
                                 } else {
                                     throw new Error('Invalid or corrupted session file.');
