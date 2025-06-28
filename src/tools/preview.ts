@@ -38,7 +38,7 @@ function addFileIndex(filePath: string, index: number, pageCount: number): strin
 
 // --- Inlined processWrapper ---
 
-function processWrapper(process: childProcess.ChildProcess, savePath: string): Promise<Buffer> {
+function processWrapper(process: childProcess.ChildProcess, savePath?: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         let stdout: Buffer[] = [];
         let stderr: Buffer[] = [];
@@ -73,15 +73,15 @@ class LocalRender {
         return ["png", "svg", "eps", "pdf", "vdx", "xmi", "scxml", "html", "txt", "utxt", "latex", "latex:nopreamble"];
     }
 
-    render(diagram: any, format: string, savePath: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
+    render(diagram: any, format: string, savePath?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
         return this.createTask(diagram, "-pipe", savePath, format);
     }
 
-    getMapData(diagram: any, savePath: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
+    getMapData(diagram: any, savePath?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
         return this.createTask(diagram, "-pipemap", savePath);
     }
 
-    private createTask(diagram: any, taskType: string, savePath: string, format?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
+    private createTask(diagram: any, taskType: string, savePath?: string, format?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
         const jarPath = this.getJarPath();
         let javaExists = true;
         try {
@@ -144,7 +144,7 @@ class LocalRender {
                 proc.stdin.write(diagram.content);
                 proc.stdin.end();
 
-                let savePath2 = savePath ? addFileIndex(savePath, index, diagram.pageCount) : "";
+                let savePath2 = savePath ? addFileIndex(savePath, index, diagram.pageCount) : undefined;
                 return processWrapper(proc, savePath2).then(stdout => {
                     if (!cancelled) {
                         buffers.push(stdout);

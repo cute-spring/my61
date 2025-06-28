@@ -69,6 +69,19 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             let chatHistory: { role: 'user' | 'bot', message: string }[] = [];
             let currentPlantUML = '@startuml\n\n@enduml';
 
+            // Helper to generate chat HTML only
+            function getChatHtml(chatHistory: { role: 'user' | 'bot', message: string }[]): string {
+                const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
+                return chatHistory.map((h, index) => {
+                    const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word;">${h.message}</pre>`;
+                    if (h.role === 'bot') {
+                        const isActive = index === lastBotMessageIndex;
+                        return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
+                    }
+                    return `<div class="user"><b>You:</b> ${messageContent}</div>`;
+                }).join('');
+            }
+
             // Debounced render function
             const debouncedRender = debounce(async (plantUMLToRender: string) => {
                 const svg = await renderPlantUMLToSVG(plantUMLToRender);
@@ -78,6 +91,11 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             // Initial UI load
             panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, false, svgPanZoomUri);
 
+            // Helper to update chat area only
+            function updateChatInWebview() {
+                panel.webview.postMessage({ command: 'updateChat', chatHtml: getChatHtml(chatHistory) });
+            }
+
             // Handle messages from the webview
             panel.webview.onDidReceiveMessage(async message => {
                 switch (message.command) {
@@ -85,25 +103,23 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         const userInput = message.text.trim();
                         if (!userInput) { return; }
                         chatHistory.push({ role: 'user', message: userInput });
-                        // Only show loading state if desired, do not reload full HTML
+                        updateChatInWebview();
                         try {
                             const plantumlResponse = await generatePlantUMLFromRequirement(userInput, chatHistory.map(h => h.message), message.diagramType || '');
                             currentPlantUML = plantumlResponse;
                             chatHistory.push({ role: 'bot', message: plantumlResponse });
+                            updateChatInWebview();
                             debouncedRender(currentPlantUML); // Debounced SVG update
                         } catch (err: any) {
                             panel.webview.postMessage({ command: 'error', error: err.message || String(err) });
                         }
                         break;
                     }
-
                     case 'renderSpecificUML': {
                         const svg = await renderPlantUMLToSVG(message.umlCode);
                         panel.webview.postMessage({ command: 'updatePreview', svgContent: svg });
-                        // We don't update `currentPlantUML` here as we are just previewing a past version.
                         break;
                     }
-
                     case 'exportSVG': {
                         const fileUri = await vscode.window.showSaveDialog({
                             filters: { 'SVG Image': ['svg'] },
@@ -115,14 +131,13 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         }
                         break;
                     }
-
                     case 'clearChat': {
                         chatHistory = [];
                         currentPlantUML = '@startuml\n\n@enduml';
+                        updateChatInWebview();
                         debouncedRender(currentPlantUML);
                         break;
                     }
-
                     case 'exportChat': {
                         const sessionData = {
                             version: 1,
@@ -139,7 +154,6 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         }
                         break;
                     }
-
                     case 'importChat': {
                         const fileUris = await vscode.window.showOpenDialog({
                             canSelectMany: false,
@@ -154,7 +168,11 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                                     chatHistory = data.chatHistory;
                                     currentPlantUML = data.currentPlantUML;
                                     panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, false, svgPanZoomUri);
-                                    debouncedRender(currentPlantUML);
+                                    // Wait for webview to reload, then update chat and SVG
+                                    setTimeout(() => {
+                                        updateChatInWebview();
+                                        debouncedRender(currentPlantUML);
+                                    }, 300);
                                     vscode.window.showInformationMessage('Chat session loaded successfully!');
                                 } else {
                                     throw new Error('Invalid or corrupted session file.');
@@ -173,18 +191,16 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
 
 // Render PlantUML to SVG using the local renderer
 async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plantuml-chat-'));
-    const savePath = path.join(tempDir, 'chat-preview.svg');
     const diagram = {
-        parentUri: vscode.Uri.file(savePath),
-        dir: tempDir,
+        parentUri: vscode.Uri.file('inmemory'),
+        dir: '',
         pageCount: 1,
         content: plantuml,
-        path: savePath,
-        name: path.basename(savePath)
+        path: '',
+        name: 'inmemory.svg'
     };
     try {
-        const task = localRender.render(diagram, 'svg', savePath);
+        const task = localRender.render(diagram, 'svg');
         const buffers = await task.promise;
         if (buffers && buffers.length > 0) {
             return buffers[0].toString('utf-8');
@@ -192,14 +208,6 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
         return '<svg><!-- No content --></svg>';
     } catch (err: any) {
         return `<svg><!-- Error: ${err.message || String(err)} --></svg>`;
-    } finally {
-        // Clean up the temp directory and its contents
-        try {
-            if (fs.existsSync(savePath)) { fs.unlinkSync(savePath); }
-            if (fs.existsSync(tempDir)) { fs.rmdirSync(tempDir); }
-        } catch (cleanupErr) {
-            // Ignore cleanup errors
-        }
     }
 }
 
@@ -477,6 +485,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 if (message.command === 'updatePreview') {
                     document.getElementById('svgPreview').innerHTML = message.svgContent;
                     setTimeout(enablePanZoom, 100);
+                } else if (message.command === 'updateChat') {
+                    document.getElementById('chat').innerHTML = message.chatHtml;
                 } else if (message.command === 'error') {
                     alert('Error: ' + message.error);
                 }
