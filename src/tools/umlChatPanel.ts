@@ -103,15 +103,29 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         const userInput = message.text.trim();
                         if (!userInput) { return; }
                         chatHistory.push({ role: 'user', message: userInput });
+                        // Add loading message
+                        chatHistory.push({ role: 'bot', message: 'Generating diagram, please wait...' });
                         updateChatInWebview();
                         try {
-                            const plantumlResponse = await generatePlantUMLFromRequirement(userInput, chatHistory.map(h => h.message), message.diagramType || '');
+                            const plantumlResponse = await generatePlantUMLFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), message.diagramType || '');
+                            // Remove the loading message
+                            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
+                                chatHistory.pop();
+                            }
                             currentPlantUML = plantumlResponse;
                             chatHistory.push({ role: 'bot', message: plantumlResponse });
                             updateChatInWebview();
                             debouncedRender(currentPlantUML); // Debounced SVG update
+                            // Fallback: force refresh after 200ms
+                            setTimeout(() => updateChatInWebview(), 200);
                         } catch (err: any) {
+                            // Remove the loading message if present
+                            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
+                                chatHistory.pop();
+                            }
                             panel.webview.postMessage({ command: 'error', error: err.message || String(err) });
+                            updateChatInWebview();
+                            setTimeout(() => updateChatInWebview(), 200);
                         }
                         break;
                     }
@@ -215,13 +229,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
     const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
 
     const chatHtml = chatHistory.map((h, index) => {
-        const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word;">${h.message}</pre>`;
+        const messageContent = `<pre style="white-space: pre-wrap; word-break: break-all;">${h.message}</pre>`;
         if (h.role === 'bot') {
             const isActive = index === lastBotMessageIndex;
-            return `
-                <div class="bot-message ${isActive ? 'active-message' : ''}" onclick="handleBotMessageClick(this)">
-                    <b>Bot:</b> ${messageContent}
-                </div>`;
+            const isLoading = h.message === 'Generating diagram, please wait...';
+            return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
         }
         return `<div class="user"><b>You:</b> ${messageContent}</div>`;
     }).join('');
@@ -333,6 +345,9 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             /* --- Fullscreen & Responsive --- */
             #leftPanel.fullscreen { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; background: #fafbfc; box-shadow: 0 0 10px #888; }
             #rightPanel.hide { display: none !important; }
+
+            /* --- NEW: Loading Message Style --- */
+            .loading-message { font-style: italic; color: #888; background: #f5f5f5 !important; border-style: dashed !important; }
         </style>
     </head>
     <body>
@@ -453,17 +468,14 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 expandBtn.title = isFullscreen ? "Collapse Chat Panel" : "Expand Chat Panel";
             };
 
-            // --- Draggable Resizer ---
+            // --- Dragbar for resizing ---
             const dragbar = document.getElementById('dragbar');
             let isDragging = false;
             dragbar.addEventListener('mousedown', (e) => { isDragging = true; document.body.style.cursor = 'ew-resize'; });
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 const containerRect = document.getElementById('container').getBoundingClientRect();
-                let newWidth = e.clientX - containerRect.left;
-                if (newWidth < 320) newWidth = 320;
-                if (newWidth > 900) newWidth = 900;
-                leftPanel.style.width = newWidth + 'px';
+                let newWidth
             });
             document.addEventListener('mouseup', () => { isDragging = false; document.body.style.cursor = ''; });
 
@@ -487,6 +499,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     setTimeout(enablePanZoom, 100);
                 } else if (message.command === 'updateChat') {
                     document.getElementById('chat').innerHTML = message.chatHtml;
+                    // Scroll chat to bottom to show latest message
+                    const chatDiv = document.getElementById('chat');
+                    if (chatDiv) {
+                        chatDiv.scrollTop = chatDiv.scrollHeight;
+                    }
                 } else if (message.command === 'error') {
                     alert('Error: ' + message.error);
                 }
