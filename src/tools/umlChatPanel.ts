@@ -68,6 +68,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
 
             let chatHistory: { role: 'user' | 'bot', message: string }[] = [];
             let currentPlantUML = '@startuml\n\n@enduml';
+            let lastDiagramType: string = '';
 
             // Helper to generate chat HTML only
             function getChatHtml(chatHistory: { role: 'user' | 'bot', message: string }[]): string {
@@ -78,7 +79,8 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         const isActive = index === lastBotMessageIndex;
                         return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
                     }
-                    return `<div class="user"><b>You:</b> ${messageContent}</div>`;
+                    // Add edit button for user messages
+                    return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend' style='margin-left:8px;'>✏️</button></div>`;
                 }).join('');
             }
 
@@ -103,11 +105,13 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         const userInput = message.text.trim();
                         if (!userInput) { return; }
                         chatHistory.push({ role: 'user', message: userInput });
+                        // Update lastDiagramType if user selected a new one
+                        lastDiagramType = message.diagramType || lastDiagramType || '';
                         // Add loading message
                         chatHistory.push({ role: 'bot', message: 'Generating diagram, please wait...' });
                         updateChatInWebview();
                         try {
-                            const plantumlResponse = await generatePlantUMLFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), message.diagramType || '');
+                            const plantumlResponse = await generatePlantUMLFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType);
                             // Remove the loading message
                             if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
                                 chatHistory.pop();
@@ -116,10 +120,8 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                             chatHistory.push({ role: 'bot', message: plantumlResponse });
                             updateChatInWebview();
                             debouncedRender(currentPlantUML); // Debounced SVG update
-                            // Fallback: force refresh after 200ms
                             setTimeout(() => updateChatInWebview(), 200);
                         } catch (err: any) {
-                            // Remove the loading message if present
                             if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
                                 chatHistory.pop();
                             }
@@ -181,8 +183,9 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                                 if (data && data.chatHistory && data.currentPlantUML) {
                                     chatHistory = data.chatHistory;
                                     currentPlantUML = data.currentPlantUML;
+                                    // Try to infer lastDiagramType from last bot message if possible
+                                    lastDiagramType = data.lastDiagramType || lastDiagramType || '';
                                     panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, false, svgPanZoomUri);
-                                    // Wait for webview to reload, then update chat and SVG
                                     setTimeout(() => {
                                         updateChatInWebview();
                                         debouncedRender(currentPlantUML);
@@ -193,6 +196,39 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                                 }
                             } catch (e: any) {
                                 vscode.window.showErrorMessage(`Failed to load session: ${e.message}`);
+                            }
+                        }
+                        break;
+                    }
+                    case 'editAndResendUserMsg': {
+                        const { index, newText } = message;
+                        if (typeof index === 'number' && typeof newText === 'string') {
+                            // Update the user message in chatHistory
+                            chatHistory[index].message = newText;
+                            // Remove all messages after this user message (including any bot responses)
+                            chatHistory = chatHistory.slice(0, index + 1);
+                            updateChatInWebview();
+                            // Add loading message
+                            chatHistory.push({ role: 'bot', message: 'Generating diagram, please wait...' });
+                            updateChatInWebview();
+                            try {
+                                // Use lastDiagramType for follow-up requests
+                                const plantumlResponse = await generatePlantUMLFromRequirement(newText, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType);
+                                if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
+                                    chatHistory.pop();
+                                }
+                                currentPlantUML = plantumlResponse;
+                                chatHistory.push({ role: 'bot', message: plantumlResponse });
+                                updateChatInWebview();
+                                debouncedRender(currentPlantUML);
+                                setTimeout(() => updateChatInWebview(), 200);
+                            } catch (err: any) {
+                                if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
+                                    chatHistory.pop();
+                                }
+                                panel.webview.postMessage({ command: 'error', error: err.message || String(err) });
+                                updateChatInWebview();
+                                setTimeout(() => updateChatInWebview(), 200);
                             }
                         }
                         break;
@@ -235,7 +271,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             const isLoading = h.message === 'Generating diagram, please wait...';
             return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
         }
-        return `<div class="user"><b>You:</b> ${messageContent}</div>`;
+        // Add edit button for user messages
+        return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend' style='margin-left:8px;'>✏️</button></div>`;
     }).join('');
     
     const diagramTypes = [
@@ -511,6 +548,51 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
 
             // --- Initial State ---
             expandBtn.innerHTML = expandIcon;
+
+            // Delegate click event for edit buttons
+            chat.addEventListener('click', function(event) {
+                const target = event.target;
+                if (target && target.classList.contains('edit-user-msg-btn')) {
+                    const userDiv = target.closest('.user');
+                    if (!userDiv) return;
+                    const idx = parseInt(userDiv.getAttribute('data-index'));
+                    const pre = userDiv.querySelector('pre');
+                    if (!pre) return;
+                    // Replace pre with textarea for editing
+                    const oldMsg = pre.textContent;
+                    const textarea = document.createElement('textarea');
+                    textarea.value = oldMsg;
+                    textarea.style.width = '90%';
+                    textarea.style.minHeight = '40px';
+                    textarea.style.marginTop = '4px';
+                    textarea.style.fontSize = '1em';
+                    textarea.style.fontFamily = 'inherit';
+                    // Add save/cancel buttons
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = 'Resend';
+                    saveBtn.style.marginLeft = '8px';
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = 'Cancel';
+                    cancelBtn.style.marginLeft = '4px';
+                    // Replace pre and edit button with textarea and buttons
+                    userDiv.replaceChild(textarea, pre);
+                    target.style.display = 'none';
+                    userDiv.appendChild(saveBtn);
+                    userDiv.appendChild(cancelBtn);
+                    // Save handler
+                    saveBtn.onclick = function() {
+                        vscode.postMessage({ command: 'editAndResendUserMsg', index: idx, newText: textarea.value });
+                    };
+                    // Cancel handler
+                    cancelBtn.onclick = function() {
+                        // Restore original pre and edit button
+                        userDiv.replaceChild(pre, textarea);
+                        target.style.display = '';
+                        saveBtn.remove();
+                        cancelBtn.remove();
+                    };
+                }
+            });
         </script>
     </body>
     </html>
