@@ -308,7 +308,28 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
         const task = localRender.render(diagram, 'svg');
         const buffers = await task.promise;
         if (buffers && buffers.length > 0) {
-            return buffers[0].toString('utf-8');
+            let svgContent = buffers[0].toString('utf-8');
+            
+            // Post-process SVG for better Windows compatibility
+            // Ensure preserveAspectRatio is set correctly
+            if (svgContent.includes('<svg') && !svgContent.includes('preserveAspectRatio')) {
+                svgContent = svgContent.replace(
+                    /<svg([^>]*)>/,
+                    '<svg$1 preserveAspectRatio="xMidYMid meet">'
+                );
+            }
+            
+            // Log SVG dimensions for debugging on Windows
+            const widthMatch = svgContent.match(/width="([^"]+)"/);
+            const heightMatch = svgContent.match(/height="([^"]+)"/);
+            const viewBoxMatch = svgContent.match(/viewBox="([^"]+)"/);
+            console.log('Generated SVG dimensions:', {
+                width: widthMatch ? widthMatch[1] : 'none',
+                height: heightMatch ? heightMatch[1] : 'none',
+                viewBox: viewBoxMatch ? viewBoxMatch[1] : 'none'
+            });
+            
+            return svgContent;
         }
         return '<svg><!-- No content --></svg>';
     } catch (err: any) {
@@ -404,10 +425,13 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 /* Windows high-DPI fixes */
                 image-rendering: -webkit-optimize-contrast;
                 image-rendering: crisp-edges;
+                /* Ensure container doesn't force aspect ratio changes */
+                box-sizing: border-box;
             }
             #svgPreview svg { 
-                white-space: pre-wrap !important; 
-                word-break: break-all !important;
+                /* Remove forced word-break that can affect SVG rendering */
+                white-space: normal !important; 
+                word-break: normal !important;
                 /* Windows SVG rendering fixes */
                 shape-rendering: geometricPrecision;
                 text-rendering: geometricPrecision;
@@ -418,6 +442,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 -webkit-transform: translateZ(0);
                 backface-visibility: hidden;
                 -webkit-backface-visibility: hidden;
+                /* Preserve aspect ratio - this is key for Windows */
+                max-width: 100%;
+                max-height: 100%;
+                width: auto !important;
+                height: auto !important;
+                display: block;
             }
 
             /* --- Custom Zoom Controls --- */
@@ -877,15 +907,34 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     }
                     const svgEl = document.querySelector('#svgPreview svg');
                     if (svgEl && window.svgPanZoom) {
-                        // Windows-specific SVG fixes
-                        svgEl.style.width = '100%';
-                        svgEl.style.height = '100%';
+                        // Windows-specific SVG fixes - preserve aspect ratio
                         svgEl.style.display = 'block';
-                        svgEl.style.maxWidth = 'none';
-                        svgEl.style.maxHeight = 'none';
+                        svgEl.style.maxWidth = '100%';
+                        svgEl.style.maxHeight = '100%';
                         
-                        // Force SVG to be properly rendered on Windows
+                        // Preserve original dimensions and aspect ratio
+                        const svgViewBox = svgEl.getAttribute('viewBox');
+                        const svgWidth = svgEl.getAttribute('width');
+                        const svgHeight = svgEl.getAttribute('height');
+                        
+                        // Set preserveAspectRatio to maintain aspect ratio during scaling
                         svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                        
+                        // If SVG has explicit dimensions, respect them but make responsive
+                        if (svgWidth && svgHeight) {
+                            svgEl.style.width = 'auto';
+                            svgEl.style.height = 'auto';
+                        } else if (svgViewBox) {
+                            // If only viewBox is available, let it determine natural size
+                            svgEl.style.width = 'auto';
+                            svgEl.style.height = 'auto';
+                        } else {
+                            // Fallback: set reasonable constraints but preserve aspect ratio
+                            svgEl.style.width = 'auto';
+                            svgEl.style.height = 'auto';
+                            svgEl.style.minWidth = '200px';
+                            svgEl.style.minHeight = '200px';
+                        }
                         
                         panZoomInstance = window.svgPanZoom(svgEl, { 
                             zoomEnabled: true, 
@@ -907,21 +956,27 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         console.log('Pan-zoom initialized successfully for Windows');
                     } else {
                         console.warn('SVG element or svgPanZoom library not found');
-                        // Windows fallback: ensure SVG is still visible
+                        // Windows fallback: ensure SVG is still visible with preserved aspect ratio
                         if (svgEl) {
-                            svgEl.style.width = '100%';
-                            svgEl.style.height = '100%';
                             svgEl.style.display = 'block';
+                            svgEl.style.maxWidth = '100%';
+                            svgEl.style.maxHeight = '100%';
+                            svgEl.style.width = 'auto';
+                            svgEl.style.height = 'auto';
+                            svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                         }
                     }
                 } catch (error) {
                     console.error('Error initializing pan-zoom on Windows:', error);
-                    // Fallback for Windows: basic SVG display
+                    // Fallback for Windows: basic SVG display with preserved aspect ratio
                     const svgEl = document.querySelector('#svgPreview svg');
                     if (svgEl) {
-                        svgEl.style.width = '100%';
-                        svgEl.style.height = '100%';
                         svgEl.style.display = 'block';
+                        svgEl.style.maxWidth = '100%';
+                        svgEl.style.maxHeight = '100%';
+                        svgEl.style.width = 'auto';
+                        svgEl.style.height = 'auto';
+                        svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                     }
                 }
             }
@@ -1042,6 +1097,25 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     
                     // Set new content
                     svgContainer.innerHTML = message.svgContent;
+                    
+                    // Immediately fix any aspect ratio issues for Windows
+                    const newSvgEl = svgContainer.querySelector('svg');
+                    if (newSvgEl) {
+                        // Log original SVG dimensions for debugging
+                        const originalWidth = newSvgEl.getAttribute('width');
+                        const originalHeight = newSvgEl.getAttribute('height');
+                        const viewBox = newSvgEl.getAttribute('viewBox');
+                        console.log('SVG dimensions before fix:', { originalWidth, originalHeight, viewBox });
+                        
+                        // Ensure proper aspect ratio preservation before pan-zoom initialization
+                        newSvgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                        newSvgEl.style.maxWidth = '100%';
+                        newSvgEl.style.maxHeight = '100%';
+                        newSvgEl.style.width = 'auto';
+                        newSvgEl.style.height = 'auto';
+                        newSvgEl.style.display = 'block';
+                        console.log('SVG aspect ratio fixed for Windows before pan-zoom init');
+                    }
                     
                     // Give extra time for Windows rendering
                     setTimeout(() => {

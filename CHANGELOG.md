@@ -18,6 +18,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - **Enhanced UI Controls**: Improved Edit, Resend, and Cancel buttons for user messages with professional styling and better positioning
 - **Custom Zoom Controls**: Added reliable zoom controls (Zoom In, Zoom Out, Reset) for SVG diagrams with cross-platform compatibility
 - **Diagram Type Detection**: Implemented intelligent diagram type detection and display in bot replies
+- **Windows SVG Rendering Fix**: Fixed diagram stretching and deformation issues on Windows when rendering diagrams directly from LLM chat
+  - Preserved SVG aspect ratio by using `preserveAspectRatio="xMidYMid meet"`
+  - Updated CSS to prevent forced width/height that caused distortion
+  - Enhanced SVG post-processing for better Windows compatibility
+  - Added debugging output to help diagnose rendering issues
+  - Fixed both svg-pan-zoom and fallback rendering modes
 - **LLM-Driven Type Classification**: Replaced regex-based detection with LLM-provided diagram types for higher accuracy
 - **Code Cleanup**: Removed complex fallback detection logic (~60 lines) in favor of forced LLM compliance
 - **Improved Prompts**: Enhanced LLM prompts to force diagram type specification with strict format requirements
