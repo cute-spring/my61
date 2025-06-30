@@ -409,16 +409,16 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             }
             #leftPanel::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
             #dragbar { width: 5px; cursor: ew-resize; background: #e0e0e0; height: 100vh; z-index: 10; }
-            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; position: relative; }
+            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; position: relative; overflow: hidden; }
             #svgPreview { 
                 width: 100%; 
-                height: 98vh; 
+                height: 100%; 
                 overflow: auto; 
                 display: flex; 
-                align-items: center; 
-                justify-content: center; 
+                align-items: flex-start; 
+                justify-content: flex-start; 
                 background: #fff; 
-                margin: auto; 
+                margin: 0; 
                 border: 1px solid #eee; 
                 border-radius: 8px; 
                 box-shadow: 0 2px 8px #eee;
@@ -427,6 +427,33 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 image-rendering: crisp-edges;
                 /* Ensure container doesn't force aspect ratio changes */
                 box-sizing: border-box;
+                /* Better scrolling behavior for zoomed content */
+                position: relative;
+                /* Enable smooth scrolling */
+                scroll-behavior: smooth;
+                /* Windows scrollbar styling for SVG preview */
+                scrollbar-width: thin;
+                scrollbar-color: #c1c1c1 #f1f1f1;
+            }
+            #svgPreview::-webkit-scrollbar { 
+                width: 12px; 
+                height: 12px;
+            }
+            #svgPreview::-webkit-scrollbar-track { 
+                background: #f1f1f1; 
+                border-radius: 6px;
+            }
+            #svgPreview::-webkit-scrollbar-thumb { 
+                background: #c1c1c1; 
+                border-radius: 6px; 
+                border: 2px solid #f1f1f1;
+            }
+            #svgPreview::-webkit-scrollbar-thumb:hover { 
+                background: #a8a8a8; 
+            }
+            #svgPreview::-webkit-scrollbar-corner {
+                background: #f1f1f1;
+            }
             }
             #svgPreview svg { 
                 /* Remove forced word-break that can affect SVG rendering */
@@ -443,11 +470,16 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 backface-visibility: hidden;
                 -webkit-backface-visibility: hidden;
                 /* Preserve aspect ratio - this is key for Windows */
-                max-width: 100%;
-                max-height: 100%;
+                max-width: none;
+                max-height: none;
                 width: auto !important;
                 height: auto !important;
                 display: block;
+                /* Allow the SVG to be larger than container when zoomed */
+                min-width: 0;
+                min-height: 0;
+                /* Ensure proper positioning */
+                position: relative;
             }
 
             /* --- Custom Zoom Controls --- */
@@ -907,10 +939,10 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     }
                     const svgEl = document.querySelector('#svgPreview svg');
                     if (svgEl && window.svgPanZoom) {
-                        // Windows-specific SVG fixes - preserve aspect ratio
+                        // Windows-specific SVG fixes - allow full zoom range
                         svgEl.style.display = 'block';
-                        svgEl.style.maxWidth = '100%';
-                        svgEl.style.maxHeight = '100%';
+                        svgEl.style.maxWidth = 'none';
+                        svgEl.style.maxHeight = 'none';
                         
                         // Preserve original dimensions and aspect ratio
                         const svgViewBox = svgEl.getAttribute('viewBox');
@@ -939,7 +971,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         panZoomInstance = window.svgPanZoom(svgEl, { 
                             zoomEnabled: true, 
                             controlIconsEnabled: false,
-                            fit: true, 
+                            fit: false, // Don't auto-fit initially to allow proper scaling
                             center: true, 
                             minZoom: 0.1,
                             maxZoom: 10,
@@ -948,6 +980,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                             mouseWheelZoomEnabled: true,
                             // Windows-specific settings
                             preventMouseEventsDefault: true,
+                            // Allow content to extend beyond container bounds
+                            contain: false,
                             beforeZoom: function(oldZoom, newZoom) {
                                 // Prevent extreme zoom levels that cause issues on Windows
                                 return newZoom >= 0.1 && newZoom <= 10;
@@ -1063,11 +1097,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     const originalHandler = zoomResetBtn.onclick;
                     zoomResetBtn.onclick = (e) => {
                         originalHandler(e);
-                        // Additional reset for pan-zoom
+                        // Additional reset for pan-zoom - fit to container
                         if (panZoomInstance) {
                             try {
-                                panZoomInstance.center();
                                 panZoomInstance.fit();
+                                panZoomInstance.center();
+                                console.log('Pan-zoom reset to fit and center');
                             } catch (error) {
                                 console.warn('Error in additional reset:', error);
                             }
@@ -1121,6 +1156,18 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     setTimeout(() => {
                         enablePanZoom();
                         setupZoomControls();
+                        // Initial fit to container after pan-zoom is enabled
+                        setTimeout(() => {
+                            if (panZoomInstance) {
+                                try {
+                                    panZoomInstance.fit();
+                                    panZoomInstance.center();
+                                    console.log('Initial fit and center applied');
+                                } catch (error) {
+                                    console.warn('Error in initial fit:', error);
+                                }
+                            }
+                        }, 100);
                     }, 300); // Increased timeout for Windows
                 } else if (message.command === 'updateChat') {
                     document.getElementById('chat').innerHTML = message.chatHtml;

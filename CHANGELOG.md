@@ -24,6 +24,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   - Enhanced SVG post-processing for better Windows compatibility
   - Added debugging output to help diagnose rendering issues
   - Fixed both svg-pan-zoom and fallback rendering modes
+- **SVG Zoom and Pan Display Fix**: Fixed issue where zoomed diagrams were clipped and not fully visible
+  - Updated SVG preview container to use full height instead of fixed viewport height
+  - Modified SVG container CSS to allow content to extend beyond initial bounds
+  - Enhanced scrollbar styling for better navigation of large/zoomed diagrams
+  - Improved svg-pan-zoom configuration to prevent content clipping
+  - Added initial fit-to-container behavior after diagram loading
+  - Fixed zoom reset functionality to properly fit diagrams to container
 - **LLM-Driven Type Classification**: Replaced regex-based detection with LLM-provided diagram types for higher accuracy
 - **Code Cleanup**: Removed complex fallback detection logic (~60 lines) in favor of forced LLM compliance
 - **Improved Prompts**: Enhanced LLM prompts to force diagram type specification with strict format requirements
