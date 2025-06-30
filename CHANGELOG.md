@@ -31,6 +31,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   - Improved scrollbar styling for better Windows compatibility
   - Added auto-centering for zoom operations with fallback controls
   - Fixed both svg-pan-zoom and manual zoom fallback modes to support full content visibility
+- **Maximum Display Area Utilization**: Enhanced diagram display to use the full available space
+  - Removed restrictive borders, padding, and decorative elements that limited diagram size
+  - Updated SVG sizing to use 100% of container width/height while preserving aspect ratio
+  - Enhanced aspect ratio calculation for optimal space utilization
+  - Configured both svg-pan-zoom and fallback modes for maximum space usage
+  - Added intelligent sizing based on SVG dimensions and container aspect ratio
+  - Removed container constraints that were preventing full-screen diagram display
 - **LLM-Driven Type Classification**: Replaced regex-based detection with LLM-provided diagram types for higher accuracy
 - **Code Cleanup**: Removed complex fallback detection logic (~60 lines) in favor of forced LLM compliance
 - **Improved Prompts**: Enhanced LLM prompts to force diagram type specification with strict format requirements

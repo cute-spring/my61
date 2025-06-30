@@ -409,15 +409,16 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             }
             #leftPanel::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
             #dragbar { width: 5px; cursor: ew-resize; background: #e0e0e0; height: 100vh; z-index: 10; }
-            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; position: relative; }
+            #rightPanel { flex: 1 1 0; display: block; background: #fff; min-width: 0; position: relative; width: 100%; height: 100vh; }
             #svgPreview { 
                 width: 100%; 
-                height: 98vh; 
+                height: 100vh; 
                 overflow: auto; 
                 background: #fff; 
-                border: 1px solid #eee; 
-                border-radius: 8px; 
-                box-shadow: 0 2px 8px #eee;
+                /* Remove borders that take up space */
+                border: none;
+                border-radius: 0; 
+                box-shadow: none;
                 /* Windows high-DPI fixes */
                 image-rendering: -webkit-optimize-contrast;
                 image-rendering: crisp-edges;
@@ -432,8 +433,9 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 /* Ensure scrollbars are always available when needed */
                 overflow-x: auto;
                 overflow-y: auto;
-                /* Add padding to ensure zoomed content isn't cut off at edges */
-                padding: 20px;
+                /* Remove padding to maximize display area */
+                padding: 0;
+                margin: 0;
                 /* Style scrollbars for better Windows compatibility */
                 scrollbar-width: thin;
                 scrollbar-color: #c1c1c1 #f1f1f1;
@@ -471,19 +473,25 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 -webkit-transform: translateZ(0);
                 backface-visibility: hidden;
                 -webkit-backface-visibility: hidden;
-                /* SVG sizing for proper zoom behavior */
+                /* SVG sizing for maximum display area usage */
                 display: block;
-                margin: 0 auto;
-                /* Allow SVG to expand beyond container when zoomed */
-                min-width: 0;
-                min-height: 0;
-                /* Initial sizing - will be overridden by pan-zoom or fallback */
-                max-width: none;
-                max-height: none;
+                /* Remove margin to use full space */
+                margin: 0;
+                /* Allow SVG to expand to use available space */
+                min-width: 100%;
+                min-height: 100%;
+                /* Set maximum size to container bounds */
+                max-width: 100vw;
+                max-height: 100vh;
+                /* Use full container width and height initially */
+                width: 100%;
+                height: auto;
                 /* Ensure proper positioning for zoom operations */
                 position: relative;
-                /* Center the SVG initially */
+                /* Center the SVG content within its bounds */
                 transform-origin: center center;
+                /* Ensure SVG uses all available space */
+                object-fit: contain;
             }
 
             /* --- Custom Zoom Controls --- */
@@ -946,9 +954,13 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         // Get the container for proper sizing
                         const container = document.getElementById('svgPreview');
                         
-                        // Set initial SVG properties for zoom compatibility
+                        // Set initial SVG properties for maximum space usage
                         svgEl.style.display = 'block';
-                        svgEl.style.margin = '0 auto';
+                        svgEl.style.margin = '0';
+                        
+                        // Get container dimensions for optimal sizing
+                        const containerWidth = container ? container.clientWidth : window.innerWidth;
+                        const containerHeight = container ? container.clientHeight : window.innerHeight;
                         
                         // Preserve original dimensions and aspect ratio
                         const svgViewBox = svgEl.getAttribute('viewBox');
@@ -958,30 +970,55 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         // Set preserveAspectRatio to maintain aspect ratio during scaling
                         svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                         
-                        // Configure initial sizing based on available dimensions
+                        // Configure sizing to use maximum available space
                         if (svgWidth && svgHeight) {
-                            // Use natural dimensions but make responsive
-                            svgEl.style.width = 'auto';
-                            svgEl.style.height = 'auto';
-                            svgEl.style.maxWidth = '100%';
-                            svgEl.style.maxHeight = '100%';
+                            // Calculate optimal size based on container
+                            const aspectRatio = parseFloat(svgWidth) / parseFloat(svgHeight);
+                            const containerAspectRatio = containerWidth / containerHeight;
+                            
+                            if (aspectRatio > containerAspectRatio) {
+                                // SVG is wider, fit to width
+                                svgEl.style.width = '100%';
+                                svgEl.style.height = 'auto';
+                            } else {
+                                // SVG is taller, fit to height
+                                svgEl.style.width = 'auto';
+                                svgEl.style.height = '100%';
+                            }
                         } else if (svgViewBox) {
-                            // If only viewBox is available, let it determine natural size
-                            svgEl.style.width = 'auto';
-                            svgEl.style.height = 'auto';
-                            svgEl.style.maxWidth = '100%';
-                            svgEl.style.maxHeight = '100%';
+                            // Use viewBox to determine optimal sizing
+                            const viewBoxValues = svgViewBox.split(' ');
+                            if (viewBoxValues.length === 4) {
+                                const vbWidth = parseFloat(viewBoxValues[2]);
+                                const vbHeight = parseFloat(viewBoxValues[3]);
+                                const aspectRatio = vbWidth / vbHeight;
+                                const containerAspectRatio = containerWidth / containerHeight;
+                                
+                                if (aspectRatio > containerAspectRatio) {
+                                    svgEl.style.width = '100%';
+                                    svgEl.style.height = 'auto';
+                                } else {
+                                    svgEl.style.width = 'auto';
+                                    svgEl.style.height = '100%';
+                                }
+                            } else {
+                                // Default to full width
+                                svgEl.style.width = '100%';
+                                svgEl.style.height = 'auto';
+                            }
                         } else {
-                            // Fallback: set reasonable constraints but preserve aspect ratio
-                            svgEl.style.width = 'auto';
+                            // Fallback: use full available space
+                            svgEl.style.width = '100%';
                             svgEl.style.height = 'auto';
-                            svgEl.style.maxWidth = '100%';
-                            svgEl.style.maxHeight = '100%';
-                            svgEl.style.minWidth = '200px';
-                            svgEl.style.minHeight = '200px';
+                            svgEl.style.minWidth = '100%';
+                            svgEl.style.minHeight = '100%';
                         }
                         
-                        // Initialize svg-pan-zoom with settings optimized for container scrolling
+                        // Remove any restrictive max dimensions
+                        svgEl.style.maxWidth = 'none';
+                        svgEl.style.maxHeight = 'none';
+                        
+                        // Initialize svg-pan-zoom with settings optimized for full space usage
                         panZoomInstance = window.svgPanZoom(svgEl, { 
                             zoomEnabled: true, 
                             controlIconsEnabled: false,
@@ -996,6 +1033,8 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                             preventMouseEventsDefault: true,
                             // Ensure zoomed content can be scrolled in container
                             contain: false,
+                            // Use full viewport for calculations
+                            viewportSelector: '#svgPreview',
                             beforeZoom: function(oldZoom, newZoom) {
                                 // Prevent extreme zoom levels that cause issues on Windows
                                 return newZoom >= 0.1 && newZoom <= 10;
@@ -1012,26 +1051,52 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         console.log('Pan-zoom initialized successfully for Windows');
                     } else {
                         console.warn('SVG element or svgPanZoom library not found');
-                        // Windows fallback: ensure SVG is still visible with preserved aspect ratio
+                        // Windows fallback: ensure SVG uses maximum available space
                         if (svgEl) {
+                            const container = document.getElementById('svgPreview');
+                            const containerWidth = container ? container.clientWidth : window.innerWidth;
+                            const containerHeight = container ? container.clientHeight : window.innerHeight;
+                            
                             svgEl.style.display = 'block';
-                            svgEl.style.maxWidth = '100%';
-                            svgEl.style.maxHeight = '100%';
-                            svgEl.style.width = 'auto';
-                            svgEl.style.height = 'auto';
+                            svgEl.style.margin = '0';
+                            
+                            // Use full available space
+                            const svgViewBox = svgEl.getAttribute('viewBox');
+                            const svgWidth = svgEl.getAttribute('width');
+                            const svgHeight = svgEl.getAttribute('height');
+                            
+                            if (svgWidth && svgHeight) {
+                                const aspectRatio = parseFloat(svgWidth) / parseFloat(svgHeight);
+                                const containerAspectRatio = containerWidth / containerHeight;
+                                
+                                if (aspectRatio > containerAspectRatio) {
+                                    svgEl.style.width = '100%';
+                                    svgEl.style.height = 'auto';
+                                } else {
+                                    svgEl.style.width = 'auto';
+                                    svgEl.style.height = '100%';
+                                }
+                            } else {
+                                svgEl.style.width = '100%';
+                                svgEl.style.height = 'auto';
+                            }
+                            
                             svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                            svgEl.style.maxWidth = 'none';
+                            svgEl.style.maxHeight = 'none';
                         }
                     }
                 } catch (error) {
                     console.error('Error initializing pan-zoom on Windows:', error);
-                    // Fallback for Windows: basic SVG display with preserved aspect ratio
+                    // Fallback for Windows: basic SVG display using maximum space
                     const svgEl = document.querySelector('#svgPreview svg');
                     if (svgEl) {
                         svgEl.style.display = 'block';
-                        svgEl.style.maxWidth = '100%';
-                        svgEl.style.maxHeight = '100%';
-                        svgEl.style.width = 'auto';
+                        svgEl.style.margin = '0';
+                        svgEl.style.width = '100%';
                         svgEl.style.height = 'auto';
+                        svgEl.style.maxWidth = 'none';
+                        svgEl.style.maxHeight = 'none';
                         svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                     }
                 }
@@ -1200,14 +1265,37 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         const viewBox = newSvgEl.getAttribute('viewBox');
                         console.log('SVG dimensions before fix:', { originalWidth, originalHeight, viewBox });
                         
-                        // Ensure proper aspect ratio preservation before pan-zoom initialization
+                        // Configure SVG for maximum space usage
                         newSvgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                        newSvgEl.style.maxWidth = '100%';
-                        newSvgEl.style.maxHeight = '100%';
-                        newSvgEl.style.width = 'auto';
-                        newSvgEl.style.height = 'auto';
                         newSvgEl.style.display = 'block';
-                        console.log('SVG aspect ratio fixed for Windows before pan-zoom init');
+                        newSvgEl.style.margin = '0';
+                        
+                        // Calculate optimal size for container
+                        const containerWidth = svgContainer.clientWidth;
+                        const containerHeight = svgContainer.clientHeight;
+                        
+                        if (originalWidth && originalHeight) {
+                            const aspectRatio = parseFloat(originalWidth) / parseFloat(originalHeight);
+                            const containerAspectRatio = containerWidth / containerHeight;
+                            
+                            if (aspectRatio > containerAspectRatio) {
+                                newSvgEl.style.width = '100%';
+                                newSvgEl.style.height = 'auto';
+                            } else {
+                                newSvgEl.style.width = 'auto';
+                                newSvgEl.style.height = '100%';
+                            }
+                        } else {
+                            // Default to full width
+                            newSvgEl.style.width = '100%';
+                            newSvgEl.style.height = 'auto';
+                        }
+                        
+                        // Remove restrictive max dimensions
+                        newSvgEl.style.maxWidth = 'none';
+                        newSvgEl.style.maxHeight = 'none';
+                        
+                        console.log('SVG configured for maximum space usage');
                     }
                     
                     // Give extra time for Windows rendering
