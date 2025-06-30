@@ -19,7 +19,7 @@ async function generatePlantUMLFromRequirement(requirement: string, history: str
     }
     const prompt = [
         vscode.LanguageModelChatMessage.User(
-            `You are an expert software architect and technical writer.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\nFormat your response as:\nExplanation:\n<your explanation here>\n\n@startuml\n<PlantUML code here>\n@enduml\n`
+            `You are an expert software architect and technical writer.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\n\nIMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:\n\nExplanation:\n<your explanation here>\n\nDiagram Type: <EXACTLY one of: class, sequence, activity, usecase, state, component, deployment>\n\n@startuml\n<PlantUML code here>\n@enduml\n`
         ),
         ...history.map(msg => vscode.LanguageModelChatMessage.User(msg)),
         vscode.LanguageModelChatMessage.User(requirement)
@@ -38,6 +38,27 @@ async function generatePlantUMLFromRequirement(requirement: string, history: str
         throw new Error('Copilot API error: ' + (err.message || String(err)));
     }
 }
+
+// Extract diagram type from LLM response - LLM is forced to provide this
+function extractDiagramTypeFromResponse(response: string): string {
+    const diagramTypeMatch = response.match(/Diagram Type:\s*([^\n\r]+)/i);
+    if (diagramTypeMatch && diagramTypeMatch[1]) {
+        const type = diagramTypeMatch[1].trim().toLowerCase();
+        // Normalize to exact supported types
+        if (type === 'class' || type.includes('class')) { return 'class'; }
+        if (type === 'sequence' || type.includes('sequence')) { return 'sequence'; }
+        if (type === 'activity' || type.includes('activity')) { return 'activity'; }
+        if (type === 'usecase' || type === 'use case' || type.includes('usecase') || type.includes('use case')) { return 'usecase'; }
+        if (type === 'state' || type.includes('state')) { return 'state'; }
+        if (type === 'component' || type.includes('component')) { return 'component'; }
+        if (type === 'deployment' || type.includes('deployment')) { return 'deployment'; }
+    }
+    // This should rarely happen since LLM is forced to provide the type
+    console.warn('LLM did not provide a valid diagram type, this should not happen with the new prompt');
+    return 'unknown';
+}
+
+// LLM is now forced to provide diagram type, so no backup detection needed
 
 // Add debounce utility
 function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {
@@ -117,7 +138,24 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                                 chatHistory.pop();
                             }
                             currentPlantUML = plantumlResponse;
-                            chatHistory.push({ role: 'bot', message: plantumlResponse });
+                            // Extract the diagram type from the LLM response
+                            const llmDiagramType = extractDiagramTypeFromResponse(plantumlResponse);
+                            let diagramTypeLabel = '';
+                            
+                            if (lastDiagramType) {
+                                // User selected a specific type
+                                diagramTypeLabel = `[${lastDiagramType.charAt(0).toUpperCase() + lastDiagramType.slice(1)} Diagram]\n\n`;
+                            } else {
+                                // Auto-detection mode - use LLM-provided type
+                                if (llmDiagramType !== 'unknown') {
+                                    diagramTypeLabel = `[Auto-detected: ${llmDiagramType.charAt(0).toUpperCase() + llmDiagramType.slice(1)} Diagram]\n\n`;
+                                } else {
+                                    // This should not happen with the new strict prompt
+                                    diagramTypeLabel = `[Auto-detected Diagram]\n\n`;
+                                }
+                            }
+                            
+                            chatHistory.push({ role: 'bot', message: diagramTypeLabel + plantumlResponse });
                             updateChatInWebview();
                             debouncedRender(currentPlantUML); // Debounced SVG update
                             setTimeout(() => updateChatInWebview(), 200);
@@ -218,7 +256,24 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                                     chatHistory.pop();
                                 }
                                 currentPlantUML = plantumlResponse;
-                                chatHistory.push({ role: 'bot', message: plantumlResponse });
+                                // Extract the diagram type from the LLM response for edited messages too
+                                const llmDiagramType = extractDiagramTypeFromResponse(plantumlResponse);
+                                let diagramTypeLabel = '';
+                                
+                                if (lastDiagramType) {
+                                    // User selected a specific type
+                                    diagramTypeLabel = `[${lastDiagramType.charAt(0).toUpperCase() + lastDiagramType.slice(1)} Diagram]\n\n`;
+                                } else {
+                                    // Auto-detection mode - use LLM-provided type
+                                    if (llmDiagramType !== 'unknown') {
+                                        diagramTypeLabel = `[Auto-detected: ${llmDiagramType.charAt(0).toUpperCase() + llmDiagramType.slice(1)} Diagram]\n\n`;
+                                    } else {
+                                        // This should not happen with the new strict prompt
+                                        diagramTypeLabel = `[Auto-detected Diagram]\n\n`;
+                                    }
+                                }
+                                
+                                chatHistory.push({ role: 'bot', message: diagramTypeLabel + plantumlResponse });
                                 updateChatInWebview();
                                 debouncedRender(currentPlantUML);
                                 setTimeout(() => updateChatInWebview(), 200);
@@ -300,9 +355,49 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             #container { display: flex; height: 100vh; }
             #leftPanel { width: 20vw; min-width: 320px; max-width: 900px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; resize: none; overflow: auto; position: relative; transition: width 0.1s; }
             #dragbar { width: 5px; cursor: ew-resize; background: #e0e0e0; height: 100vh; z-index: 10; }
-            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; }
+            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; position: relative; }
             #svgPreview { width: 100%; height: 98vh; overflow: auto; display: flex; align-items: center; justify-content: center; background: #fff; margin: auto; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 8px #eee; }
             #svgPreview svg text { white-space: pre-wrap !important; word-break: break-all !important; }
+
+            /* --- Custom Zoom Controls --- */
+            .zoom-controls {
+                position: absolute !important;
+                bottom: 20px !important;
+                right: 20px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+                z-index: 100 !important;
+            }
+            .zoom-btn {
+                background: rgba(255, 255, 255, 0.9) !important;
+                border: 1px solid #ccc !important;
+                border-radius: 6px !important;
+                padding: 8px !important;
+                cursor: pointer !important;
+                font-size: 16px !important;
+                font-weight: bold !important;
+                color: #333 !important;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+                transition: all 0.2s ease !important;
+                width: 36px !important;
+                height: 36px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                backdrop-filter: blur(4px) !important;
+            }
+            .zoom-btn:hover {
+                background: rgba(255, 255, 255, 1) !important;
+                border-color: #007acc !important;
+                color: #007acc !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+            }
+            .zoom-btn:active {
+                transform: translateY(0) !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            }
 
             /* --- Left Panel Content --- */
             /* --- Left Panel Content --- */
@@ -324,6 +419,17 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
             .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
             .bot-message.active-message { border-color: #007acc; background-color: #cde0f0; }
+            
+            /* --- Diagram Type Label Styling --- */
+            .bot-message pre {
+                position: relative;
+            }
+            .bot-message pre::before {
+                content: '';
+                display: block;
+                margin-bottom: 8px;
+            }
+            
             #uml { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #eee; min-height: 120px; max-height: 200px; overflow-y: auto; padding: 8px; }
 
             /* --- Input Area & Actions --- */
@@ -541,6 +647,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             <div id="dragbar"></div>
             <div id="rightPanel">
                 <div id="svgPreview"></div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomInBtn" title="Zoom In">+</button>
+                    <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">−</button>
+                    <button class="zoom-btn" id="zoomResetBtn" title="Reset Zoom">⌂</button>
+                </div>
             </div>
         </div>
         <script src="${svgPanZoomUri}"></script>
@@ -559,6 +670,9 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             const moreActionsDropdown = document.getElementById('moreActionsDropdown');
             const leftPanel = document.getElementById('leftPanel');
             const rightPanel = document.getElementById('rightPanel');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const zoomResetBtn = document.getElementById('zoomResetBtn');
 
             // --- SVG Icons ---
             const expandIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
@@ -574,7 +688,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 if (match && match[0]) {
                     const umlCode = match[0];
                     vscode.postMessage({ command: 'renderSpecificUML', umlCode: umlCode });
-                    document.querySelector('#uml pre').textContent = umlCode;
+                    // Try to find UML element if it exists, otherwise skip
+                    const umlElement = document.querySelector('#uml pre');
+                    if (umlElement) {
+                        umlElement.textContent = umlCode;
+                    }
                 }
             }
 
@@ -629,9 +747,35 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 if (svgEl && window.svgPanZoom) {
                     svgEl.style.width = '100%';
                     svgEl.style.height = '100%';
-                    panZoomInstance = window.svgPanZoom(svgEl, { zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.1 });
+                    panZoomInstance = window.svgPanZoom(svgEl, { 
+                        zoomEnabled: true, 
+                        controlIconsEnabled: false, // Disable default controls
+                        fit: true, 
+                        center: true, 
+                        minZoom: 0.1,
+                        maxZoom: 10
+                    });
                 }
             }
+
+            // --- Custom Zoom Control Functions ---
+            zoomInBtn.onclick = () => {
+                if (panZoomInstance) {
+                    panZoomInstance.zoomIn();
+                }
+            };
+            zoomOutBtn.onclick = () => {
+                if (panZoomInstance) {
+                    panZoomInstance.zoomOut();
+                }
+            };
+            zoomResetBtn.onclick = () => {
+                if (panZoomInstance) {
+                    panZoomInstance.resetZoom();
+                    panZoomInstance.center();
+                    panZoomInstance.fit();
+                }
+            };
 
             // --- VS Code Message Handling ---
             window.addEventListener('message', event => {
