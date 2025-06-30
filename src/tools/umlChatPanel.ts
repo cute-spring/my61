@@ -80,7 +80,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
                     }
                     // Add edit button for user messages
-                    return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend' style='margin-left:8px;'>✏️</button></div>`;
+                    return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button></div>`;
                 }).join('');
             }
 
@@ -272,7 +272,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
         }
         // Add edit button for user messages
-        return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend' style='margin-left:8px;'>✏️</button></div>`;
+        return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button></div>`;
     }).join('');
     
     const diagramTypes = [
@@ -316,7 +316,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 /* max-height 属性已被移除 */
             }
             .user, .bot-message { padding: 8px; margin-bottom: 8px; border-radius: 6px; }
-            .user { background-color: #e9e9e9; }
+            .user { 
+                background-color: #e9e9e9; 
+                position: relative; 
+                padding-bottom: 12px; 
+            }
             .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
             .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
             .bot-message.active-message { border-color: #007acc; background-color: #cde0f0; }
@@ -347,6 +351,107 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             button.danger { background: #fff0f0; color: #d32f2f; border: 1px solid #d32f2f; }
             button.danger:hover, button.danger:focus { background: #d32f2f; color: #fff; }
             button.icon-only { padding: 6px; }
+
+            /* --- Edit Message Button Styling --- */
+            .edit-user-msg-btn {
+                background: #f0f8ff !important;
+                color: #0066cc !important;
+                border: 1px solid #0066cc !important;
+                padding: 4px 8px !important;
+                font-size: 0.8em !important;
+                border-radius: 3px !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                position: absolute !important;
+                bottom: 4px !important;
+                right: 8px !important;
+                z-index: 10 !important;
+            }
+            .edit-user-msg-btn:hover {
+                background: #0066cc !important;
+                color: #fff !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 2px 4px rgba(0,102,204,0.3) !important;
+            }
+
+            /* --- Edit Mode Buttons (Resend/Cancel) --- */
+            .edit-mode-buttons {
+                display: flex !important;
+                gap: 6px !important;
+                margin-top: 8px !important;
+                align-items: center !important;
+            }
+            .resend-btn {
+                background: #28a745 !important;
+                color: #fff !important;
+                border: 1px solid #28a745 !important;
+                padding: 6px 12px !important;
+                font-size: 0.9em !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+                font-weight: 500 !important;
+                transition: all 0.2s ease !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+            }
+            .resend-btn:hover, .resend-btn:focus {
+                background: #218838 !important;
+                border-color: #1e7e34 !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 2px 6px rgba(40,167,69,0.3) !important;
+            }
+            .resend-btn::before {
+                content: '🚀' !important;
+                font-size: 0.85em !important;
+            }
+            .cancel-btn {
+                background: #6c757d !important;
+                color: #fff !important;
+                border: 1px solid #6c757d !important;
+                padding: 6px 12px !important;
+                font-size: 0.9em !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+                font-weight: 500 !important;
+                transition: all 0.2s ease !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+            }
+            .cancel-btn:hover, .cancel-btn:focus {
+                background: #5a6268 !important;
+                border-color: #545b62 !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 2px 6px rgba(108,117,125,0.3) !important;
+            }
+            .cancel-btn::before {
+                content: '✕' !important;
+                font-size: 0.85em !important;
+            }
+
+            /* --- Edit Mode Textarea Styling --- */
+            .edit-mode-textarea {
+                width: 100% !important;
+                min-height: 60px !important;
+                margin-top: 6px !important;
+                padding: 8px !important;
+                font-size: 1em !important;
+                font-family: inherit !important;
+                border: 2px solid #007acc !important;
+                border-radius: 4px !important;
+                resize: vertical !important;
+                background: #fff !important;
+                transition: border-color 0.2s ease !important;
+                box-sizing: border-box !important;
+            }
+            .edit-mode-textarea:focus {
+                outline: none !important;
+                border-color: #0056b3 !important;
+                box-shadow: 0 0 0 3px rgba(0,123,255,0.1) !important;
+            }
 
             /* --- NEW: Dropdown Menu for 'More Actions' --- */
             .dropdown { position: relative; display: inline-block; }
@@ -558,39 +663,63 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     const idx = parseInt(userDiv.getAttribute('data-index'));
                     const pre = userDiv.querySelector('pre');
                     if (!pre) return;
+                    
                     // Replace pre with textarea for editing
                     const oldMsg = pre.textContent;
                     const textarea = document.createElement('textarea');
                     textarea.value = oldMsg;
-                    textarea.style.width = '90%';
-                    textarea.style.minHeight = '40px';
-                    textarea.style.marginTop = '4px';
-                    textarea.style.fontSize = '1em';
-                    textarea.style.fontFamily = 'inherit';
-                    // Add save/cancel buttons
+                    textarea.className = 'edit-mode-textarea';
+                    
+                    // Create button container
+                    const buttonContainer = document.createElement('div');
+                    buttonContainer.className = 'edit-mode-buttons';
+                    
+                    // Add save/cancel buttons with proper styling
                     const saveBtn = document.createElement('button');
                     saveBtn.textContent = 'Resend';
-                    saveBtn.style.marginLeft = '8px';
+                    saveBtn.className = 'resend-btn';
+                    saveBtn.title = 'Send the modified message';
+                    
                     const cancelBtn = document.createElement('button');
                     cancelBtn.textContent = 'Cancel';
-                    cancelBtn.style.marginLeft = '4px';
+                    cancelBtn.className = 'cancel-btn';
+                    cancelBtn.title = 'Cancel editing and restore original message';
+                    
+                    buttonContainer.appendChild(saveBtn);
+                    buttonContainer.appendChild(cancelBtn);
+                    
                     // Replace pre and edit button with textarea and buttons
                     userDiv.replaceChild(textarea, pre);
                     target.style.display = 'none';
-                    userDiv.appendChild(saveBtn);
-                    userDiv.appendChild(cancelBtn);
+                    userDiv.appendChild(buttonContainer);
+                    
+                    // Focus on textarea and select all text for easy editing
+                    textarea.focus();
+                    textarea.select();
+                    
                     // Save handler
                     saveBtn.onclick = function() {
                         vscode.postMessage({ command: 'editAndResendUserMsg', index: idx, newText: textarea.value });
                     };
+                    
                     // Cancel handler
                     cancelBtn.onclick = function() {
                         // Restore original pre and edit button
                         userDiv.replaceChild(pre, textarea);
                         target.style.display = '';
-                        saveBtn.remove();
-                        cancelBtn.remove();
+                        buttonContainer.remove();
                     };
+                    
+                    // Allow Enter+Ctrl to save
+                    textarea.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' && e.ctrlKey) {
+                            e.preventDefault();
+                            saveBtn.click();
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            cancelBtn.click();
+                        }
+                    });
                 }
             });
         </script>
