@@ -409,16 +409,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             }
             #leftPanel::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
             #dragbar { width: 5px; cursor: ew-resize; background: #e0e0e0; height: 100vh; z-index: 10; }
-            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; position: relative; overflow: hidden; }
+            #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; position: relative; }
             #svgPreview { 
                 width: 100%; 
-                height: 100%; 
+                height: 98vh; 
                 overflow: auto; 
-                display: flex; 
-                align-items: flex-start; 
-                justify-content: flex-start; 
                 background: #fff; 
-                margin: 0; 
                 border: 1px solid #eee; 
                 border-radius: 8px; 
                 box-shadow: 0 2px 8px #eee;
@@ -427,33 +423,39 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 image-rendering: crisp-edges;
                 /* Ensure container doesn't force aspect ratio changes */
                 box-sizing: border-box;
-                /* Better scrolling behavior for zoomed content */
+                /* Fix for zoomed content visibility */
                 position: relative;
-                /* Enable smooth scrolling */
+                /* Remove flex centering that prevents scrolling of zoomed content */
+                display: block;
+                /* Enable smooth scrolling for better UX */
                 scroll-behavior: smooth;
-                /* Windows scrollbar styling for SVG preview */
+                /* Ensure scrollbars are always available when needed */
+                overflow-x: auto;
+                overflow-y: auto;
+                /* Add padding to ensure zoomed content isn't cut off at edges */
+                padding: 20px;
+                /* Style scrollbars for better Windows compatibility */
                 scrollbar-width: thin;
                 scrollbar-color: #c1c1c1 #f1f1f1;
             }
             #svgPreview::-webkit-scrollbar { 
                 width: 12px; 
-                height: 12px;
+                height: 12px; 
             }
             #svgPreview::-webkit-scrollbar-track { 
                 background: #f1f1f1; 
-                border-radius: 6px;
+                border-radius: 6px; 
             }
             #svgPreview::-webkit-scrollbar-thumb { 
                 background: #c1c1c1; 
                 border-radius: 6px; 
-                border: 2px solid #f1f1f1;
+                border: 2px solid #f1f1f1; 
             }
             #svgPreview::-webkit-scrollbar-thumb:hover { 
                 background: #a8a8a8; 
             }
-            #svgPreview::-webkit-scrollbar-corner {
-                background: #f1f1f1;
-            }
+            #svgPreview::-webkit-scrollbar-corner { 
+                background: #f1f1f1; 
             }
             #svgPreview svg { 
                 /* Remove forced word-break that can affect SVG rendering */
@@ -469,17 +471,19 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 -webkit-transform: translateZ(0);
                 backface-visibility: hidden;
                 -webkit-backface-visibility: hidden;
-                /* Preserve aspect ratio - this is key for Windows */
-                max-width: none;
-                max-height: none;
-                width: auto !important;
-                height: auto !important;
+                /* SVG sizing for proper zoom behavior */
                 display: block;
-                /* Allow the SVG to be larger than container when zoomed */
+                margin: 0 auto;
+                /* Allow SVG to expand beyond container when zoomed */
                 min-width: 0;
                 min-height: 0;
-                /* Ensure proper positioning */
+                /* Initial sizing - will be overridden by pan-zoom or fallback */
+                max-width: none;
+                max-height: none;
+                /* Ensure proper positioning for zoom operations */
                 position: relative;
+                /* Center the SVG initially */
+                transform-origin: center center;
             }
 
             /* --- Custom Zoom Controls --- */
@@ -939,10 +943,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     }
                     const svgEl = document.querySelector('#svgPreview svg');
                     if (svgEl && window.svgPanZoom) {
-                        // Windows-specific SVG fixes - allow full zoom range
+                        // Get the container for proper sizing
+                        const container = document.getElementById('svgPreview');
+                        
+                        // Set initial SVG properties for zoom compatibility
                         svgEl.style.display = 'block';
-                        svgEl.style.maxWidth = 'none';
-                        svgEl.style.maxHeight = 'none';
+                        svgEl.style.margin = '0 auto';
                         
                         // Preserve original dimensions and aspect ratio
                         const svgViewBox = svgEl.getAttribute('viewBox');
@@ -952,26 +958,34 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         // Set preserveAspectRatio to maintain aspect ratio during scaling
                         svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                         
-                        // If SVG has explicit dimensions, respect them but make responsive
+                        // Configure initial sizing based on available dimensions
                         if (svgWidth && svgHeight) {
+                            // Use natural dimensions but make responsive
                             svgEl.style.width = 'auto';
                             svgEl.style.height = 'auto';
+                            svgEl.style.maxWidth = '100%';
+                            svgEl.style.maxHeight = '100%';
                         } else if (svgViewBox) {
                             // If only viewBox is available, let it determine natural size
                             svgEl.style.width = 'auto';
                             svgEl.style.height = 'auto';
+                            svgEl.style.maxWidth = '100%';
+                            svgEl.style.maxHeight = '100%';
                         } else {
                             // Fallback: set reasonable constraints but preserve aspect ratio
                             svgEl.style.width = 'auto';
                             svgEl.style.height = 'auto';
+                            svgEl.style.maxWidth = '100%';
+                            svgEl.style.maxHeight = '100%';
                             svgEl.style.minWidth = '200px';
                             svgEl.style.minHeight = '200px';
                         }
                         
+                        // Initialize svg-pan-zoom with settings optimized for container scrolling
                         panZoomInstance = window.svgPanZoom(svgEl, { 
                             zoomEnabled: true, 
                             controlIconsEnabled: false,
-                            fit: false, // Don't auto-fit initially to allow proper scaling
+                            fit: true, 
                             center: true, 
                             minZoom: 0.1,
                             maxZoom: 10,
@@ -980,11 +994,19 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                             mouseWheelZoomEnabled: true,
                             // Windows-specific settings
                             preventMouseEventsDefault: true,
-                            // Allow content to extend beyond container bounds
+                            // Ensure zoomed content can be scrolled in container
                             contain: false,
                             beforeZoom: function(oldZoom, newZoom) {
                                 // Prevent extreme zoom levels that cause issues on Windows
                                 return newZoom >= 0.1 && newZoom <= 10;
+                            },
+                            onZoom: function(level) {
+                                // After zoom, ensure container can scroll to show all content
+                                if (container) {
+                                    // Force container to recognize new content size
+                                    container.style.overflow = 'auto';
+                                }
+                                console.log('Zoom level:', level);
                             }
                         });
                         console.log('Pan-zoom initialized successfully for Windows');
@@ -1053,6 +1075,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 // Zoom In
                 addZoomHandler(zoomInBtn, 'zoomIn', () => {
                     const svgEl = document.querySelector('#svgPreview svg');
+                    const container = document.getElementById('svgPreview');
                     if (svgEl) {
                         const currentScale = parseFloat(
                             (svgEl.style.transform && svgEl.style.transform.match(/scale\\(([^)]+)\\)/)) 
@@ -1062,6 +1085,16 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         const newScale = Math.min(currentScale * 1.2, 5);
                         svgEl.style.transform = 'scale(' + newScale + ')';
                         svgEl.style.transformOrigin = 'center center';
+                        
+                        // Ensure container can scroll to show expanded content
+                        if (container) {
+                            container.scrollTo({
+                                left: (container.scrollWidth - container.clientWidth) / 2,
+                                top: (container.scrollHeight - container.clientHeight) / 2,
+                                behavior: 'smooth'
+                            });
+                        }
+                        
                         console.log('Fallback zoom in executed, scale:', newScale);
                     }
                 });
@@ -1069,6 +1102,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 // Zoom Out
                 addZoomHandler(zoomOutBtn, 'zoomOut', () => {
                     const svgEl = document.querySelector('#svgPreview svg');
+                    const container = document.getElementById('svgPreview');
                     if (svgEl) {
                         const currentScale = parseFloat(
                             (svgEl.style.transform && svgEl.style.transform.match(/scale\\(([^)]+)\\)/)) 
@@ -1078,6 +1112,18 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         const newScale = Math.max(currentScale / 1.2, 0.1);
                         svgEl.style.transform = 'scale(' + newScale + ')';
                         svgEl.style.transformOrigin = 'center center';
+                        
+                        // Center the content when zooming out
+                        if (container && newScale < 1) {
+                            setTimeout(() => {
+                                container.scrollTo({
+                                    left: Math.max(0, (container.scrollWidth - container.clientWidth) / 2),
+                                    top: Math.max(0, (container.scrollHeight - container.clientHeight) / 2),
+                                    behavior: 'smooth'
+                                });
+                            }, 100);
+                        }
+                        
                         console.log('Fallback zoom out executed, scale:', newScale);
                     }
                 });
@@ -1085,9 +1131,22 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 // Zoom Reset
                 addZoomHandler(zoomResetBtn, 'resetZoom', () => {
                     const svgEl = document.querySelector('#svgPreview svg');
+                    const container = document.getElementById('svgPreview');
                     if (svgEl) {
                         svgEl.style.transform = 'scale(1)';
                         svgEl.style.transformOrigin = 'center center';
+                        
+                        // Reset scroll position to center
+                        if (container) {
+                            setTimeout(() => {
+                                container.scrollTo({
+                                    left: Math.max(0, (container.scrollWidth - container.clientWidth) / 2),
+                                    top: Math.max(0, (container.scrollHeight - container.clientHeight) / 2),
+                                    behavior: 'smooth'
+                                });
+                            }, 100);
+                        }
+                        
                         console.log('Fallback zoom reset executed');
                     }
                 });
@@ -1097,12 +1156,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     const originalHandler = zoomResetBtn.onclick;
                     zoomResetBtn.onclick = (e) => {
                         originalHandler(e);
-                        // Additional reset for pan-zoom - fit to container
+                        // Additional reset for pan-zoom
                         if (panZoomInstance) {
                             try {
-                                panZoomInstance.fit();
                                 panZoomInstance.center();
-                                console.log('Pan-zoom reset to fit and center');
+                                panZoomInstance.fit();
                             } catch (error) {
                                 console.warn('Error in additional reset:', error);
                             }
@@ -1156,18 +1214,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     setTimeout(() => {
                         enablePanZoom();
                         setupZoomControls();
-                        // Initial fit to container after pan-zoom is enabled
-                        setTimeout(() => {
-                            if (panZoomInstance) {
-                                try {
-                                    panZoomInstance.fit();
-                                    panZoomInstance.center();
-                                    console.log('Initial fit and center applied');
-                                } catch (error) {
-                                    console.warn('Error in initial fit:', error);
-                                }
-                            }
-                        }, 100);
                     }, 300); // Increased timeout for Windows
                 } else if (message.command === 'updateChat') {
                     document.getElementById('chat').innerHTML = message.chatHtml;
