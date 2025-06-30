@@ -82,7 +82,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                 }
             );
 
-            // Get local URI for svg-pan-zoom
+            // Get local URI for svg-pan-zoom - using path.join for cross-platform compatibility
             const svgPanZoomUri = panel.webview.asWebviewUri(vscode.Uri.file(
                 path.join(context.extensionPath, 'src', 'tools', 'ui', 'js', 'svg-pan-zoom.min.js')
             ));
@@ -351,13 +351,74 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         <title>UML Chat Designer</title>
         <style>
             /* --- General Body and Layout --- */
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; margin: 0; padding: 0; height: 100vh; }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; 
+                margin: 0; 
+                padding: 0; 
+                height: 100vh; 
+                /* Windows-specific font smoothing */
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                text-rendering: optimizeLegibility;
+            }
             #container { display: flex; height: 100vh; }
-            #leftPanel { width: 20vw; min-width: 320px; max-width: 900px; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid #ccc; background: #fafbfc; resize: none; overflow: auto; position: relative; transition: width 0.1s; }
+            #leftPanel { 
+                width: 20vw; 
+                min-width: 320px; 
+                max-width: 900px; 
+                display: flex; 
+                flex-direction: column; 
+                height: 100vh; 
+                border-right: 1px solid #ccc; 
+                background: #fafbfc; 
+                resize: none; 
+                overflow: auto; 
+                position: relative; 
+                transition: width 0.1s;
+                /* Windows scrollbar styling */
+                scrollbar-width: thin;
+                scrollbar-color: #c1c1c1 #f1f1f1;
+            }
+            #leftPanel::-webkit-scrollbar { width: 12px; }
+            #leftPanel::-webkit-scrollbar-track { background: #f1f1f1; }
+            #leftPanel::-webkit-scrollbar-thumb { 
+                background: #c1c1c1; 
+                border-radius: 6px; 
+                border: 2px solid #f1f1f1;
+            }
+            #leftPanel::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
             #dragbar { width: 5px; cursor: ew-resize; background: #e0e0e0; height: 100vh; z-index: 10; }
             #rightPanel { flex: 1 1 0; display: flex; align-items: stretch; justify-content: stretch; background: #fff; min-width: 0; position: relative; }
-            #svgPreview { width: 100%; height: 98vh; overflow: auto; display: flex; align-items: center; justify-content: center; background: #fff; margin: auto; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 8px #eee; }
-            #svgPreview svg text { white-space: pre-wrap !important; word-break: break-all !important; }
+            #svgPreview { 
+                width: 100%; 
+                height: 98vh; 
+                overflow: auto; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                background: #fff; 
+                margin: auto; 
+                border: 1px solid #eee; 
+                border-radius: 8px; 
+                box-shadow: 0 2px 8px #eee;
+                /* Windows high-DPI fixes */
+                image-rendering: -webkit-optimize-contrast;
+                image-rendering: crisp-edges;
+            }
+            #svgPreview svg { 
+                white-space: pre-wrap !important; 
+                word-break: break-all !important;
+                /* Windows SVG rendering fixes */
+                shape-rendering: geometricPrecision;
+                text-rendering: geometricPrecision;
+                image-rendering: -webkit-optimize-contrast;
+                image-rendering: crisp-edges;
+                /* Prevent blurriness on Windows high-DPI displays */
+                transform: translateZ(0);
+                -webkit-transform: translateZ(0);
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
+            }
 
             /* --- Custom Zoom Controls --- */
             .zoom-controls {
@@ -709,13 +770,53 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 }
             });
 
-            // --- Event Listeners ---
+            // --- Event Listeners with Windows compatibility ---
             sendBtn.onclick = () => {
                 vscode.postMessage({ command: 'sendRequirement', text: requirementInput.value, diagramType: document.getElementById('diagramType').value });
                 requirementInput.value = '';
             };
+            
+            // Windows-compatible keyboard handling
             requirementInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
+                // Standard Enter behavior
+                if (e.key === 'Enter' && !e.shiftKey) { 
+                    e.preventDefault(); 
+                    sendBtn.click(); 
+                }
+                // Windows-specific: Ctrl+Enter as alternative
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    sendBtn.click();
+                }
+                // Tab handling for Windows accessibility
+                if (e.key === 'Tab') {
+                    // Let default tab behavior work
+                    return;
+                }
+            });
+            
+            // Windows keyboard shortcuts for zoom
+            document.addEventListener('keydown', (e) => {
+                // Only activate when not typing in input fields
+                if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+                
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case '+':
+                        case '=':
+                            e.preventDefault();
+                            if (zoomInBtn) zoomInBtn.click();
+                            break;
+                        case '-':
+                            e.preventDefault();
+                            if (zoomOutBtn) zoomOutBtn.click();
+                            break;
+                        case '0':
+                            e.preventDefault();
+                            if (zoomResetBtn) zoomResetBtn.click();
+                            break;
+                    }
+                }
             });
             exportSVGBtn.onclick = () => vscode.postMessage({ command: 'exportSVG', svgContent: document.getElementById('svgPreview').innerHTML });
             clearChatBtn.onclick = () => vscode.postMessage({ command: 'clearChat' });
@@ -728,61 +829,225 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 expandBtn.title = isFullscreen ? "Collapse Chat Panel" : "Expand Chat Panel";
             };
 
-            // --- Dragbar for resizing ---
+            // --- Dragbar for resizing with Windows compatibility ---
             const dragbar = document.getElementById('dragbar');
             let isDragging = false;
-            dragbar.addEventListener('mousedown', (e) => { isDragging = true; document.body.style.cursor = 'ew-resize'; });
-            document.addEventListener('mousemove', (e) => {
+            
+            // Windows-compatible drag handling
+            const startDrag = (e) => {
+                isDragging = true;
+                document.body.style.cursor = 'ew-resize';
+                document.body.style.userSelect = 'none'; // Prevent text selection on Windows
+                e.preventDefault();
+                e.stopPropagation();
+            };
+            
+            const handleDrag = (e) => {
                 if (!isDragging) return;
                 const containerRect = document.getElementById('container').getBoundingClientRect();
-                let newWidth
-            });
-            document.addEventListener('mouseup', () => { isDragging = false; document.body.style.cursor = ''; });
+                const newWidth = Math.max(320, Math.min(900, e.clientX - containerRect.left));
+                leftPanel.style.width = newWidth + 'px';
+                e.preventDefault();
+                e.stopPropagation();
+            };
+            
+            const endDrag = () => {
+                isDragging = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            };
+            
+            // Mouse events
+            dragbar.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', handleDrag);
+            document.addEventListener('mouseup', endDrag);
+            
+            // Touch events for Windows touch devices
+            dragbar.addEventListener('touchstart', (e) => startDrag(e.touches[0]));
+            document.addEventListener('touchmove', (e) => handleDrag(e.touches[0]));
+            document.addEventListener('touchend', endDrag);
 
-            // --- SVG Pan & Zoom ---
+            // --- SVG Pan & Zoom with Windows compatibility ---
             let panZoomInstance;
             function enablePanZoom() {
-                if(panZoomInstance) { panZoomInstance.destroy(); }
-                const svgEl = document.querySelector('#svgPreview svg');
-                if (svgEl && window.svgPanZoom) {
-                    svgEl.style.width = '100%';
-                    svgEl.style.height = '100%';
-                    panZoomInstance = window.svgPanZoom(svgEl, { 
-                        zoomEnabled: true, 
-                        controlIconsEnabled: false, // Disable default controls
-                        fit: true, 
-                        center: true, 
-                        minZoom: 0.1,
-                        maxZoom: 10
-                    });
+                try {
+                    if(panZoomInstance) { 
+                        panZoomInstance.destroy(); 
+                        panZoomInstance = null;
+                    }
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (svgEl && window.svgPanZoom) {
+                        // Windows-specific SVG fixes
+                        svgEl.style.width = '100%';
+                        svgEl.style.height = '100%';
+                        svgEl.style.display = 'block';
+                        svgEl.style.maxWidth = 'none';
+                        svgEl.style.maxHeight = 'none';
+                        
+                        // Force SVG to be properly rendered on Windows
+                        svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                        
+                        panZoomInstance = window.svgPanZoom(svgEl, { 
+                            zoomEnabled: true, 
+                            controlIconsEnabled: false,
+                            fit: true, 
+                            center: true, 
+                            minZoom: 0.1,
+                            maxZoom: 10,
+                            panEnabled: true,
+                            dblClickZoomEnabled: true,
+                            mouseWheelZoomEnabled: true,
+                            // Windows-specific settings
+                            preventMouseEventsDefault: true,
+                            beforeZoom: function(oldZoom, newZoom) {
+                                // Prevent extreme zoom levels that cause issues on Windows
+                                return newZoom >= 0.1 && newZoom <= 10;
+                            }
+                        });
+                        console.log('Pan-zoom initialized successfully for Windows');
+                    } else {
+                        console.warn('SVG element or svgPanZoom library not found');
+                        // Windows fallback: ensure SVG is still visible
+                        if (svgEl) {
+                            svgEl.style.width = '100%';
+                            svgEl.style.height = '100%';
+                            svgEl.style.display = 'block';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error initializing pan-zoom on Windows:', error);
+                    // Fallback for Windows: basic SVG display
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (svgEl) {
+                        svgEl.style.width = '100%';
+                        svgEl.style.height = '100%';
+                        svgEl.style.display = 'block';
+                    }
                 }
             }
 
-            // --- Custom Zoom Control Functions ---
-            zoomInBtn.onclick = () => {
-                if (panZoomInstance) {
-                    panZoomInstance.zoomIn();
+            // --- Custom Zoom Control Functions with Windows compatibility ---
+            function setupZoomControls() {
+                const addZoomHandler = (btn, action, fallbackAction) => {
+                    if (!btn) return;
+                    
+                    const handleClick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Windows: Add visual feedback
+                        btn.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            btn.style.transform = '';
+                        }, 100);
+                        
+                        try {
+                            if (panZoomInstance && panZoomInstance[action]) {
+                                panZoomInstance[action]();
+                                console.log(action + ' executed via pan-zoom');
+                            } else {
+                                console.warn('Pan-zoom instance not available for ' + action + ', using fallback');
+                                fallbackAction();
+                            }
+                        } catch (error) {
+                            console.error('Error during ' + action + ':', error);
+                            fallbackAction();
+                        }
+                    };
+                    
+                    // Multiple event types for Windows compatibility
+                    btn.onclick = handleClick;
+                    btn.addEventListener('click', handleClick);
+                    btn.addEventListener('mousedown', (e) => e.preventDefault());
+                };
+                
+                // Zoom In
+                addZoomHandler(zoomInBtn, 'zoomIn', () => {
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (svgEl) {
+                        const currentScale = parseFloat(
+                            (svgEl.style.transform && svgEl.style.transform.match(/scale\\(([^)]+)\\)/)) 
+                            ? svgEl.style.transform.match(/scale\\(([^)]+)\\)/)[1] 
+                            : '1'
+                        );
+                        const newScale = Math.min(currentScale * 1.2, 5);
+                        svgEl.style.transform = 'scale(' + newScale + ')';
+                        svgEl.style.transformOrigin = 'center center';
+                        console.log('Fallback zoom in executed, scale:', newScale);
+                    }
+                });
+                
+                // Zoom Out
+                addZoomHandler(zoomOutBtn, 'zoomOut', () => {
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (svgEl) {
+                        const currentScale = parseFloat(
+                            (svgEl.style.transform && svgEl.style.transform.match(/scale\\(([^)]+)\\)/)) 
+                            ? svgEl.style.transform.match(/scale\\(([^)]+)\\)/)[1] 
+                            : '1'
+                        );
+                        const newScale = Math.max(currentScale / 1.2, 0.1);
+                        svgEl.style.transform = 'scale(' + newScale + ')';
+                        svgEl.style.transformOrigin = 'center center';
+                        console.log('Fallback zoom out executed, scale:', newScale);
+                    }
+                });
+                
+                // Zoom Reset
+                addZoomHandler(zoomResetBtn, 'resetZoom', () => {
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (svgEl) {
+                        svgEl.style.transform = 'scale(1)';
+                        svgEl.style.transformOrigin = 'center center';
+                        console.log('Fallback zoom reset executed');
+                    }
+                });
+                
+                // Additional reset functionality for pan-zoom
+                if (zoomResetBtn) {
+                    const originalHandler = zoomResetBtn.onclick;
+                    zoomResetBtn.onclick = (e) => {
+                        originalHandler(e);
+                        // Additional reset for pan-zoom
+                        if (panZoomInstance) {
+                            try {
+                                panZoomInstance.center();
+                                panZoomInstance.fit();
+                            } catch (error) {
+                                console.warn('Error in additional reset:', error);
+                            }
+                        }
+                    };
                 }
-            };
-            zoomOutBtn.onclick = () => {
-                if (panZoomInstance) {
-                    panZoomInstance.zoomOut();
-                }
-            };
-            zoomResetBtn.onclick = () => {
-                if (panZoomInstance) {
-                    panZoomInstance.resetZoom();
-                    panZoomInstance.center();
-                    panZoomInstance.fit();
-                }
-            };
+                
+                console.log('Zoom controls setup completed for Windows');
+            }
 
-            // --- VS Code Message Handling ---
+            // Initialize zoom controls
+            setupZoomControls();
+
+            // --- VS Code Message Handling with Windows optimizations ---
             window.addEventListener('message', event => {
                 const message = event.data;
                 if (message.command === 'updatePreview') {
-                    document.getElementById('svgPreview').innerHTML = message.svgContent;
-                    setTimeout(enablePanZoom, 100);
+                    // Clear previous SVG content to prevent memory leaks on Windows
+                    const svgContainer = document.getElementById('svgPreview');
+                    if (svgContainer) {
+                        svgContainer.innerHTML = '';
+                        // Force garbage collection hint for Windows
+                        if (window.gc) {
+                            setTimeout(() => window.gc(), 100);
+                        }
+                    }
+                    
+                    // Set new content
+                    svgContainer.innerHTML = message.svgContent;
+                    
+                    // Give extra time for Windows rendering
+                    setTimeout(() => {
+                        enablePanZoom();
+                        setupZoomControls();
+                    }, 300); // Increased timeout for Windows
                 } else if (message.command === 'updateChat') {
                     document.getElementById('chat').innerHTML = message.chatHtml;
                     // Scroll chat to bottom to show latest message
@@ -794,9 +1059,69 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     alert('Error: ' + message.error);
                 }
             });
+            
+            // Windows-specific cleanup on page unload
+            window.addEventListener('beforeunload', () => {
+                try {
+                    if (panZoomInstance) {
+                        panZoomInstance.destroy();
+                        panZoomInstance = null;
+                    }
+                } catch (error) {
+                    console.warn('Cleanup error:', error);
+                }
+            });
 
-            // --- Initial State ---
+            // --- Initial State with Windows detection ---
             expandBtn.innerHTML = expandIcon;
+            
+            // --- Enhanced Debug for Windows Systems ---
+            const userAgent = navigator.userAgent;
+            const isWindows = userAgent.indexOf('Windows') !== -1;
+            console.log('Platform detection:', {
+                userAgent: userAgent,
+                isWindows: isWindows,
+                devicePixelRatio: window.devicePixelRatio || 1,
+                screenResolution: screen.width + 'x' + screen.height,
+                innerSize: window.innerWidth + 'x' + window.innerHeight
+            });
+            
+            console.log('Zoom button elements:', {
+                zoomInBtn: zoomInBtn ? 'found' : 'NOT FOUND',
+                zoomOutBtn: zoomOutBtn ? 'found' : 'NOT FOUND', 
+                zoomResetBtn: zoomResetBtn ? 'found' : 'NOT FOUND'
+            });
+            
+            console.log('svg-pan-zoom library:', window.svgPanZoom ? 'loaded' : 'NOT LOADED');
+            
+            // Enhanced debugging for Windows
+            if (zoomInBtn) {
+                zoomInBtn.addEventListener('click', () => console.log('Zoom in button clicked (Windows compatible)'));
+                zoomInBtn.addEventListener('touchstart', () => console.log('Zoom in touch detected'));
+            }
+            if (zoomOutBtn) {
+                zoomOutBtn.addEventListener('click', () => console.log('Zoom out button clicked (Windows compatible)'));
+                zoomOutBtn.addEventListener('touchstart', () => console.log('Zoom out touch detected'));
+            }
+            if (zoomResetBtn) {
+                zoomResetBtn.addEventListener('click', () => console.log('Zoom reset button clicked (Windows compatible)'));
+                zoomResetBtn.addEventListener('touchstart', () => console.log('Zoom reset touch detected'));
+            }
+            
+            // Windows performance monitoring
+            if (isWindows) {
+                setInterval(() => {
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (svgEl) {
+                        console.log('Windows SVG status:', {
+                            width: svgEl.style.width,
+                            height: svgEl.style.height,
+                            transform: svgEl.style.transform,
+                            display: svgEl.style.display
+                        });
+                    }
+                }, 10000); // Log every 10 seconds for debugging
+            }
 
             // Delegate click event for edit buttons
             chat.addEventListener('click', function(event) {
