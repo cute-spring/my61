@@ -18,31 +18,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - **Enhanced UI Controls**: Improved Edit, Resend, and Cancel buttons for user messages with professional styling and better positioning
 - **Custom Zoom Controls**: Added reliable zoom controls (Zoom In, Zoom Out, Reset) for SVG diagrams with cross-platform compatibility
 - **Diagram Type Detection**: Implemented intelligent diagram type detection and display in bot replies
-- **Windows SVG Rendering Fix**: Fixed diagram stretching and deformation issues on Windows when rendering diagrams directly from LLM chat
-  - Preserved SVG aspect ratio by using `preserveAspectRatio="xMidYMid meet"`
-  - Updated CSS to prevent forced width/height that caused distortion
-  - Enhanced SVG post-processing for better Windows compatibility
-  - Added debugging output to help diagnose rendering issues
-  - Fixed both svg-pan-zoom and fallback rendering modes
-- **Zoom Display Area Fix**: Fixed issue where zoomed diagrams were clipped and couldn't be fully viewed
-  - Removed flex centering that prevented scrolling of zoomed content
-  - Added proper scrolling support with smooth scroll behavior
-  - Enhanced container padding to prevent edge clipping
-  - Improved scrollbar styling for better Windows compatibility
-  - Added auto-centering for zoom operations with fallback controls
-  - Fixed both svg-pan-zoom and manual zoom fallback modes to support full content visibility
-- **Maximum Display Area Utilization**: Enhanced diagram display to use the full available space
-  - Removed restrictive borders, padding, and decorative elements that limited diagram size
-  - Updated SVG sizing to use 100% of container width/height while preserving aspect ratio
-  - Enhanced aspect ratio calculation for optimal space utilization
-  - Configured both svg-pan-zoom and fallback modes for maximum space usage
-  - Added intelligent sizing based on SVG dimensions and container aspect ratio
-  - Removed container constraints that were preventing full-screen diagram display
-- **LLM-Driven Type Classification**: Replaced regex-based detection with LLM-provided diagram types for higher accuracy
-- **Code Cleanup**: Removed complex fallback detection logic (~60 lines) in favor of forced LLM compliance
-- **Improved Prompts**: Enhanced LLM prompts to force diagram type specification with strict format requirements
-- **Better UX**: Auto-detection mode now shows accurate diagram types (e.g., "[Auto-detected: Component Diagram]")
-- **Streamlined Architecture**: Simplified codebase with more reliable diagram classification workflow
+- **UI Fixes**:
+    - Fixed zoom controls by refactoring event handling to use `svg-pan-zoom` library reliably.
+    - Corrected display issues with the "Expand" and "More Actions" button icons by embedding SVGs directly and adjusting CSS.
 
 ### Windows Compatibility Improvements
 - **Cross-Platform File Paths**: Enhanced file path handling using `path.join()` for Windows compatibility
