@@ -48,6 +48,19 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - **Cross-Platform File Paths**: Enhanced file path handling using `path.join()` for Windows compatibility
 - **Windows Font Rendering**: Added Windows-specific font smoothing and text rendering optimizations
 - **High-DPI Display Support**: Implemented proper scaling and rendering for Windows high-DPI displays
+
+### UI/UX Improvements
+- **Fixed Button Icons**: Resolved issue where expand button and "more actions" (three dots) button were not displaying their SVG icons
+  - Added proper SVG sizing with explicit width/height attributes
+  - Enhanced CSS styling with `!important` rules to ensure icon visibility
+  - Fixed icon-only button styling with consistent padding and sizing
+  - Implemented proper icon switching for expand/collapse states
+- **Enhanced Zoom Functionality**: Completely refactored zoom controls for better reliability
+  - Fixed zoom in/out/reset buttons that were not working correctly
+  - Ensured svg-pan-zoom library is always prioritized when available
+  - Improved fallback zoom logic for when svg-pan-zoom is not loaded
+  - Eliminated duplicate event listeners and conflicting zoom handlers
+  - Added proper error handling and debugging for zoom operations
 - **Enhanced Event Handling**: Improved drag and drop with Windows-compatible touch events and better event prevention
 - **SVG Rendering Fixes**: Added Windows-specific SVG rendering properties for crisp edges and proper display
 - **Memory Management**: Enhanced cleanup and garbage collection hints to prevent memory leaks on Windows

@@ -586,12 +586,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             
             button, select { border-radius: 4px; border: 1px solid #ccc; background: #f5f5f5; padding: 6px 12px; font-size: 1em; transition: background 0.2s, border 0.2s, color 0.2s; cursor: pointer; outline: none; display: flex; align-items: center; gap: 6px; }
             button:hover, button:focus, select:hover, select:focus { background: #e0e0e0; border-color: #bdbdbd; }
-            button svg { width: 16px; height: 16px; display: block; }
+            button svg { width: 16px !important; height: 16px !important; display: block !important; flex-shrink: 0 !important; }
             button.primary { background: #007acc; color: #fff; border-color: #007acc; font-weight: 600; }
             button.primary:hover, button.primary:focus { background: #005fa3; border-color: #005fa3; }
             button.danger { background: #fff0f0; color: #d32f2f; border: 1px solid #d32f2f; }
             button.danger:hover, button.danger:focus { background: #d32f2f; color: #fff; }
-            button.icon-only { padding: 6px; }
+            button.icon-only { padding: 8px !important; min-width: 36px !important; min-height: 36px !important; justify-content: center !important; }
 
             /* --- Edit Message Button Styling --- */
             .edit-user-msg-btn {
@@ -751,11 +751,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                             </button>
                         </div>
                         <div class="utility-actions">
-                            <button id="expandChatBtn" class="icon-only" title="Expand Chat Panel" aria-label="Expand or Collapse Chat Panel"></button>
-                            <div class="dropdown">
-                                <button id="moreActionsBtn" class="icon-only" title="More Actions">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                                </button>
+                            <button id="expandChatBtn" class="icon-only" title="Expand Chat Panel" aria-label="Expand or Collapse Chat Panel">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </button>
+                            <div class="dropdown">                            <button id="moreActionsBtn" class="icon-only" title="More Actions">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                            </button>
                                 <div id="moreActionsDropdown" class="dropdown-content">
                                     <button id="saveChatBtn" title="Save current session to a .umlchat file" aria-label="Save Chat Session">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -808,10 +809,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             const zoomInBtn = document.getElementById('zoomInBtn');
             const zoomOutBtn = document.getElementById('zoomOutBtn');
             const zoomResetBtn = document.getElementById('zoomResetBtn');
-
-            // --- SVG Icons ---
-            const expandIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
-            const collapseIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="10" y1="14" x2="3" y2="21"/></svg>';
 
             // --- Click handler for historical bot messages ---
             function handleBotMessageClick(element) {
@@ -899,8 +896,15 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             expandBtn.onclick = () => {
                 const isFullscreen = leftPanel.classList.toggle('fullscreen');
                 rightPanel.classList.toggle('hide', isFullscreen);
-                expandBtn.innerHTML = isFullscreen ? collapseIcon : expandIcon;
-                expandBtn.title = isFullscreen ? "Collapse Chat Panel" : "Expand Chat Panel";
+                
+                // Update the expand button icon
+                if (isFullscreen) {
+                    expandBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="10" y1="14" x2="3" y2="21"/></svg>';
+                    expandBtn.title = "Collapse Chat Panel";
+                } else {
+                    expandBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+                    expandBtn.title = "Expand Chat Panel";
+                }
             };
 
             // --- Dragbar for resizing with Windows compatibility ---
@@ -1104,136 +1108,62 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
 
             // --- Custom Zoom Control Functions with Windows compatibility ---
             function setupZoomControls() {
-                const addZoomHandler = (btn, action, fallbackAction) => {
+                // Remove any previous event listeners to avoid duplicate bindings
+                [zoomInBtn, zoomOutBtn, zoomResetBtn].forEach(btn => {
                     if (!btn) return;
-                    
-                    const handleClick = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        // Windows: Add visual feedback
-                        btn.style.transform = 'scale(0.95)';
-                        setTimeout(() => {
-                            btn.style.transform = '';
-                        }, 100);
-                        
-                        try {
-                            if (panZoomInstance && panZoomInstance[action]) {
-                                panZoomInstance[action]();
-                                console.log(action + ' executed via pan-zoom');
-                            } else {
-                                console.warn('Pan-zoom instance not available for ' + action + ', using fallback');
-                                fallbackAction();
-                            }
-                        } catch (error) {
-                            console.error('Error during ' + action + ':', error);
-                            fallbackAction();
-                        }
-                    };
-                    
-                    // Multiple event types for Windows compatibility
-                    btn.onclick = handleClick;
-                    btn.addEventListener('click', handleClick);
-                    btn.addEventListener('mousedown', (e) => e.preventDefault());
-                };
-                
-                // Zoom In
-                addZoomHandler(zoomInBtn, 'zoomIn', () => {
-                    const svgEl = document.querySelector('#svgPreview svg');
-                    const container = document.getElementById('svgPreview');
-                    if (svgEl) {
-                        const currentScale = parseFloat(
-                            (svgEl.style.transform && svgEl.style.transform.match(/scale\\(([^)]+)\\)/)) 
-                            ? svgEl.style.transform.match(/scale\\(([^)]+)\\)/)[1] 
-                            : '1'
-                        );
-                        const newScale = Math.min(currentScale * 1.2, 5);
-                        svgEl.style.transform = 'scale(' + newScale + ')';
-                        svgEl.style.transformOrigin = 'center center';
-                        
-                        // Ensure container can scroll to show expanded content
-                        if (container) {
-                            container.scrollTo({
-                                left: (container.scrollWidth - container.clientWidth) / 2,
-                                top: (container.scrollHeight - container.clientHeight) / 2,
-                                behavior: 'smooth'
-                            });
-                        }
-                        
-                        console.log('Fallback zoom in executed, scale:', newScale);
-                    }
+                    btn.replaceWith(btn.cloneNode(true));
                 });
-                
-                // Zoom Out
-                addZoomHandler(zoomOutBtn, 'zoomOut', () => {
-                    const svgEl = document.querySelector('#svgPreview svg');
-                    const container = document.getElementById('svgPreview');
-                    if (svgEl) {
-                        const currentScale = parseFloat(
-                            (svgEl.style.transform && svgEl.style.transform.match(/scale\\(([^)]+)\\)/)) 
-                            ? svgEl.style.transform.match(/scale\\(([^)]+)\\)/)[1] 
-                            : '1'
-                        );
-                        const newScale = Math.max(currentScale / 1.2, 0.1);
-                        svgEl.style.transform = 'scale(' + newScale + ')';
-                        svgEl.style.transformOrigin = 'center center';
-                        
-                        // Center the content when zooming out
-                        if (container && newScale < 1) {
-                            setTimeout(() => {
-                                container.scrollTo({
-                                    left: Math.max(0, (container.scrollWidth - container.clientWidth) / 2),
-                                    top: Math.max(0, (container.scrollHeight - container.clientHeight) / 2),
-                                    behavior: 'smooth'
-                                });
-                            }, 100);
-                        }
-                        
-                        console.log('Fallback zoom out executed, scale:', newScale);
-                    }
-                });
-                
-                // Zoom Reset
-                addZoomHandler(zoomResetBtn, 'resetZoom', () => {
-                    const svgEl = document.querySelector('#svgPreview svg');
-                    const container = document.getElementById('svgPreview');
-                    if (svgEl) {
-                        svgEl.style.transform = 'scale(1)';
-                        svgEl.style.transformOrigin = 'center center';
-                        
-                        // Reset scroll position to center
-                        if (container) {
-                            setTimeout(() => {
-                                container.scrollTo({
-                                    left: Math.max(0, (container.scrollWidth - container.clientWidth) / 2),
-                                    top: Math.max(0, (container.scrollHeight - container.clientHeight) / 2),
-                                    behavior: 'smooth'
-                                });
-                            }, 100);
-                        }
-                        
-                        console.log('Fallback zoom reset executed');
-                    }
-                });
-                
-                // Additional reset functionality for pan-zoom
-                if (zoomResetBtn) {
-                    const originalHandler = zoomResetBtn.onclick;
-                    zoomResetBtn.onclick = (e) => {
-                        originalHandler(e);
-                        // Additional reset for pan-zoom
-                        if (panZoomInstance) {
-                            try {
-                                panZoomInstance.center();
-                                panZoomInstance.fit();
-                            } catch (error) {
-                                console.warn('Error in additional reset:', error);
-                            }
-                        }
-                    };
+                const zoomIn = document.getElementById('zoomInBtn');
+                const zoomOut = document.getElementById('zoomOutBtn');
+                const zoomReset = document.getElementById('zoomResetBtn');
+
+                // Helper for fallback zoom (when svg-pan-zoom is not available)
+                function fallbackZoom(svgEl, scale) {
+                    svgEl.style.transform = 'scale(' + scale + ')';
+                    svgEl.style.transformOrigin = 'center center';
                 }
-                
-                console.log('Zoom controls setup completed for Windows');
+                function getCurrentScale(svgEl) {
+                    const match = svgEl.style.transform && svgEl.style.transform.match(/scale\(([^)]+)\)/);
+                    return match ? parseFloat(match[1]) : 1;
+                }
+
+                // Zoom In
+                zoomIn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (panZoomInstance && panZoomInstance.zoomIn) {
+                        panZoomInstance.zoomIn();
+                    } else if (svgEl) {
+                        const newScale = Math.min(getCurrentScale(svgEl) * 1.2, 5);
+                        fallbackZoom(svgEl, newScale);
+                    }
+                };
+                // Zoom Out
+                zoomOut.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (panZoomInstance && panZoomInstance.zoomOut) {
+                        panZoomInstance.zoomOut();
+                    } else if (svgEl) {
+                        const newScale = Math.max(getCurrentScale(svgEl) / 1.2, 0.1);
+                        fallbackZoom(svgEl, newScale);
+                    }
+                };
+                // Zoom Reset
+                zoomReset.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (panZoomInstance && panZoomInstance.resetZoom) {
+                        panZoomInstance.resetZoom();
+                        panZoomInstance.center && panZoomInstance.center();
+                        panZoomInstance.fit && panZoomInstance.fit();
+                    } else if (svgEl) {
+                        fallbackZoom(svgEl, 1);
+                    }
+                };
             }
 
             // Initialize zoom controls
@@ -1328,7 +1258,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             });
 
             // --- Initial State with Windows detection ---
-            expandBtn.innerHTML = expandIcon;
+            // expandBtn already has its icon set in HTML
             
             // --- Enhanced Debug for Windows Systems ---
             const userAgent = navigator.userAgent;
