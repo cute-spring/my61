@@ -262,6 +262,12 @@ export class WebviewHtmlGenerator {
                 flex-direction: column !important;
                 gap: 8px !important;
                 z-index: 100 !important;
+                /* Windows-specific improvements */
+                pointer-events: auto !important;
+                user-select: none !important;
+                -webkit-user-select: none !important;
+                -moz-user-select: none !important;
+                -ms-user-select: none !important;
             }
             .zoom-btn {
                 background: rgba(255, 255, 255, 0.9) !important;
@@ -280,6 +286,16 @@ export class WebviewHtmlGenerator {
                 align-items: center !important;
                 justify-content: center !important;
                 backdrop-filter: blur(4px) !important;
+                /* Windows-specific improvements */
+                pointer-events: auto !important;
+                user-select: none !important;
+                -webkit-user-select: none !important;
+                -moz-user-select: none !important;
+                -ms-user-select: none !important;
+                /* Ensure buttons are clickable on Windows */
+                touch-action: manipulation !important;
+                -ms-touch-action: manipulation !important;
+                outline: none !important;
             }
             .zoom-btn:hover {
                 background: rgba(255, 255, 255, 1) !important;
@@ -291,6 +307,11 @@ export class WebviewHtmlGenerator {
             .zoom-btn:active {
                 transform: translateY(0) !important;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                background: rgba(240, 240, 240, 1) !important;
+            }
+            .zoom-btn:focus {
+                outline: 2px solid #007acc !important;
+                outline-offset: 2px !important;
             }
 
             /* --- Left Panel Content --- */
@@ -793,31 +814,46 @@ export class WebviewHtmlGenerator {
                 
                 // Helper functions for zoom operations
                 function fallbackZoom(svgEl, scale) {
-                    svgEl.style.transform = 'scale(' + scale + ')';
-                    svgEl.style.transformOrigin = 'center center';
-                    console.log('Applied fallback zoom scale:', scale);
+                    // Use both transform and CSS zoom for maximum Windows compatibility
+                    if (window.navigator.userAgent.indexOf('Windows') !== -1) {
+                        // Windows-specific: Use CSS zoom property for better compatibility
+                        svgEl.style.zoom = scale;
+                        svgEl.style.transform = 'scale(' + scale + ')';
+                        svgEl.style.transformOrigin = 'center center';
+                        console.log('Applied Windows fallback zoom scale:', scale, 'using both zoom and transform');
+                    } else {
+                        svgEl.style.transform = 'scale(' + scale + ')';
+                        svgEl.style.transformOrigin = 'center center';
+                        console.log('Applied fallback zoom scale:', scale);
+                    }
                 }
                 
                 function getCurrentScale(svgEl) {
+                    // Check both zoom and transform properties for Windows compatibility
+                    if (window.navigator.userAgent.indexOf('Windows') !== -1 && svgEl.style.zoom) {
+                        const zoomValue = parseFloat(svgEl.style.zoom);
+                        if (!isNaN(zoomValue)) {
+                            console.log('Got Windows zoom value:', zoomValue);
+                            return zoomValue;
+                        }
+                    }
                     const match = svgEl.style.transform && svgEl.style.transform.match(/scale\(([^)]+)\)/);
-                    return match ? parseFloat(match[1]) : 1;
+                    const scale = match ? parseFloat(match[1]) : 1;
+                    console.log('Got transform scale value:', scale);
+                    return scale;
                 }
 
-                // Get zoom buttons
-                const zoomInButton = document.getElementById('zoomInBtn');
-                const zoomOutButton = document.getElementById('zoomOutBtn');
-                const zoomResetButton = document.getElementById('zoomResetBtn');
-                
+                // Use the already declared global zoom buttons
                 console.log('Zoom buttons found:', {
-                    zoomIn: !!zoomInButton,
-                    zoomOut: !!zoomOutButton,
-                    zoomReset: !!zoomResetButton
+                    zoomIn: !!zoomInBtn,
+                    zoomOut: !!zoomOutBtn,
+                    zoomReset: !!zoomResetBtn
                 });
 
                 // Remove any existing event listeners by replacing onclick
-                if (zoomInButton) {
-                    zoomInButton.onclick = null;
-                    zoomInButton.onclick = function(e) {
+                if (zoomInBtn) {
+                    zoomInBtn.onclick = null;
+                    zoomInBtn.onclick = function(e) {
                         e.preventDefault();
                         e.stopPropagation();
                         console.log('Zoom in button clicked');
@@ -846,12 +882,26 @@ export class WebviewHtmlGenerator {
                         } else if (!svgEl) {
                             console.log('No SVG element found for zoom');
                         }
+                        return false; // Prevent default behavior
                     };
+                    
+                    // Add additional Windows-specific event handling
+                    if (window.navigator.userAgent.indexOf('Windows') !== -1) {
+                        zoomInBtn.addEventListener('mousedown', function(e) {
+                            e.preventDefault();
+                            console.log('Windows: mousedown on zoom in');
+                        }, true);
+                        zoomInBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Windows: click event on zoom in');
+                        }, true);
+                    }
                 }
 
-                if (zoomOutButton) {
-                    zoomOutButton.onclick = null;
-                    zoomOutButton.onclick = function(e) {
+                if (zoomOutBtn) {
+                    zoomOutBtn.onclick = null;
+                    zoomOutBtn.onclick = function(e) {
                         e.preventDefault();
                         e.stopPropagation();
                         console.log('Zoom out button clicked');
@@ -880,12 +930,26 @@ export class WebviewHtmlGenerator {
                         } else if (!svgEl) {
                             console.log('No SVG element found for zoom');
                         }
+                        return false; // Prevent default behavior
                     };
+                    
+                    // Add additional Windows-specific event handling
+                    if (window.navigator.userAgent.indexOf('Windows') !== -1) {
+                        zoomOutBtn.addEventListener('mousedown', function(e) {
+                            e.preventDefault();
+                            console.log('Windows: mousedown on zoom out');
+                        }, true);
+                        zoomOutBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Windows: click event on zoom out');
+                        }, true);
+                    }
                 }
 
-                if (zoomResetButton) {
-                    zoomResetButton.onclick = null;
-                    zoomResetButton.onclick = function(e) {
+                if (zoomResetBtn) {
+                    zoomResetBtn.onclick = null;
+                    zoomResetBtn.onclick = function(e) {
                         e.preventDefault();
                         e.stopPropagation();
                         console.log('Zoom reset button clicked');
@@ -917,13 +981,33 @@ export class WebviewHtmlGenerator {
                         if (!resetSuccess && svgEl) {
                             console.log('Using fallback zoom reset');
                             fallbackZoom(svgEl, 1);
+                            // Clear both zoom and transform for complete reset
+                            if (window.navigator.userAgent.indexOf('Windows') !== -1) {
+                                svgEl.style.zoom = '';
+                            }
+                            svgEl.style.transform = '';
+                            svgEl.style.transformOrigin = '';
                             // Center the SVG manually
                             svgEl.style.margin = '0 auto';
                             svgEl.style.display = 'block';
                         } else if (!svgEl) {
                             console.log('No SVG element found for zoom reset');
                         }
+                        return false; // Prevent default behavior
                     };
+                    
+                    // Add additional Windows-specific event handling
+                    if (window.navigator.userAgent.indexOf('Windows') !== -1) {
+                        zoomResetBtn.addEventListener('mousedown', function(e) {
+                            e.preventDefault();
+                            console.log('Windows: mousedown on zoom reset');
+                        }, true);
+                        zoomResetBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Windows: click event on zoom reset');
+                        }, true);
+                    }
                 }
 
                 console.log('Zoom controls setup completed');
