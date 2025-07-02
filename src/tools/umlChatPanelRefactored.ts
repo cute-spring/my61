@@ -46,10 +46,16 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
         }
     );
 
-    // Get SVG pan-zoom library URI
-    const svgPanZoomUri = panel.webview.asWebviewUri(
-        vscode.Uri.file(path.join(context.extensionPath, 'src/tools/ui/js/svg-pan-zoom.min.js'))
-    );
+    // Get SVG pan-zoom library URI with error handling
+    let svgPanZoomUri: vscode.Uri | undefined;
+    try {
+        const svgPanZoomPath = path.join(context.extensionPath, 'src/tools/ui/js/svg-pan-zoom.min.js');
+        svgPanZoomUri = panel.webview.asWebviewUri(vscode.Uri.file(svgPanZoomPath));
+        console.log('SVG pan-zoom URI:', svgPanZoomUri.toString());
+    } catch (error) {
+        console.error('Failed to create SVG pan-zoom URI:', error);
+        vscode.window.showWarningMessage('SVG pan-zoom library could not be loaded. Zoom controls may not work properly.');
+    }
 
     // Debounced functions for performance
     const debouncedUpdatePreview = debounce(async () => {

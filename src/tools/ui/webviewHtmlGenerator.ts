@@ -89,8 +89,13 @@ export class WebviewHtmlGenerator {
                 </div>
             </div>
         </div>
-        <script src="${svgPanZoomUriString}"></script>
+        ${svgPanZoomUriString ? `<script src="${svgPanZoomUriString}"></script>` : '<!-- SVG pan-zoom library not available -->'}
         <script>
+            // Check if SVG pan-zoom library loaded
+            const hasSvgPanZoom = typeof window.svgPanZoom !== 'undefined';
+            if (!hasSvgPanZoom) {
+                console.warn('SVG pan-zoom library not loaded, using fallback zoom controls');
+            }
             ${this.generateJavaScript()}
         </script>
     </body>
@@ -653,6 +658,7 @@ export class WebviewHtmlGenerator {
 
             // --- SVG Pan & Zoom ---
             let panZoomInstance;
+            let fallbackZoomLevel = 1;
             function enablePanZoom() {
                 try {
                     if(panZoomInstance) { 
@@ -703,7 +709,7 @@ export class WebviewHtmlGenerator {
                         svgEl.setAttribute('height', '300');
                     }
                     
-                    if (window.svgPanZoom) {
+                    if (window.svgPanZoom && hasSvgPanZoom) {
                         const containerWidth = container ? container.clientWidth : window.innerWidth;
                         const containerHeight = container ? container.clientHeight : window.innerHeight;
                         
@@ -783,7 +789,7 @@ export class WebviewHtmlGenerator {
                             svgEl.style.maxHeight = 'none';
                         }
                     } else {
-                        console.warn('SVG element found but svgPanZoom library not available');
+                        console.warn('SVG element found but svgPanZoom library not available, using fallback');
                         // Basic fallback styling
                         svgEl.style.display = 'block';
                         svgEl.style.margin = '0';
@@ -792,6 +798,7 @@ export class WebviewHtmlGenerator {
                         svgEl.style.maxWidth = 'none';
                         svgEl.style.maxHeight = 'none';
                         svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                        fallbackZoomLevel = 1;
                     }
                 } catch (error) {
                     console.error('Error initializing pan-zoom:', error);
@@ -804,6 +811,7 @@ export class WebviewHtmlGenerator {
                         svgEl.style.maxWidth = 'none';
                         svgEl.style.maxHeight = 'none';
                         svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                        fallbackZoomLevel = 1;
                     }
                 }
             }
@@ -814,6 +822,7 @@ export class WebviewHtmlGenerator {
                 
                 // Helper functions for zoom operations
                 function fallbackZoom(svgEl, scale) {
+                    fallbackZoomLevel = scale;
                     // Use both transform and CSS zoom for maximum Windows compatibility
                     if (window.navigator.userAgent.indexOf('Windows') !== -1) {
                         // Windows-specific: Use CSS zoom property for better compatibility
@@ -829,7 +838,18 @@ export class WebviewHtmlGenerator {
                 }
                 
                 function getCurrentScale(svgEl) {
-                    // Check both zoom and transform properties for Windows compatibility
+                    // If we have svg-pan-zoom, use its zoom level
+                    if (panZoomInstance && typeof panZoomInstance.getZoom === 'function') {
+                        try {
+                            const zoom = panZoomInstance.getZoom();
+                            console.log('Got svg-pan-zoom zoom level:', zoom);
+                            return zoom;
+                        } catch (error) {
+                            console.warn('Failed to get svg-pan-zoom zoom level:', error);
+                        }
+                    }
+                    
+                    // Fallback: Check both zoom and transform properties for Windows compatibility
                     if (window.navigator.userAgent.indexOf('Windows') !== -1 && svgEl.style.zoom) {
                         const zoomValue = parseFloat(svgEl.style.zoom);
                         if (!isNaN(zoomValue)) {
@@ -838,7 +858,7 @@ export class WebviewHtmlGenerator {
                         }
                     }
                     const match = svgEl.style.transform && svgEl.style.transform.match(/scale\(([^)]+)\)/);
-                    const scale = match ? parseFloat(match[1]) : 1;
+                    const scale = match ? parseFloat(match[1]) : fallbackZoomLevel;
                     console.log('Got transform scale value:', scale);
                     return scale;
                 }
@@ -1154,6 +1174,7 @@ export class WebviewHtmlGenerator {
             });
             
             console.log('svg-pan-zoom library:', window.svgPanZoom ? 'loaded' : 'NOT LOADED');
+            console.log('hasSvgPanZoom variable:', hasSvgPanZoom ? 'true' : 'false');
 
             // Delegate click event for edit buttons
             chat.addEventListener('click', function(event) {

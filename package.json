@@ -12,6 +12,14 @@
     "Other"
   ],
   "main": "./dist/extension.js",
+  "files": [
+    "dist/",
+    "src/tools/ui/js/",
+    "src/tools/ui/css/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "contributes": {
     "commands": [
       {
