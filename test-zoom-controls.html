@@ -24,8 +24,14 @@
         #svgPreview {
             width: 100%;
             height: 100%;
-            overflow: auto;
+            overflow: hidden;
             position: relative;
+            /* Enable touch interactions */
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
         
         /* Copy the exact zoom control styles */
@@ -91,6 +97,11 @@
             display: block;
             margin: 50px auto;
             border: 1px solid #ddd;
+            /* Prevent default touch behaviors */
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            pointer-events: auto;
         }
         
         #log {
@@ -108,6 +119,13 @@
 </head>
 <body>
     <h1>Zoom Controls Test - Windows Compatibility</h1>
+    <p><strong>Instructions:</strong></p>
+    <ul>
+        <li><strong>Buttons:</strong> Use +, −, ⌂ buttons to zoom in/out/reset</li>
+        <li><strong>Mouse:</strong> Click and drag to pan, mouse wheel to zoom</li>
+        <li><strong>Touch:</strong> One finger to pan, two fingers to pinch-zoom</li>
+        <li><strong>Keyboard:</strong> Ctrl/Cmd + Plus/Minus to zoom, Ctrl/Cmd + 0 to reset</li>
+    </ul>
     <div id="container">
         <div id="svgPreview">
             <svg id="testSvg" width="300" height="200" viewBox="0 0 300 200">
@@ -139,11 +157,23 @@
         
         // Test the same zoom logic as the extension
         let currentZoomLevel = 1.0;
+        let currentPanX = 0;
+        let currentPanY = 0;
         const minZoom = 0.1;
         const maxZoom = 5.0;
         const zoomStep = 0.2;
         
-        function applyZoom(newZoom, svgEl) {
+        // Pan and zoom state
+        let isPanning = false;
+        let lastPanX = 0;
+        let lastPanY = 0;
+        
+        // Touch/pinch state
+        let lastTouchDistance = 0;
+        let lastTouchCenterX = 0;
+        let lastTouchCenterY = 0;
+        
+        function applyZoom(newZoom, svgEl, centerX, centerY) {
             newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
             currentZoomLevel = newZoom;
             
@@ -155,15 +185,29 @@
             // Apply zoom using multiple methods for Windows compatibility
             const isWindows = navigator.userAgent.toLowerCase().includes('windows');
             
+            // Calculate combined transform
+            let transformString = '';
+            
+            if (centerX !== undefined && centerY !== undefined) {
+                // Zoom around specific point
+                transformString = `translate(${currentPanX}px, ${currentPanY}px) scale(${newZoom})`;
+            } else {
+                // Regular zoom with pan
+                transformString = `translate(${currentPanX}px, ${currentPanY}px) scale(${newZoom})`;
+            }
+            
             if (isWindows) {
                 // Use CSS zoom property for Windows (best compatibility)
                 svgEl.style.zoom = newZoom.toString();
-                log('Applied Windows CSS zoom: ' + newZoom);
+                if (currentPanX !== 0 || currentPanY !== 0) {
+                    svgEl.style.transform = `translate(${currentPanX}px, ${currentPanY}px)`;
+                }
+                log('Applied Windows CSS zoom: ' + newZoom + ' with pan: ' + currentPanX + ', ' + currentPanY);
             } else {
                 // Use transform scale for other platforms
-                svgEl.style.transform = 'scale(' + newZoom + ')';
+                svgEl.style.transform = transformString;
                 svgEl.style.transformOrigin = 'center center';
-                log('Applied transform scale: ' + newZoom);
+                log('Applied transform: ' + transformString);
             }
             
             // Ensure proper positioning
@@ -171,6 +215,38 @@
             svgEl.style.margin = '50px auto';
             
             return newZoom;
+        }
+        
+        function applyPan(deltaX, deltaY, svgEl) {
+            currentPanX += deltaX;
+            currentPanY += deltaY;
+            
+            // Apply the current zoom and pan
+            applyZoom(currentZoomLevel, svgEl);
+            
+            log('Pan applied: ' + currentPanX + ', ' + currentPanY);
+        }
+        
+        function resetPanZoom(svgEl) {
+            currentZoomLevel = 1.0;
+            currentPanX = 0;
+            currentPanY = 0;
+            applyZoom(currentZoomLevel, svgEl);
+            log('Pan and zoom reset');
+        }
+        
+        // Touch event helpers
+        function getTouchDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        function getTouchCenter(touch1, touch2) {
+            return {
+                x: (touch1.clientX + touch2.clientX) / 2,
+                y: (touch1.clientY + touch2.clientY) / 2
+            };
         }
         
         function setupButton(button, action) {
@@ -205,6 +281,8 @@
                             break;
                         case 'zoomReset':
                             newZoom = 1.0;
+                            currentPanX = 0;
+                            currentPanY = 0;
                             break;
                     }
                     
@@ -235,7 +313,151 @@
                 applyZoom(1.0, svgEl);
                 log('Initial zoom test completed');
             }
+            
+            // Setup pan and pinch-to-zoom
+            setupPanAndPinch();
         });
+        
+        function setupPanAndPinch() {
+            const container = document.getElementById('svgPreview');
+            const svgEl = document.getElementById('testSvg');
+            
+            if (!container || !svgEl) {
+                log('ERROR: Container or SVG not found for pan/pinch setup');
+                return;
+            }
+            
+            log('Setting up pan and pinch-to-zoom...');
+            
+            // Mouse events for panning
+            container.addEventListener('mousedown', function(e) {
+                if (e.button === 0) { // Left mouse button
+                    isPanning = true;
+                    lastPanX = e.clientX;
+                    lastPanY = e.clientY;
+                    container.style.cursor = 'grabbing';
+                    e.preventDefault();
+                    log('Mouse pan started');
+                }
+            });
+            
+            container.addEventListener('mousemove', function(e) {
+                if (isPanning) {
+                    const deltaX = e.clientX - lastPanX;
+                    const deltaY = e.clientY - lastPanY;
+                    applyPan(deltaX, deltaY, svgEl);
+                    lastPanX = e.clientX;
+                    lastPanY = e.clientY;
+                    e.preventDefault();
+                }
+            });
+            
+            container.addEventListener('mouseup', function(e) {
+                if (isPanning) {
+                    isPanning = false;
+                    container.style.cursor = 'grab';
+                    log('Mouse pan ended');
+                }
+            });
+            
+            container.addEventListener('mouseleave', function(e) {
+                if (isPanning) {
+                    isPanning = false;
+                    container.style.cursor = 'grab';
+                    log('Mouse pan ended (leave)');
+                }
+            });
+            
+            // Touch events for one finger pan and two finger pinch-to-zoom
+            container.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                
+                if (e.touches.length === 1) {
+                    // One finger - start panning
+                    isPanning = true;
+                    lastPanX = e.touches[0].clientX;
+                    lastPanY = e.touches[0].clientY;
+                    log('Touch pan started');
+                } else if (e.touches.length === 2) {
+                    // Two fingers - start pinch-to-zoom
+                    isPanning = false;
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    lastTouchDistance = getTouchDistance(touch1, touch2);
+                    const center = getTouchCenter(touch1, touch2);
+                    lastTouchCenterX = center.x;
+                    lastTouchCenterY = center.y;
+                    log('Pinch-to-zoom started, distance: ' + lastTouchDistance);
+                }
+            }, { passive: false });
+            
+            container.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                
+                if (e.touches.length === 1 && isPanning) {
+                    // One finger - continue panning
+                    const deltaX = e.touches[0].clientX - lastPanX;
+                    const deltaY = e.touches[0].clientY - lastPanY;
+                    applyPan(deltaX, deltaY, svgEl);
+                    lastPanX = e.touches[0].clientX;
+                    lastPanY = e.touches[0].clientY;
+                } else if (e.touches.length === 2) {
+                    // Two fingers - continue pinch-to-zoom
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const currentDistance = getTouchDistance(touch1, touch2);
+                    const center = getTouchCenter(touch1, touch2);
+                    
+                    if (lastTouchDistance > 0) {
+                        const zoomFactor = currentDistance / lastTouchDistance;
+                        const newZoom = currentZoomLevel * zoomFactor;
+                        
+                        // Apply zoom around the center point
+                        applyZoom(newZoom, svgEl, center.x, center.y);
+                        
+                        log('Pinch zoom: ' + newZoom.toFixed(2) + ' (factor: ' + zoomFactor.toFixed(2) + ')');
+                    }
+                    
+                    lastTouchDistance = currentDistance;
+                    lastTouchCenterX = center.x;
+                    lastTouchCenterY = center.y;
+                }
+            }, { passive: false });
+            
+            container.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                
+                if (e.touches.length === 0) {
+                    // All fingers lifted
+                    isPanning = false;
+                    lastTouchDistance = 0;
+                    log('Touch interaction ended');
+                } else if (e.touches.length === 1) {
+                    // From two fingers to one finger - switch to panning
+                    isPanning = true;
+                    lastPanX = e.touches[0].clientX;
+                    lastPanY = e.touches[0].clientY;
+                    lastTouchDistance = 0;
+                    log('Switched from pinch to pan');
+                }
+            }, { passive: false });
+            
+            // Mouse wheel zoom
+            container.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                
+                const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                const newZoom = currentZoomLevel * zoomFactor;
+                
+                applyZoom(newZoom, svgEl);
+                log('Mouse wheel zoom: ' + newZoom.toFixed(2));
+            }, { passive: false });
+            
+            // Set initial cursor
+            container.style.cursor = 'grab';
+            
+            log('Pan and pinch-to-zoom setup completed');
+        }
     </script>
 </body>
 </html>

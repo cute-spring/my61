@@ -177,7 +177,7 @@ export class WebviewHtmlGenerator {
             #svgPreview { 
                 width: 100%; 
                 height: 100vh; 
-                overflow: auto; 
+                overflow: hidden; 
                 background: #fff; 
                 /* Remove borders that take up space */
                 border: none;
@@ -192,17 +192,19 @@ export class WebviewHtmlGenerator {
                 position: relative;
                 /* Remove flex centering that prevents scrolling of zoomed content */
                 display: block;
-                /* Enable smooth scrolling for better UX */
+                /* Enable smooth interactions */
                 scroll-behavior: smooth;
-                /* Ensure scrollbars are always available when needed */
-                overflow-x: auto;
-                overflow-y: auto;
                 /* Remove padding to maximize display area */
                 padding: 0;
                 margin: 0;
-                /* Style scrollbars for better Windows compatibility */
-                scrollbar-width: thin;
-                scrollbar-color: #c1c1c1 #f1f1f1;
+                /* Enable touch interactions for pan and pinch-zoom */
+                touch-action: none;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                /* Set cursor for pan interactions */
+                cursor: grab;
             }
             #svgPreview::-webkit-scrollbar { 
                 width: 12px; 
@@ -256,6 +258,11 @@ export class WebviewHtmlGenerator {
                 transform-origin: center center;
                 /* Ensure SVG uses all available space */
                 object-fit: contain;
+                /* Enable touch interactions */
+                touch-action: none;
+                user-select: none;
+                -webkit-user-select: none;
+                pointer-events: auto;
             }
 
             /* --- Custom Zoom Controls --- */
@@ -988,6 +995,283 @@ export class WebviewHtmlGenerator {
                 }, 500);
             }
 
+            // --- Pan and Pinch-to-Zoom Setup ---
+            function setupPanAndPinch() {
+                console.log('Setting up pan and pinch-to-zoom...');
+                
+                const container = document.getElementById('svgPreview');
+                if (!container) {
+                    console.warn('SVG preview container not found for pan/pinch setup');
+                    return;
+                }
+                
+                // Pan and zoom state
+                let isPanning = false;
+                let lastPanX = 0;
+                let lastPanY = 0;
+                let currentPanX = 0;
+                let currentPanY = 0;
+                
+                // Touch/pinch state
+                let lastTouchDistance = 0;
+                let lastTouchCenterX = 0;
+                let lastTouchCenterY = 0;
+                
+                // Touch event helpers
+                function getTouchDistance(touch1, touch2) {
+                    const dx = touch1.clientX - touch2.clientX;
+                    const dy = touch1.clientY - touch2.clientY;
+                    return Math.sqrt(dx * dx + dy * dy);
+                }
+                
+                function getTouchCenter(touch1, touch2) {
+                    return {
+                        x: (touch1.clientX + touch2.clientX) / 2,
+                        y: (touch1.clientY + touch2.clientY) / 2
+                    };
+                }
+                
+                function applyPanToSvg(deltaX, deltaY) {
+                    currentPanX += deltaX;
+                    currentPanY += deltaY;
+                    
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (!svgEl) return;
+                    
+                    // Try svg-pan-zoom first if available
+                    if (panZoomInstance && hasSvgPanZoom) {
+                        try {
+                            if (typeof panZoomInstance.panBy === 'function') {
+                                panZoomInstance.panBy({x: deltaX, y: deltaY});
+                                console.log('svg-pan-zoom pan applied:', deltaX, deltaY);
+                                return;
+                            }
+                        } catch (error) {
+                            console.warn('svg-pan-zoom pan failed:', error);
+                        }
+                    }
+                    
+                    // Fallback: apply manual transform
+                    const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+                    const currentZoom = getCurrentZoomLevel();
+                    
+                    if (isWindows && svgEl.style.zoom) {
+                        // Windows: use separate transform for pan
+                        svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px)';
+                    } else {
+                        // Other platforms: combine zoom and pan
+                        svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + currentZoom + ')';
+                        svgEl.style.transformOrigin = 'center center';
+                    }
+                    
+                    console.log('Manual pan applied:', currentPanX, currentPanY);
+                }
+                
+                function getCurrentZoomLevel() {
+                    if (panZoomInstance && hasSvgPanZoom) {
+                        try {
+                            if (typeof panZoomInstance.getZoom === 'function') {
+                                return panZoomInstance.getZoom();
+                            }
+                        } catch (error) {
+                            console.warn('Failed to get svg-pan-zoom zoom level:', error);
+                        }
+                    }
+                    return currentZoomLevel || 1.0;
+                }
+                
+                // Mouse events for panning
+                container.addEventListener('mousedown', function(e) {
+                    if (e.button === 0) { // Left mouse button
+                        isPanning = true;
+                        lastPanX = e.clientX;
+                        lastPanY = e.clientY;
+                        container.style.cursor = 'grabbing';
+                        e.preventDefault();
+                        console.log('Mouse pan started');
+                    }
+                });
+                
+                container.addEventListener('mousemove', function(e) {
+                    if (isPanning) {
+                        const deltaX = e.clientX - lastPanX;
+                        const deltaY = e.clientY - lastPanY;
+                        applyPanToSvg(deltaX, deltaY);
+                        lastPanX = e.clientX;
+                        lastPanY = e.clientY;
+                        e.preventDefault();
+                    }
+                });
+                
+                container.addEventListener('mouseup', function(e) {
+                    if (isPanning) {
+                        isPanning = false;
+                        container.style.cursor = 'grab';
+                        console.log('Mouse pan ended');
+                    }
+                });
+                
+                container.addEventListener('mouseleave', function(e) {
+                    if (isPanning) {
+                        isPanning = false;
+                        container.style.cursor = 'grab';
+                        console.log('Mouse pan ended (leave)');
+                    }
+                });
+                
+                // Touch events for one finger pan and two finger pinch-to-zoom
+                container.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    
+                    if (e.touches.length === 1) {
+                        // One finger - start panning
+                        isPanning = true;
+                        lastPanX = e.touches[0].clientX;
+                        lastPanY = e.touches[0].clientY;
+                        console.log('Touch pan started');
+                    } else if (e.touches.length === 2) {
+                        // Two fingers - start pinch-to-zoom
+                        isPanning = false;
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        lastTouchDistance = getTouchDistance(touch1, touch2);
+                        const center = getTouchCenter(touch1, touch2);
+                        lastTouchCenterX = center.x;
+                        lastTouchCenterY = center.y;
+                        console.log('Pinch-to-zoom started, distance:', lastTouchDistance);
+                    }
+                }, { passive: false });
+                
+                container.addEventListener('touchmove', function(e) {
+                    e.preventDefault();
+                    
+                    if (e.touches.length === 1 && isPanning) {
+                        // One finger - continue panning
+                        const deltaX = e.touches[0].clientX - lastPanX;
+                        const deltaY = e.touches[0].clientY - lastPanY;
+                        applyPanToSvg(deltaX, deltaY);
+                        lastPanX = e.touches[0].clientX;
+                        lastPanY = e.touches[0].clientY;
+                    } else if (e.touches.length === 2) {
+                        // Two fingers - continue pinch-to-zoom
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        const currentDistance = getTouchDistance(touch1, touch2);
+                        const center = getTouchCenter(touch1, touch2);
+                        
+                        if (lastTouchDistance > 0) {
+                            const zoomFactor = currentDistance / lastTouchDistance;
+                            
+                            // Try svg-pan-zoom first
+                            let zoomSuccess = false;
+                            if (panZoomInstance && hasSvgPanZoom) {
+                                try {
+                                    if (typeof panZoomInstance.zoomAtPoint === 'function') {
+                                        const currentZoom = panZoomInstance.getZoom();
+                                        const newZoom = currentZoom * zoomFactor;
+                                        panZoomInstance.zoomAtPoint(newZoom, {x: center.x, y: center.y});
+                                        zoomSuccess = true;
+                                        console.log('svg-pan-zoom pinch zoom:', newZoom);
+                                    }
+                                } catch (error) {
+                                    console.warn('svg-pan-zoom pinch zoom failed:', error);
+                                }
+                            }
+                            
+                            // Fallback zoom
+                            if (!zoomSuccess) {
+                                const svgEl = document.querySelector('#svgPreview svg');
+                                if (svgEl) {
+                                    const currentZoom = getCurrentZoomLevel();
+                                    const newZoom = Math.max(0.1, Math.min(5.0, currentZoom * zoomFactor));
+                                    
+                                    const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+                                    if (isWindows) {
+                                        svgEl.style.zoom = newZoom.toString();
+                                    } else {
+                                        svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + newZoom + ')';
+                                        svgEl.style.transformOrigin = 'center center';
+                                    }
+                                    
+                                    console.log('Manual pinch zoom:', newZoom);
+                                }
+                            }
+                        }
+                        
+                        lastTouchDistance = currentDistance;
+                        lastTouchCenterX = center.x;
+                        lastTouchCenterY = center.y;
+                    }
+                }, { passive: false });
+                
+                container.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    
+                    if (e.touches.length === 0) {
+                        // All fingers lifted
+                        isPanning = false;
+                        lastTouchDistance = 0;
+                        console.log('Touch interaction ended');
+                    } else if (e.touches.length === 1) {
+                        // From two fingers to one finger - switch to panning
+                        isPanning = true;
+                        lastPanX = e.touches[0].clientX;
+                        lastPanY = e.touches[0].clientY;
+                        lastTouchDistance = 0;
+                        console.log('Switched from pinch to pan');
+                    }
+                }, { passive: false });
+                
+                // Mouse wheel zoom (existing functionality enhancement)
+                container.addEventListener('wheel', function(e) {
+                    e.preventDefault();
+                    
+                    // Get mouse position relative to container
+                    const rect = container.getBoundingClientRect();
+                    const centerX = e.clientX - rect.left;
+                    const centerY = e.clientY - rect.top;
+                    
+                    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                    
+                    // Try svg-pan-zoom first
+                    let zoomSuccess = false;
+                    if (panZoomInstance && hasSvgPanZoom) {
+                        try {
+                            if (typeof panZoomInstance.zoomAtPoint === 'function') {
+                                const currentZoom = panZoomInstance.getZoom();
+                                const newZoom = currentZoom * zoomFactor;
+                                panZoomInstance.zoomAtPoint(newZoom, {x: centerX, y: centerY});
+                                zoomSuccess = true;
+                                console.log('svg-pan-zoom wheel zoom:', newZoom);
+                            }
+                        } catch (error) {
+                            console.warn('svg-pan-zoom wheel zoom failed:', error);
+                        }
+                    }
+                    
+                    // Fallback zoom
+                    if (!zoomSuccess) {
+                        const svgEl = document.querySelector('#svgPreview svg');
+                        if (svgEl) {
+                            const currentZoom = getCurrentZoomLevel();
+                            const newZoom = Math.max(0.1, Math.min(5.0, currentZoom * zoomFactor));
+                            
+                            const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+                            if (isWindows) {
+                                svgEl.style.zoom = newZoom.toString();
+                            } else {
+                                svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + newZoom + ')';
+                                svgEl.style.transformOrigin = 'center center';
+                            }
+                            
+                            console.log('Manual wheel zoom:', newZoom);
+                        }
+                    }
+                }, { passive: false });
+                
+                console.log('Pan and pinch-to-zoom setup completed');
+            }
+
             // Initial setup only if SVG exists
             const initialSvg = document.querySelector('#svgPreview svg');
             console.log('Initial SVG check:', !!initialSvg);
@@ -995,6 +1279,9 @@ export class WebviewHtmlGenerator {
             
             // Always set up zoom controls, even without SVG initially
             setupZoomControls();
+            
+            // Setup pan and pinch-to-zoom functionality
+            setupPanAndPinch();
 
             // --- VS Code Message Handling ---
             window.addEventListener('message', event => {
