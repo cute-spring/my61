@@ -4,50 +4,101 @@ All notable changes to the "nondevtaskkiller" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.0.1]
+## [0.0.1] - 2025-07-02
 
+### 🎉 Major UML Chat Panel Refactoring & Enhancement
+
+#### ✅ **Complete Modular Refactoring**
+- **Broke down monolithic architecture** into focused, maintainable modules:
+  - `src/tools/uml/types.ts` - Type definitions and interfaces
+  - `src/tools/uml/constants.ts` - Constants and configuration
+  - `src/tools/uml/generator.ts` - UML diagram generation logic
+  - `src/tools/uml/renderer.ts` - SVG rendering and processing
+  - `src/tools/chat/chatManager.ts` - Chat message management
+  - `src/tools/utils/helpers.ts` - Utility functions
+  - `src/tools/ui/webviewHtmlGenerator.ts` - HTML/CSS/JS generation
+  - `src/tools/umlChatPanelRefactored.ts` - Main orchestrator
+
+#### 🔧 **Fixed Critical Zoom Control Issues**
+- **Resolved broken zoom functionality** that was causing runtime errors
+- **Implemented robust error handling** for svg-pan-zoom library
+- **Added fallback manual CSS zoom** when svg-pan-zoom fails
+- **Prevented duplicate event listeners** and button cloning issues
+- **Added comprehensive debug logging** for troubleshooting
+- **Improved SVG validation** with fallback dimensions and viewBox
+
+#### 🚀 **Restored Automatic PlantUML JAR Download**
+- **Automatic download functionality** with real-time progress indication
+- **Visual progress notifications** showing percentage and file size
+- **Smart error handling** with helpful setup instructions
+- **Cross-platform compatibility** for macOS, Windows, and Linux
+- **Robust download retry** and fallback mechanisms
+- **VS Code global storage integration** for proper file management
+
+#### 🖥️ **Enhanced Windows Compatibility**
+- **Cross-platform file operations** using proper Node.js APIs
+- **Windows-specific troubleshooting** documentation
+- **Antivirus and firewall considerations** addressed
+- **PowerShell and Command Prompt** test scripts provided
+- **Windows PATH and Java detection** improvements
+
+#### 📚 **Comprehensive Documentation**
+- **Complete setup guide** (`PLANTUML_SETUP.md`) with automatic download instructions
+- **Cross-platform test scripts** for verifying functionality:
+  - `test-plantuml-download.sh` (macOS/Linux)
+  - `test-plantuml-download.bat` (Windows CMD)
+  - `test-plantuml-download.ps1` (Windows PowerShell)
+- **Detailed troubleshooting** for all platforms
+- **Step-by-step testing instructions** for developers
+
+#### 🛠️ **Build & Package Improvements**
+- **Fixed all packaging warnings** by adding proper LICENSE file
+- **Added `"license": "MIT"`** to package.json
+- **Optimized activation events** for better VS Code performance
+- **Excluded minified third-party files** from ESLint checks
+- **Clean builds without warnings** for production deployment
+
+#### 🎯 **Enhanced User Experience**
+- **Zero-friction setup** for new users with automatic download
+- **Clear error messages** with actionable guidance
+- **Graceful degradation** when dependencies are missing
+- **Better progress feedback** during first-time setup
+- **Professional UI** with reliable controls
+
+#### 🧪 **Testing & Validation**
+- **All TypeScript compilation** passes without errors
+- **ESLint checks** pass with proper exclusions
+- **Extension packages** cleanly without warnings
+- **Unit tests** pass successfully
+- **Manual testing** confirms all functionality works
+- **Cross-platform testing** verified on macOS and Windows compatibility
+
+### 🔧 **Technical Debt Resolved**
+- **Monolithic code** → **Modular architecture**
+- **Broken zoom controls** → **Reliable zoom functionality**
+- **Missing auto-download** → **Seamless automatic setup**
+- **Build warnings** → **Clean production builds**
+- **Poor error handling** → **Comprehensive error management**
+- **Limited documentation** → **Complete user guides**
+
+### 📦 **Files Added/Modified**
+- ✅ Complete UML Chat Panel refactoring (8+ new modular files)
+- ✅ Automatic PlantUML downloader with progress indication
+- ✅ Cross-platform test scripts (3 different platforms)
+- ✅ Comprehensive setup and troubleshooting documentation
+- ✅ Enhanced build configuration and packaging
+- ✅ LICENSE file and proper package metadata
+
+---
+
+## [Previous Releases]
+
+### Initial UML Chat Panel & Tool Framework
 - Initial release of the extension with Email Refine, Translate, and Jira Refine tools.
 - Added code annotation feature.
 - Refactored the codebase for better readability and maintainability.
 - Added a setting to control the scope of code annotation.
 - Added a command to clear annotations.
-
-## [Unreleased]
-
-### UML Chat Panel Enhancements
-- **Enhanced UI Controls**: Improved Edit, Resend, and Cancel buttons for user messages with professional styling and better positioning
-- **Custom Zoom Controls**: Added reliable zoom controls (Zoom In, Zoom Out, Reset) for SVG diagrams with cross-platform compatibility
-- **Diagram Type Detection**: Implemented intelligent diagram type detection and display in bot replies
-- **UI Fixes**:
-    - Fixed zoom controls by refactoring event handling to use `svg-pan-zoom` library reliably.
-    - Corrected display issues with the "Expand" and "More Actions" button icons by embedding SVGs directly and adjusting CSS.
-
-### Windows Compatibility Improvements
-- **Cross-Platform File Paths**: Enhanced file path handling using `path.join()` for Windows compatibility
-- **Windows Font Rendering**: Added Windows-specific font smoothing and text rendering optimizations
-- **High-DPI Display Support**: Implemented proper scaling and rendering for Windows high-DPI displays
-
-### UI/UX Improvements
-- **Fixed Button Icons**: Resolved issue where expand button and "more actions" (three dots) button were not displaying their SVG icons
-  - Added proper SVG sizing with explicit width/height attributes
-  - Enhanced CSS styling with `!important` rules to ensure icon visibility
-  - Fixed icon-only button styling with consistent padding and sizing
-  - Implemented proper icon switching for expand/collapse states
-- **Enhanced Zoom Functionality**: Completely refactored zoom controls for better reliability
-  - Fixed zoom in/out/reset buttons that were not working correctly
-  - Ensured svg-pan-zoom library is always prioritized when available
-  - Improved fallback zoom logic for when svg-pan-zoom is not loaded
-  - Eliminated duplicate event listeners and conflicting zoom handlers
-  - Added proper error handling and debugging for zoom operations
-- **Enhanced Event Handling**: Improved drag and drop with Windows-compatible touch events and better event prevention
-- **SVG Rendering Fixes**: Added Windows-specific SVG rendering properties for crisp edges and proper display
-- **Memory Management**: Enhanced cleanup and garbage collection hints to prevent memory leaks on Windows
-- **Keyboard Shortcuts**: Added Windows keyboard shortcuts (Ctrl+Plus/Minus/0 for zoom controls)
-- **Touch Device Support**: Implemented touch event handling for Windows touch-enabled devices
-- **Performance Optimizations**: Increased rendering timeouts and added hardware acceleration hints for Windows
-- **Enhanced Debugging**: Added Windows platform detection and comprehensive debugging for troubleshooting
-
-### Technical Improvements
 - Enhanced user message editing with inline textarea and styled action buttons
 - Added debounced SVG rendering for better performance
 - Improved error handling and user feedback with fallback mechanisms

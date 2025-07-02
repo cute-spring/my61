@@ -3,17 +3,25 @@ import * as fs from "fs";
 import * as childProcess from "child_process";
 import * as path from "path";
 import * as os from "os";
+import { PlantUMLDownloader } from './utils/plantUMLDownloader';
 
 // --- Inlined config, common, tools ---
 
 let extensionRoot: string | undefined;
 let resolvedPlantumlJarPath: string | undefined;
+let extensionContext: vscode.ExtensionContext | undefined;
 
 const config = {
     java: "java",
     jar: () => {
         // Use the resolved JAR path if available
         if (resolvedPlantumlJarPath) { return resolvedPlantumlJarPath; }
+        
+        // If we have extension context, use its global storage
+        if (extensionContext) {
+            return PlantUMLDownloader.getDefaultJarPath(extensionContext);
+        }
+        
         // fallback: try to use extensionRoot or __dirname (legacy)
         const base = extensionRoot || __dirname;
         return path.join(base, "plantuml-mit-1.2025.3.jar");
@@ -92,10 +100,29 @@ class LocalRender {
         if (!javaExists) {
             return { processes: [], promise: Promise.reject(new Error('Java executable not found in PATH.')) };
         }
+
+        // Check if JAR exists, if not attempt automatic download
         if (!fs.existsSync(jarPath)) {
-            return { processes: [], promise: Promise.reject(new Error(`PlantUML JAR not found at: ${jarPath}`)) };
+            console.log(`PlantUML JAR not found at ${jarPath}, attempting automatic download...`);
+            const downloadPromise = PlantUMLDownloader.ensurePlantUMLExists(jarPath).then(success => {
+                if (!success) {
+                    throw new Error(`PlantUML JAR not found at: ${jarPath} and automatic download failed. Please install manually or use the PlantUML extension.`);
+                }
+                console.log('PlantUML JAR downloaded successfully, proceeding with rendering...');
+                // After successful download, create a new task and return its promise
+                const renderTask = this.executeRenderTask(diagram, taskType, savePath, format);
+                return renderTask.promise;
+            });
+            
+            return { processes: [], promise: downloadPromise };
         }
 
+        // JAR exists, proceed directly
+        return this.executeRenderTask(diagram, taskType, savePath, format);
+    }
+
+    private executeRenderTask(diagram: any, taskType: string, savePath?: string, format?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
+        const jarPath = this.getJarPath();
         let processes: childProcess.ChildProcess[] = [];
         let buffers: Buffer[] = [];
         let cancelled = false;
@@ -168,6 +195,7 @@ let localRender: LocalRender;
 
 export function activate(context: vscode.ExtensionContext, plantumlJarPathFromMain?: string) {
     extensionRoot = context.extensionPath;
+    extensionContext = context;
     resolvedPlantumlJarPath = plantumlJarPathFromMain;
     localRender = new LocalRender(() => config.jar());
 

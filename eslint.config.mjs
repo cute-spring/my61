@@ -3,7 +3,9 @@ import tsParser from "@typescript-eslint/parser";
 
 export default [{
     files: ["**/*.ts"],
+    ignores: ["**/svg-pan-zoom.min.js"],
 }, {
+    ignores: ["**/svg-pan-zoom.min.js"],
     plugins: {
         "@typescript-eslint": typescriptEslint,
     },

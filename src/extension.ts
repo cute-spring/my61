@@ -5,7 +5,7 @@ import { openCopilotToolsSettingsWebview } from './tools/config/settingsWebview'
 import { EmailRefineTool, TranslateTool, JiraRefineTool, PlantUMLPreviewTool } from './tools';
 import { ANNOTATION_PROMPT } from './prompts';
 import { applyDecoration, clearDecorations } from './decorations';
-import { activateUMLChatPanel } from './tools/umlChatPanel';
+import { activateUMLChatPanel } from './tools/umlChatPanelRefactored';
 import { localRender, activate as activatePreview } from './tools/preview';
 import * as path from 'path';
 import * as fs from 'fs';

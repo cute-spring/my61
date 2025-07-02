@@ -14,6 +14,16 @@ A modular, extensible productivity extension for VS Code, powered by Copilot/LLM
 
 The UML Chat Designer is an AI-powered, chat-driven tool for generating and refining UML diagrams directly in VS Code. Describe your requirements in natural language, and the tool will generate PlantUML code and a live diagram preview. Supports iterative design, diagram type selection, chat history, SVG export, and more.
 
+### Prerequisites
+
+For full diagram rendering functionality, you'll need:
+- **Java Runtime Environment** (JRE 8 or higher)
+- **PlantUML JAR file** or the PlantUML VS Code extension
+
+See [PLANTUML_SETUP.md](PLANTUML_SETUP.md) for detailed setup instructions.
+
+**Note**: Even without PlantUML setup, you can still chat about UML concepts and generate PlantUML code - you just won't see visual diagrams until setup is complete.
+
 ### How to Use
 
 1. **Start a New Design**
