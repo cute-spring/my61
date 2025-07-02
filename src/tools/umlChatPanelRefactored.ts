@@ -274,7 +274,7 @@ async function handleImportChat(
             updateChat();
             updatePreview();
             
-            vscode.window.showInformationMessage('Chat session imported successfully!');
+            // vscode.window.showInformationMessage('Chat session imported successfully!');
         } catch (error) {
             throw new Error('Failed to import chat session: ' + ErrorHandler.formatErrorMessage(error));
         }
