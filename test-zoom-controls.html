@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom Controls Test</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #f0f0f0;
+        }
+        
+        #container {
+            width: 800px;
+            height: 600px;
+            background: white;
+            border: 1px solid #ccc;
+            position: relative;
+            margin: 0 auto;
+        }
+        
+        #svgPreview {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            position: relative;
+        }
+        
+        /* Copy the exact zoom control styles */
+        .zoom-controls {
+            position: absolute !important;
+            bottom: 30px !important;
+            right: 30px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            z-index: 1000 !important;
+            pointer-events: auto !important;
+            user-select: none !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-radius: 12px !important;
+            padding: 8px !important;
+            backdrop-filter: blur(8px) !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
+        }
+        
+        .zoom-btn {
+            background: rgba(255, 255, 255, 0.95) !important;
+            border: 2px solid #007acc !important;
+            border-radius: 8px !important;
+            padding: 10px !important;
+            cursor: pointer !important;
+            font-size: 18px !important;
+            font-weight: bold !important;
+            color: #007acc !important;
+            box-shadow: 0 3px 8px rgba(0,123,255,0.3) !important;
+            transition: all 0.2s ease !important;
+            width: 42px !important;
+            height: 42px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            pointer-events: auto !important;
+            user-select: none !important;
+            touch-action: manipulation !important;
+            outline: none !important;
+            transform: translateZ(0) !important;
+            position: relative !important;
+            z-index: 101 !important;
+        }
+        
+        .zoom-btn:hover {
+            background: rgba(0, 123, 255, 0.1) !important;
+            border-color: #0056b3 !important;
+            color: #0056b3 !important;
+            transform: translateY(-2px) translateZ(0) !important;
+            box-shadow: 0 6px 12px rgba(0,123,255,0.4) !important;
+            scale: 1.05 !important;
+        }
+        
+        .zoom-btn:active {
+            transform: translateY(0) translateZ(0) !important;
+            box-shadow: 0 2px 6px rgba(0,123,255,0.3) !important;
+            background: rgba(0, 123, 255, 0.2) !important;
+            scale: 0.98 !important;
+        }
+        
+        #testSvg {
+            display: block;
+            margin: 50px auto;
+            border: 1px solid #ddd;
+        }
+        
+        #log {
+            margin: 20px auto;
+            width: 800px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Zoom Controls Test - Windows Compatibility</h1>
+    <div id="container">
+        <div id="svgPreview">
+            <svg id="testSvg" width="300" height="200" viewBox="0 0 300 200">
+                <rect x="10" y="10" width="280" height="180" fill="#e6f3ff" stroke="#007acc" stroke-width="2"/>
+                <text x="150" y="100" text-anchor="middle" font-family="Arial" font-size="16" fill="#007acc">Test SVG for Zoom</text>
+                <circle cx="75" cy="50" r="30" fill="#ffcc00"/>
+                <circle cx="225" cy="50" r="30" fill="#ff6600"/>
+                <circle cx="150" cy="150" r="30" fill="#66cc00"/>
+            </svg>
+        </div>
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="zoomInBtn" title="Zoom In">+</button>
+            <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">−</button>
+            <button class="zoom-btn" id="zoomResetBtn" title="Reset Zoom">⌂</button>
+        </div>
+    </div>
+    
+    <div id="log"></div>
+    
+    <script>
+        // Logging function
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += timestamp + ': ' + message + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        // Test the same zoom logic as the extension
+        let currentZoomLevel = 1.0;
+        const minZoom = 0.1;
+        const maxZoom = 5.0;
+        const zoomStep = 0.2;
+        
+        function applyZoom(newZoom, svgEl) {
+            newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+            currentZoomLevel = newZoom;
+            
+            // Clear any existing transforms
+            svgEl.style.transform = '';
+            svgEl.style.zoom = '';
+            svgEl.style.scale = '';
+            
+            // Apply zoom using multiple methods for Windows compatibility
+            const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+            
+            if (isWindows) {
+                // Use CSS zoom property for Windows (best compatibility)
+                svgEl.style.zoom = newZoom.toString();
+                log('Applied Windows CSS zoom: ' + newZoom);
+            } else {
+                // Use transform scale for other platforms
+                svgEl.style.transform = 'scale(' + newZoom + ')';
+                svgEl.style.transformOrigin = 'center center';
+                log('Applied transform scale: ' + newZoom);
+            }
+            
+            // Ensure proper positioning
+            svgEl.style.display = 'block';
+            svgEl.style.margin = '50px auto';
+            
+            return newZoom;
+        }
+        
+        function setupButton(button, action) {
+            if (!button) return;
+            
+            // Add comprehensive event handling
+            const events = ['click', 'mousedown', 'touchstart'];
+            
+            events.forEach(eventType => {
+                button.addEventListener(eventType, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    log('Button clicked: ' + action + ' (Event: ' + eventType + ')');
+                    
+                    const svgEl = document.getElementById('testSvg');
+                    if (!svgEl) {
+                        log('ERROR: No SVG element found');
+                        return false;
+                    }
+                    
+                    const currentZoom = currentZoomLevel;
+                    let newZoom = currentZoom;
+                    
+                    switch(action) {
+                        case 'zoomIn':
+                            newZoom = currentZoom + zoomStep;
+                            break;
+                        case 'zoomOut':
+                            newZoom = currentZoom - zoomStep;
+                            break;
+                        case 'zoomReset':
+                            newZoom = 1.0;
+                            break;
+                    }
+                    
+                    const appliedZoom = applyZoom(newZoom, svgEl);
+                    log('Zoom applied successfully: ' + appliedZoom);
+                    
+                    return false;
+                }, { passive: false, capture: true });
+            });
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            log('=== ZOOM CONTROLS TEST INITIALIZED ===');
+            log('User Agent: ' + navigator.userAgent);
+            log('Is Windows: ' + (navigator.userAgent.toLowerCase().includes('windows') ? 'YES' : 'NO'));
+            
+            // Setup buttons
+            setupButton(document.getElementById('zoomInBtn'), 'zoomIn');
+            setupButton(document.getElementById('zoomOutBtn'), 'zoomOut');
+            setupButton(document.getElementById('zoomResetBtn'), 'zoomReset');
+            
+            log('Zoom controls initialized');
+            
+            // Test initial zoom
+            const svgEl = document.getElementById('testSvg');
+            if (svgEl) {
+                applyZoom(1.0, svgEl);
+                log('Initial zoom test completed');
+            }
+        });
+    </script>
+</body>
+</html>

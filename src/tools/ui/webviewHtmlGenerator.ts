@@ -261,37 +261,43 @@ export class WebviewHtmlGenerator {
             /* --- Custom Zoom Controls --- */
             .zoom-controls {
                 position: absolute !important;
-                bottom: 20px !important;
-                right: 20px !important;
+                bottom: 30px !important;
+                right: 30px !important;
                 display: flex !important;
                 flex-direction: column !important;
-                gap: 8px !important;
-                z-index: 100 !important;
+                gap: 12px !important;
+                z-index: 1000 !important;
                 /* Windows-specific improvements */
                 pointer-events: auto !important;
                 user-select: none !important;
                 -webkit-user-select: none !important;
                 -moz-user-select: none !important;
                 -ms-user-select: none !important;
+                /* Ensure controls are always visible */
+                background: rgba(255, 255, 255, 0.1) !important;
+                border-radius: 12px !important;
+                padding: 8px !important;
+                backdrop-filter: blur(8px) !important;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
             }
             .zoom-btn {
-                background: rgba(255, 255, 255, 0.9) !important;
-                border: 1px solid #ccc !important;
-                border-radius: 6px !important;
-                padding: 8px !important;
+                background: rgba(255, 255, 255, 0.95) !important;
+                border: 2px solid #007acc !important;
+                border-radius: 8px !important;
+                padding: 10px !important;
                 cursor: pointer !important;
-                font-size: 16px !important;
+                font-size: 18px !important;
                 font-weight: bold !important;
-                color: #333 !important;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+                color: #007acc !important;
+                box-shadow: 0 3px 8px rgba(0,123,255,0.3) !important;
                 transition: all 0.2s ease !important;
-                width: 36px !important;
-                height: 36px !important;
+                width: 42px !important;
+                height: 42px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 backdrop-filter: blur(4px) !important;
-                /* Windows-specific improvements */
+                /* Windows-specific improvements for better clickability */
                 pointer-events: auto !important;
                 user-select: none !important;
                 -webkit-user-select: none !important;
@@ -301,22 +307,33 @@ export class WebviewHtmlGenerator {
                 touch-action: manipulation !important;
                 -ms-touch-action: manipulation !important;
                 outline: none !important;
+                /* Force hardware acceleration for better performance */
+                transform: translateZ(0) !important;
+                -webkit-transform: translateZ(0) !important;
+                will-change: transform, background, border-color !important;
+                /* Ensure proper layering */
+                position: relative !important;
+                z-index: 101 !important;
             }
             .zoom-btn:hover {
-                background: rgba(255, 255, 255, 1) !important;
-                border-color: #007acc !important;
-                color: #007acc !important;
-                transform: translateY(-1px) !important;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+                background: rgba(0, 123, 255, 0.1) !important;
+                border-color: #0056b3 !important;
+                color: #0056b3 !important;
+                transform: translateY(-2px) translateZ(0) !important;
+                box-shadow: 0 6px 12px rgba(0,123,255,0.4) !important;
+                /* Enhanced Windows hover effects */
+                scale: 1.05 !important;
             }
             .zoom-btn:active {
-                transform: translateY(0) !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-                background: rgba(240, 240, 240, 1) !important;
+                transform: translateY(0) translateZ(0) !important;
+                box-shadow: 0 2px 6px rgba(0,123,255,0.3) !important;
+                background: rgba(0, 123, 255, 0.2) !important;
+                scale: 0.98 !important;
             }
             .zoom-btn:focus {
-                outline: 2px solid #007acc !important;
+                outline: 3px solid #007acc !important;
                 outline-offset: 2px !important;
+                background: rgba(0, 123, 255, 0.1) !important;
             }
 
             /* --- Left Panel Content --- */
@@ -818,219 +835,157 @@ export class WebviewHtmlGenerator {
 
             // --- Custom Zoom Control Functions ---
             function setupZoomControls() {
-                console.log('Setting up zoom controls...');
+                console.log('Setting up Windows-optimized zoom controls...');
                 
-                // Helper functions for zoom operations
-                function fallbackZoom(svgEl, scale) {
-                    fallbackZoomLevel = scale;
-                    // Use both transform and CSS zoom for maximum Windows compatibility
-                    if (window.navigator.userAgent.indexOf('Windows') !== -1) {
-                        // Windows-specific: Use CSS zoom property for better compatibility
-                        svgEl.style.zoom = scale;
-                        svgEl.style.transform = 'scale(' + scale + ')';
-                        svgEl.style.transformOrigin = 'center center';
-                        console.log('Applied Windows fallback zoom scale:', scale, 'using both zoom and transform');
+                // Simple, robust zoom implementation for Windows
+                let currentZoomLevel = 1.0;
+                const minZoom = 0.1;
+                const maxZoom = 5.0;
+                const zoomStep = 0.2;
+                
+                function applyZoom(newZoom, svgEl) {
+                    newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+                    currentZoomLevel = newZoom;
+                    
+                    // Clear any existing transforms
+                    svgEl.style.transform = '';
+                    svgEl.style.zoom = '';
+                    svgEl.style.scale = '';
+                    
+                    // Apply zoom using multiple methods for Windows compatibility
+                    const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+                    
+                    if (isWindows) {
+                        // Use CSS zoom property for Windows (best compatibility)
+                        svgEl.style.zoom = newZoom.toString();
+                        console.log('Applied Windows CSS zoom:', newZoom);
                     } else {
-                        svgEl.style.transform = 'scale(' + scale + ')';
+                        // Use transform scale for other platforms
+                        svgEl.style.transform = 'scale(' + newZoom + ')';
                         svgEl.style.transformOrigin = 'center center';
-                        console.log('Applied fallback zoom scale:', scale);
+                        console.log('Applied transform scale:', newZoom);
                     }
+                    
+                    // Ensure proper positioning
+                    svgEl.style.display = 'block';
+                    svgEl.style.margin = '0 auto';
+                    
+                    return newZoom;
                 }
                 
-                function getCurrentScale(svgEl) {
-                    // If we have svg-pan-zoom, use its zoom level
-                    if (panZoomInstance && typeof panZoomInstance.getZoom === 'function') {
-                        try {
-                            const zoom = panZoomInstance.getZoom();
-                            console.log('Got svg-pan-zoom zoom level:', zoom);
-                            return zoom;
-                        } catch (error) {
-                            console.warn('Failed to get svg-pan-zoom zoom level:', error);
-                        }
-                    }
-                    
-                    // Fallback: Check both zoom and transform properties for Windows compatibility
-                    if (window.navigator.userAgent.indexOf('Windows') !== -1 && svgEl.style.zoom) {
-                        const zoomValue = parseFloat(svgEl.style.zoom);
-                        if (!isNaN(zoomValue)) {
-                            console.log('Got Windows zoom value:', zoomValue);
-                            return zoomValue;
-                        }
-                    }
-                    const match = svgEl.style.transform && svgEl.style.transform.match(/scale\(([^)]+)\)/);
-                    const scale = match ? parseFloat(match[1]) : fallbackZoomLevel;
-                    console.log('Got transform scale value:', scale);
-                    return scale;
+                function getZoomLevel() {
+                    return currentZoomLevel;
                 }
-
-                // Use the already declared global zoom buttons
-                console.log('Zoom buttons found:', {
-                    zoomIn: !!zoomInBtn,
-                    zoomOut: !!zoomOutBtn,
-                    zoomReset: !!zoomResetBtn
+                
+                // Enhanced button event handlers
+                function setupButton(button, action) {
+                    if (!button) return;
+                    
+                    // Remove all existing listeners
+                    const newButton = button.cloneNode(true);
+                    button.parentNode.replaceChild(newButton, button);
+                    
+                    // Add comprehensive event handling
+                    const events = ['click', 'mousedown', 'touchstart'];
+                    
+                    events.forEach(eventType => {
+                        newButton.addEventListener(eventType, function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            
+                            console.log('Button clicked:', action, 'Event:', eventType);
+                            
+                            const svgEl = document.querySelector('#svgPreview svg');
+                            if (!svgEl) {
+                                console.log('No SVG element found');
+                                return false;
+                            }
+                            
+                            let success = false;
+                            
+                            // Try svg-pan-zoom first if available
+                            if (panZoomInstance && hasSvgPanZoom) {
+                                try {
+                                    switch(action) {
+                                        case 'zoomIn':
+                                            if (typeof panZoomInstance.zoomIn === 'function') {
+                                                panZoomInstance.zoomIn();
+                                                success = true;
+                                                console.log('svg-pan-zoom zoomIn succeeded');
+                                            }
+                                            break;
+                                        case 'zoomOut':
+                                            if (typeof panZoomInstance.zoomOut === 'function') {
+                                                panZoomInstance.zoomOut();
+                                                success = true;
+                                                console.log('svg-pan-zoom zoomOut succeeded');
+                                            }
+                                            break;
+                                        case 'zoomReset':
+                                            if (typeof panZoomInstance.reset === 'function') {
+                                                panZoomInstance.reset();
+                                                success = true;
+                                                console.log('svg-pan-zoom reset succeeded');
+                                            }
+                                            break;
+                                    }
+                                } catch (error) {
+                                    console.warn('svg-pan-zoom operation failed:', error);
+                                    success = false;
+                                }
+                            }
+                            
+                            // Use fallback if svg-pan-zoom failed or not available
+                            if (!success) {
+                                console.log('Using fallback zoom for:', action);
+                                const currentZoom = getZoomLevel();
+                                let newZoom = currentZoom;
+                                
+                                switch(action) {
+                                    case 'zoomIn':
+                                        newZoom = currentZoom + zoomStep;
+                                        break;
+                                    case 'zoomOut':
+                                        newZoom = currentZoom - zoomStep;
+                                        break;
+                                    case 'zoomReset':
+                                        newZoom = 1.0;
+                                        break;
+                                }
+                                
+                                const appliedZoom = applyZoom(newZoom, svgEl);
+                                console.log('Fallback zoom applied:', appliedZoom);
+                            }
+                            
+                            return false;
+                        }, { passive: false, capture: true });
+                    });
+                    
+                    return newButton;
+                }
+                
+                // Setup all zoom buttons
+                const zoomInButton = setupButton(document.getElementById('zoomInBtn'), 'zoomIn');
+                const zoomOutButton = setupButton(document.getElementById('zoomOutBtn'), 'zoomOut');
+                const zoomResetButton = setupButton(document.getElementById('zoomResetBtn'), 'zoomReset');
+                
+                console.log('Windows-optimized zoom controls setup completed');
+                console.log('Buttons configured:', {
+                    zoomIn: !!zoomInButton,
+                    zoomOut: !!zoomOutButton,
+                    zoomReset: !!zoomResetButton
                 });
-
-                // Remove any existing event listeners by replacing onclick
-                if (zoomInBtn) {
-                    zoomInBtn.onclick = null;
-                    zoomInBtn.onclick = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Zoom in button clicked');
-                        const svgEl = document.querySelector('#svgPreview svg');
-                        console.log('SVG element found:', !!svgEl);
-                        console.log('panZoomInstance available:', !!panZoomInstance);
-                        
-                        let zoomSuccess = false;
-                        if (panZoomInstance && typeof panZoomInstance.zoomIn === 'function') {
-                            try {
-                                console.log('Attempting panZoomInstance.zoomIn()');
-                                panZoomInstance.zoomIn();
-                                zoomSuccess = true;
-                                console.log('panZoomInstance.zoomIn() succeeded');
-                            } catch (error) {
-                                console.warn('panZoomInstance.zoomIn() failed:', error);
-                                zoomSuccess = false;
-                            }
-                        }
-                        
-                        if (!zoomSuccess && svgEl) {
-                            console.log('Using fallback zoom in');
-                            const currentScale = getCurrentScale(svgEl);
-                            const newScale = Math.min(currentScale * 1.2, 5);
-                            fallbackZoom(svgEl, newScale);
-                        } else if (!svgEl) {
-                            console.log('No SVG element found for zoom');
-                        }
-                        return false; // Prevent default behavior
-                    };
-                    
-                    // Add additional Windows-specific event handling
-                    if (window.navigator.userAgent.indexOf('Windows') !== -1) {
-                        zoomInBtn.addEventListener('mousedown', function(e) {
-                            e.preventDefault();
-                            console.log('Windows: mousedown on zoom in');
-                        }, true);
-                        zoomInBtn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('Windows: click event on zoom in');
-                        }, true);
+                
+                // Test zoom functionality
+                setTimeout(() => {
+                    const svgEl = document.querySelector('#svgPreview svg');
+                    if (svgEl) {
+                        console.log('Testing initial zoom setup...');
+                        applyZoom(1.0, svgEl);
+                        console.log('Initial zoom test completed');
                     }
-                }
-
-                if (zoomOutBtn) {
-                    zoomOutBtn.onclick = null;
-                    zoomOutBtn.onclick = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Zoom out button clicked');
-                        const svgEl = document.querySelector('#svgPreview svg');
-                        console.log('SVG element found:', !!svgEl);
-                        console.log('panZoomInstance available:', !!panZoomInstance);
-                        
-                        let zoomSuccess = false;
-                        if (panZoomInstance && typeof panZoomInstance.zoomOut === 'function') {
-                            try {
-                                console.log('Attempting panZoomInstance.zoomOut()');
-                                panZoomInstance.zoomOut();
-                                zoomSuccess = true;
-                                console.log('panZoomInstance.zoomOut() succeeded');
-                            } catch (error) {
-                                console.warn('panZoomInstance.zoomOut() failed:', error);
-                                zoomSuccess = false;
-                            }
-                        }
-                        
-                        if (!zoomSuccess && svgEl) {
-                            console.log('Using fallback zoom out');
-                            const currentScale = getCurrentScale(svgEl);
-                            const newScale = Math.max(currentScale / 1.2, 0.1);
-                            fallbackZoom(svgEl, newScale);
-                        } else if (!svgEl) {
-                            console.log('No SVG element found for zoom');
-                        }
-                        return false; // Prevent default behavior
-                    };
-                    
-                    // Add additional Windows-specific event handling
-                    if (window.navigator.userAgent.indexOf('Windows') !== -1) {
-                        zoomOutBtn.addEventListener('mousedown', function(e) {
-                            e.preventDefault();
-                            console.log('Windows: mousedown on zoom out');
-                        }, true);
-                        zoomOutBtn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('Windows: click event on zoom out');
-                        }, true);
-                    }
-                }
-
-                if (zoomResetBtn) {
-                    zoomResetBtn.onclick = null;
-                    zoomResetBtn.onclick = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Zoom reset button clicked');
-                        const svgEl = document.querySelector('#svgPreview svg');
-                        console.log('SVG element found:', !!svgEl);
-                        console.log('panZoomInstance available:', !!panZoomInstance);
-                        
-                        let resetSuccess = false;
-                        if (panZoomInstance) {
-                            try {
-                                console.log('Attempting panZoomInstance reset operations');
-                                if (typeof panZoomInstance.resetZoom === 'function') {
-                                    panZoomInstance.resetZoom();
-                                }
-                                if (typeof panZoomInstance.center === 'function') {
-                                    panZoomInstance.center();
-                                }
-                                if (typeof panZoomInstance.fit === 'function') {
-                                    panZoomInstance.fit();
-                                }
-                                resetSuccess = true;
-                                console.log('panZoomInstance reset succeeded');
-                            } catch (error) {
-                                console.warn('panZoomInstance reset failed:', error);
-                                resetSuccess = false;
-                            }
-                        }
-                        
-                        if (!resetSuccess && svgEl) {
-                            console.log('Using fallback zoom reset');
-                            fallbackZoom(svgEl, 1);
-                            // Clear both zoom and transform for complete reset
-                            if (window.navigator.userAgent.indexOf('Windows') !== -1) {
-                                svgEl.style.zoom = '';
-                            }
-                            svgEl.style.transform = '';
-                            svgEl.style.transformOrigin = '';
-                            // Center the SVG manually
-                            svgEl.style.margin = '0 auto';
-                            svgEl.style.display = 'block';
-                        } else if (!svgEl) {
-                            console.log('No SVG element found for zoom reset');
-                        }
-                        return false; // Prevent default behavior
-                    };
-                    
-                    // Add additional Windows-specific event handling
-                    if (window.navigator.userAgent.indexOf('Windows') !== -1) {
-                        zoomResetBtn.addEventListener('mousedown', function(e) {
-                            e.preventDefault();
-                            console.log('Windows: mousedown on zoom reset');
-                        }, true);
-                        zoomResetBtn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('Windows: click event on zoom reset');
-                        }, true);
-                    }
-                }
-
-                console.log('Zoom controls setup completed');
+                }, 500);
             }
 
             // Initial setup only if SVG exists
@@ -1159,12 +1114,19 @@ export class WebviewHtmlGenerator {
             // --- Debug Info ---
             const userAgent = navigator.userAgent;
             const isWindows = userAgent.indexOf('Windows') !== -1;
+            const isEdge = userAgent.indexOf('Edg') !== -1;
+            const isChrome = userAgent.indexOf('Chrome') !== -1;
+            
+            console.log('=== ZOOM CONTROLS DEBUG INFO ===');
             console.log('Platform detection:', {
                 userAgent: userAgent,
                 isWindows: isWindows,
+                isEdge: isEdge,
+                isChrome: isChrome,
                 devicePixelRatio: window.devicePixelRatio || 1,
                 screenResolution: screen.width + 'x' + screen.height,
-                innerSize: window.innerWidth + 'x' + window.innerHeight
+                innerSize: window.innerWidth + 'x' + window.innerHeight,
+                vsCodeWebview: typeof acquireVsCodeApi !== 'undefined'
             });
             
             console.log('Zoom button elements:', {
@@ -1175,6 +1137,24 @@ export class WebviewHtmlGenerator {
             
             console.log('svg-pan-zoom library:', window.svgPanZoom ? 'loaded' : 'NOT LOADED');
             console.log('hasSvgPanZoom variable:', hasSvgPanZoom ? 'true' : 'false');
+            
+            // Test button click detection
+            if (isWindows) {
+                console.log('Windows detected - applying enhanced button handling');
+                const testButtons = document.querySelectorAll('.zoom-btn');
+                testButtons.forEach((btn, index) => {
+                    console.log('Button', index, ':', {
+                        id: btn.id,
+                        visible: btn.offsetParent !== null,
+                        style: {
+                            display: getComputedStyle(btn).display,
+                            pointerEvents: getComputedStyle(btn).pointerEvents,
+                            zIndex: getComputedStyle(btn).zIndex
+                        }
+                    });
+                });
+            }
+            console.log('=== END DEBUG INFO ===');
 
             // Delegate click event for edit buttons
             chat.addEventListener('click', function(event) {
