@@ -892,82 +892,78 @@ export class WebviewHtmlGenerator {
                     const newButton = button.cloneNode(true);
                     button.parentNode.replaceChild(newButton, button);
                     
-                    // Add comprehensive event handling
-                    const events = ['click', 'mousedown', 'touchstart'];
-                    
-                    events.forEach(eventType => {
-                        newButton.addEventListener(eventType, function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            e.stopImmediatePropagation();
-                            
-                            console.log('Button clicked:', action, 'Event:', eventType);
-                            
-                            const svgEl = document.querySelector('#svgPreview svg');
-                            if (!svgEl) {
-                                console.log('No SVG element found');
-                                return false;
-                            }
-                            
-                            let success = false;
-                            
-                            // Try svg-pan-zoom first if available
-                            if (panZoomInstance && hasSvgPanZoom) {
-                                try {
-                                    switch(action) {
-                                        case 'zoomIn':
-                                            if (typeof panZoomInstance.zoomIn === 'function') {
-                                                panZoomInstance.zoomIn();
-                                                success = true;
-                                                console.log('svg-pan-zoom zoomIn succeeded');
-                                            }
-                                            break;
-                                        case 'zoomOut':
-                                            if (typeof panZoomInstance.zoomOut === 'function') {
-                                                panZoomInstance.zoomOut();
-                                                success = true;
-                                                console.log('svg-pan-zoom zoomOut succeeded');
-                                            }
-                                            break;
-                                        case 'zoomReset':
-                                            if (typeof panZoomInstance.reset === 'function') {
-                                                panZoomInstance.reset();
-                                                success = true;
-                                                console.log('svg-pan-zoom reset succeeded');
-                                            }
-                                            break;
-                                    }
-                                } catch (error) {
-                                    console.warn('svg-pan-zoom operation failed:', error);
-                                    success = false;
-                                }
-                            }
-                            
-                            // Use fallback if svg-pan-zoom failed or not available
-                            if (!success) {
-                                console.log('Using fallback zoom for:', action);
-                                const currentZoom = getZoomLevel();
-                                let newZoom = currentZoom;
-                                
+                    // Add ONLY click event to prevent double execution
+                    newButton.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        
+                        console.log('Button clicked:', action);
+                        
+                        const svgEl = document.querySelector('#svgPreview svg');
+                        if (!svgEl) {
+                            console.log('No SVG element found');
+                            return false;
+                        }
+                        
+                        let success = false;
+                        
+                        // Try svg-pan-zoom first if available
+                        if (panZoomInstance && hasSvgPanZoom) {
+                            try {
                                 switch(action) {
                                     case 'zoomIn':
-                                        newZoom = currentZoom + zoomStep;
+                                        if (typeof panZoomInstance.zoomIn === 'function') {
+                                            panZoomInstance.zoomIn();
+                                            success = true;
+                                            console.log('svg-pan-zoom zoomIn succeeded');
+                                        }
                                         break;
                                     case 'zoomOut':
-                                        newZoom = currentZoom - zoomStep;
+                                        if (typeof panZoomInstance.zoomOut === 'function') {
+                                            panZoomInstance.zoomOut();
+                                            success = true;
+                                            console.log('svg-pan-zoom zoomOut succeeded');
+                                        }
                                         break;
                                     case 'zoomReset':
-                                        newZoom = 1.0;
+                                        if (typeof panZoomInstance.reset === 'function') {
+                                            panZoomInstance.reset();
+                                            success = true;
+                                            console.log('svg-pan-zoom reset succeeded');
+                                        }
                                         break;
                                 }
-                                
-                                const appliedZoom = applyZoom(newZoom, svgEl);
-                                console.log('Fallback zoom applied:', appliedZoom);
+                            } catch (error) {
+                                console.warn('svg-pan-zoom operation failed:', error);
+                                success = false;
+                            }
+                        }
+                        
+                        // Use fallback if svg-pan-zoom failed or not available
+                        if (!success) {
+                            console.log('Using fallback zoom for:', action);
+                            const currentZoom = getZoomLevel();
+                            let newZoom = currentZoom;
+                            
+                            switch(action) {
+                                case 'zoomIn':
+                                    newZoom = currentZoom + zoomStep;
+                                    break;
+                                case 'zoomOut':
+                                    newZoom = currentZoom - zoomStep;
+                                    break;
+                                case 'zoomReset':
+                                    newZoom = 1.0;
+                                    break;
                             }
                             
-                            return false;
-                        }, { passive: false, capture: true });
-                    });
+                            const appliedZoom = applyZoom(newZoom, svgEl);
+                            console.log('Fallback zoom applied:', appliedZoom);
+                        }
+                        
+                        return false;
+                    }, { passive: false, capture: true });
                     
                     return newButton;
                 }
