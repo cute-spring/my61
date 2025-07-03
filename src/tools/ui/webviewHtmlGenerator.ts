@@ -268,11 +268,11 @@ export class WebviewHtmlGenerator {
             /* --- Custom Zoom Controls --- */
             .zoom-controls {
                 position: absolute !important;
-                bottom: 30px !important;
-                right: 30px !important;
+                bottom: 15px !important;
+                right: 15px !important;
                 display: flex !important;
                 flex-direction: column !important;
-                gap: 12px !important;
+                gap: 4px !important;
                 z-index: 1000 !important;
                 /* Windows-specific improvements */
                 pointer-events: auto !important;
@@ -282,24 +282,24 @@ export class WebviewHtmlGenerator {
                 -ms-user-select: none !important;
                 /* Ensure controls are always visible */
                 background: rgba(255, 255, 255, 0.1) !important;
-                border-radius: 12px !important;
-                padding: 8px !important;
+                border-radius: 6px !important;
+                padding: 4px !important;
                 backdrop-filter: blur(8px) !important;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
             }
             .zoom-btn {
                 background: rgba(255, 255, 255, 0.95) !important;
-                border: 2px solid #007acc !important;
-                border-radius: 8px !important;
-                padding: 10px !important;
+                border: 1px solid #007acc !important;
+                border-radius: 4px !important;
+                padding: 3px !important;
                 cursor: pointer !important;
-                font-size: 18px !important;
+                font-size: 11px !important;
                 font-weight: bold !important;
                 color: #007acc !important;
-                box-shadow: 0 3px 8px rgba(0,123,255,0.3) !important;
+                box-shadow: 0 1px 3px rgba(0,123,255,0.3) !important;
                 transition: all 0.2s ease !important;
-                width: 42px !important;
-                height: 42px !important;
+                width: 24px !important;
+                height: 24px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
@@ -326,16 +326,16 @@ export class WebviewHtmlGenerator {
                 background: rgba(0, 123, 255, 0.1) !important;
                 border-color: #0056b3 !important;
                 color: #0056b3 !important;
-                transform: translateY(-2px) translateZ(0) !important;
-                box-shadow: 0 6px 12px rgba(0,123,255,0.4) !important;
+                transform: translateY(-0.5px) translateZ(0) !important;
+                box-shadow: 0 2px 4px rgba(0,123,255,0.4) !important;
                 /* Enhanced Windows hover effects */
                 scale: 1.05 !important;
             }
             .zoom-btn:active {
                 transform: translateY(0) translateZ(0) !important;
-                box-shadow: 0 2px 6px rgba(0,123,255,0.3) !important;
+                box-shadow: 0 1px 2px rgba(0,123,255,0.3) !important;
                 background: rgba(0, 123, 255, 0.2) !important;
-                scale: 0.98 !important;
+                scale: 0.95 !important;
             }
             .zoom-btn:focus {
                 outline: 3px solid #007acc !important;
