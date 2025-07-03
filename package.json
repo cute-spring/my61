@@ -2,8 +2,9 @@
   "name": "nondevtaskkiller",
   "displayName": "Copilot-Powered Productivity",
   "description": "VS Code extension with modular tools: Email Refine, Translate (English <-> Chinese), Jira Refine. Each tool is a class implementing a common interface, registered with a ToolManager. Commands: copilotTools.refineEmail, copilotTools.translateText, copilotTools.refineJira. UI: diff/split view, quick pick, popups. Settings page for API key, translation default, feature toggles. Error handling, privacy note, extensible for new tools.",
-  "version": "0.0.1",
+  "version": "0.0.7",
   "license": "MIT",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -16,6 +17,7 @@
     "dist/",
     "src/tools/ui/js/",
     "src/tools/ui/css/",
+    "icon.png",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
