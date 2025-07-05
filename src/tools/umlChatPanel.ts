@@ -8,6 +8,38 @@ import { promises as fsp } from 'fs';
 // It assumes you have a `preview.ts` file in the same directory with a `localRender` export.
 import { localRender } from './preview';
 
+// Get current PlantUML configuration for display (synchronous for UI)
+function getCurrentPlantUMLConfig(): { layoutEngine: string, dotPath: string | null, displayName: string, icon: string, isActual: boolean } {
+    const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
+    const configuredEngine = workspaceConfig.get<string>('layoutEngine', 'dot');
+    const dotPath = workspaceConfig.get<string>('dotPath') || null;
+    
+    // For UI display, show configured engine with warning if we suspect issues
+    let actualEngine = configuredEngine;
+    let isActual = true;
+    
+    // Simple heuristic: if DOT is configured but we're on a system where it's commonly missing
+    if (configuredEngine === 'dot' && !dotPath) {
+        // Could check for common DOT installation issues, but for now assume it works
+        isActual = true;
+    }
+    
+    let displayName: string;
+    let icon: string;
+    
+    if (actualEngine === 'smetana') {
+        displayName = isActual ? 'Smetana (Pure Java)' : 'Smetana (Auto-fallback)';
+        icon = isActual ? '☕' : '⚠️';
+    } else {
+        displayName = dotPath ? 'DOT (Custom Path)' : 'DOT (System Path)';
+        icon = '🔧';
+    }
+    
+    return { layoutEngine: actualEngine, dotPath, displayName, icon, isActual };
+}
+
+// Remove the async verification function from here since it's complex for UI use
+
 
 // Use Copilot API to generate PlantUML code from requirement, history, and diagram type
 async function generatePlantUMLFromRequirement(requirement: string, history: string[], diagramType?: string): Promise<string> {
@@ -288,6 +320,20 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         }
                         break;
                     }
+                    case 'configurePlantUML': {
+                        // Open the PlantUML configuration command
+                        vscode.commands.executeCommand('copilotTools.configurePlantUML').then(() => {
+                            // After configuration, refresh the webview content to show the updated layout indicator
+                            panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, false, svgPanZoomUri);
+                            setTimeout(() => {
+                                updateChatInWebview();
+                                if (currentPlantUML.trim()) {
+                                    debouncedRender(currentPlantUML);
+                                }
+                            }, 300);
+                        });
+                        break;
+                    }
                 }
             }, undefined, context.subscriptions);
         })
@@ -310,7 +356,7 @@ async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
         if (buffers && buffers.length > 0) {
             let svgContent = buffers[0].toString('utf-8');
             
-            // Post-process SVG for better Windows compatibility
+            // Post
             // Ensure preserveAspectRatio is set correctly
             if (svgContent.includes('<svg') && !svgContent.includes('preserveAspectRatio')) {
                 svgContent = svgContent.replace(
@@ -362,6 +408,19 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         { value: 'deployment', label: 'Deployment Diagram' }
     ];
     const diagramTypeOptions = diagramTypes.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+
+    // Get current PlantUML configuration for display
+    const plantUMLConfig = getCurrentPlantUMLConfig();
+    const layoutIndicator = `
+        <div style="display: flex; align-items: center; margin-bottom: 10px; padding: 8px 10px; background: ${plantUMLConfig.layoutEngine === 'smetana' ? 'linear-gradient(135deg, #e8f5e8, #d4edda)' : 'linear-gradient(135deg, #e3f2fd, #bbdefb)'}; border: 2px solid ${plantUMLConfig.layoutEngine === 'smetana' ? '#28a745' : '#007acc'}; border-radius: 6px; font-size: 0.95em; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <span style="margin-right: 8px; font-size: 1.3em;">${plantUMLConfig.icon}</span>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: #333; margin-bottom: 2px;">PlantUML Layout Engine</div>
+                <div style="color: ${plantUMLConfig.layoutEngine === 'smetana' ? '#155724' : '#004085'}; font-weight: 700; font-size: 1.05em;">${plantUMLConfig.displayName}</div>
+            </div>
+            <button id="configureLayoutBtn" style="background: ${plantUMLConfig.layoutEngine === 'smetana' ? '#28a745' : '#007acc'}; color: white; border: none; border-radius: 4px; padding: 6px 10px; font-size: 0.85em; cursor: pointer; transition: all 0.2s; font-weight: 600;" title="Configure PlantUML Layout Engine" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">⚙️ Config</button>
+        </div>
+    `;
 
     return `
     <!DOCTYPE html>
@@ -738,6 +797,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             <div id="leftPanel">
                 <div id="chat">${chatHtml}</div>
                 <div id="inputArea" style="flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px; border-top: 1px solid #eee; background: #f9f9f9;">
+                    ${layoutIndicator}
                     <div style="display: flex; align-items: center; margin-bottom: 8px;">
                         <label for="diagramType" style="margin-right: 8px; font-weight: 500;">Diagram Type:</label>
                         <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
@@ -759,27 +819,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                             </button>
                                 <div id="moreActionsDropdown" class="dropdown-content">
                                     <button id="saveChatBtn" title="Save current session to a .umlchat file" aria-label="Save Chat Session">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                                        <span>Save Session</span>
-                                    </button>
-                                    <button id="importBtn" title="Import a .umlchat session file" aria-label="Import Chat Session">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                        <span>Import</span>
-                                    </button>
-                                    <button id="exportSVGBtn" title="Export diagram as SVG" aria-label="Export SVG">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                        <span>Export SVG</span>
-                                    </button>
-                                    <button id="clearChatBtn" class="danger" title="Clear Chat History" aria-label="Clear Chat">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
-                                        <span>Clear Chat</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke
             <div id="dragbar"></div>
             <div id="rightPanel">
                 <div id="svgPreview"></div>
@@ -804,6 +844,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             const saveChatBtn = document.getElementById('saveChatBtn');
             const moreActionsBtn = document.getElementById('moreActionsBtn');
             const moreActionsDropdown = document.getElementById('moreActionsDropdown');
+            const configureLayoutBtn = document.getElementById('configureLayoutBtn');
             const leftPanel = document.getElementById('leftPanel');
             const rightPanel = document.getElementById('rightPanel');
             const zoomInBtn = document.getElementById('zoomInBtn');
@@ -864,6 +905,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     // Let default tab behavior work
                     return;
                 }
+            });
+            
+            // Configure layout engine button
+            configureLayoutBtn?.addEventListener('click', () => {
+                vscode.postMessage({ command: 'configurePlantUML' });
             });
             
             // Windows keyboard shortcuts for zoom
@@ -1242,6 +1288,9 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     }
                 } else if (message.command === 'error') {
                     alert('Error: ' + message.error);
+                } else if (message.command === 'configurePlantUML') {
+                    // This command will be handled by the extension, which will trigger a page refresh
+                    // The layout indicator will automatically update after configuration
                 }
             });
             

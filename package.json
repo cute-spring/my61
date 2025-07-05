@@ -2,7 +2,7 @@
   "name": "nondevtaskkiller",
   "displayName": "Copilot-Powered Productivity",
   "description": "VS Code extension with modular tools: Email Refine, Translate (English <-> Chinese), Jira Refine. Each tool is a class implementing a common interface, registered with a ToolManager. Commands: copilotTools.refineEmail, copilotTools.translateText, copilotTools.refineJira. UI: diff/split view, quick pick, popups. Settings page for API key, translation default, feature toggles. Error handling, privacy note, extensible for new tools.",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "license": "MIT",
   "icon": "icon.png",
   "engines": {
@@ -51,6 +51,18 @@
       {
         "command": "extension.umlChatPanel",
         "title": "UML Chat Designer (AI-powered)"
+      },
+      {
+        "command": "copilotTools.configurePlantUML",
+        "title": "Configure PlantUML Layout Engine and DOT Path"
+      },
+      {
+        "command": "copilotTools.showPlantUMLStatus",
+        "title": "Show PlantUML Status and Configuration"
+      },
+      {
+        "command": "copilotTools.testDotDetection",
+        "title": "Test DOT Auto-Detection"
       }
     ],
     "menus": {
@@ -102,6 +114,11 @@
         "command": "copilotTools.previewAntUML",
         "key": "ctrl+alt+u",
         "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "copilotTools.configurePlantUML",
+        "key": "ctrl+alt+p",
+        "when": "editorTextFocus"
       }
     ],
     "configuration": {
@@ -151,6 +168,33 @@
           ],
           "default": null,
           "description": "Optional. The full path to a local plantuml.jar file. If not set, the extension will attempt to download the latest version automatically."
+        },
+        "plantuml.layoutEngine": {
+          "type": "string",
+          "enum": [
+            "dot",
+            "smetana"
+          ],
+          "default": "dot",
+          "description": "Layout engine for PlantUML diagrams. 'dot' (default) uses Graphviz/DOT for high-quality layouts but requires DOT executable. 'smetana' is a pure Java implementation that works without external dependencies but may have different layout quality.",
+          "enumDescriptions": [
+            "Graphviz DOT engine - High quality layouts, requires DOT executable (dot.exe)",
+            "Smetana engine - Pure Java, no external dependencies required"
+          ]
+        },
+        "plantuml.dotPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Optional. The full path to the DOT executable (e.g., 'C:\\Program Files\\Graphviz\\bin\\dot.exe' on Windows). Only used when layoutEngine is set to 'dot'. If not set, PlantUML will try to find DOT in the system PATH.",
+          "scope": "machine-overridable"
+        },
+        "plantuml.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show PlantUML layout engine status in the status bar for quick visibility and configuration."
         }
       }
     }

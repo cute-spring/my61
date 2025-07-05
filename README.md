@@ -24,6 +24,38 @@ See [PLANTUML_SETUP.md](PLANTUML_SETUP.md) for detailed setup instructions.
 
 **Note**: Even without PlantUML setup, you can still chat about UML concepts and generate PlantUML code - you just won't see visual diagrams until setup is complete.
 
+### Layout Engine Configuration
+
+The extension supports two PlantUML layout engines with intelligent auto-detection:
+
+#### **🎯 Layout Engines**
+- **DOT Engine** (default): Uses Graphviz/DOT for high-quality diagram layout. Requires Graphviz installation.
+- **Smetana Engine**: Pure Java layout engine that doesn't require Graphviz. Works out-of-the-box but may have layout limitations for complex diagrams.
+
+#### **🔍 Intelligent DOT Auto-Detection**
+When you select the DOT engine, the extension automatically searches for Graphviz installations in common locations:
+- **Windows**: Program Files, Chocolatey, Scoop, Registry
+- **macOS**: Homebrew, MacPorts, standard directories
+- **Linux**: System packages, Snap, Flatpak, user installations
+
+#### **⚙️ Easy Configuration**
+1. Press `Ctrl+Alt+P` or run `Configure PlantUML Layout Engine and DOT Path`
+2. Select your preferred layout engine
+3. For DOT engine: Extension will auto-detect installations or let you specify custom paths
+4. Test your configuration with the UML Chat Designer
+
+#### **📊 Status Visibility**
+- **Status Bar Indicator**: Always visible in VS Code status bar (left side)
+- **Real-time Verification**: Shows the actual engine being used, not just configured
+- **Auto-fallback Detection**: Warns when DOT is configured but Smetana is actually used
+- **Color Coding**: Green for Smetana, Blue for DOT
+
+#### **⚙️ Manual Settings**
+You can also configure these settings manually in VS Code settings:
+- `plantuml.layoutEngine`: Choose between "dot" and "smetana"
+- `plantuml.dotPath`: Custom path to dot.exe (only used with DOT engine)
+- `plantuml.showStatusBar`: Show/hide the status bar indicator
+
 ### How to Use
 
 1. **Start a New Design**
@@ -106,11 +138,17 @@ See [PLANTUML_SETUP.md](PLANTUML_SETUP.md) for detailed setup instructions.
 
 This extension contributes the following settings:
 
+**General Settings:**
 - `copilotTools.apiKey`: API key for Copilot/LLM
 - `copilotTools.translation.defaultChinese`: Default Chinese output (Simplified/Traditional)
 - `copilotTools.features.emailRefine`: Enable/disable Email Refine tool
 - `copilotTools.features.translate`: Enable/disable Translate tool
 - `copilotTools.features.jiraRefine`: Enable/disable Jira Refine tool
+
+**PlantUML Settings:**
+- `plantuml.jarPath`: Optional path to PlantUML JAR file (auto-download if not set)
+- `plantuml.layoutEngine`: Layout engine for diagrams ("dot" or "smetana")
+- `plantuml.dotPath`: Optional path to DOT executable (for DOT engine only)
 
 ## Usage
 

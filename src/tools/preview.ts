@@ -28,13 +28,42 @@ const config = {
     },
     includepaths: (_parentUri: vscode.Uri) => [],
     diagramsRoot: (_parentUri: vscode.Uri) => null,
-    commandArgs: (_parentUri: vscode.Uri) => [],
+    commandArgs: (_parentUri: vscode.Uri) => {
+        const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
+        const layoutEngine = workspaceConfig.get<string>('layoutEngine', 'dot');
+        const dotPath = workspaceConfig.get<string>('dotPath');
+        
+        const args: string[] = [];
+        
+        // Add layout engine pragma - Smetana uses a different syntax
+        if (layoutEngine === 'smetana') {
+            // Use -P flag for Smetana layout engine
+            args.push('-Playout=smetana');
+            console.log('Using Smetana layout engine');
+        } else {
+            console.log('Using DOT layout engine');
+        }
+        
+        // Add DOT path if specified and using dot engine
+        if (layoutEngine === 'dot' && dotPath) {
+            args.push(`-DGRAPHVIZ_DOT=${dotPath}`);
+            console.log(`Using custom DOT path: ${dotPath}`);
+        }
+        
+        console.log('PlantUML command args:', args);
+        return args;
+    },
     jarArgs: (_parentUri: vscode.Uri) => [],
 };
 
 function localize(_id: number, _defaultValue: any, ...args: any[]): string {
-    // Simple fallback
-    return "PlantUML rendering error";
+    // Simple fallback with more detailed error information
+    if (args && args.length > 1) {
+        const diagramName = args[0] || 'diagram';
+        const errorDetail = args[1] || 'unknown error';
+        return `PlantUML rendering failed for ${diagramName}: ${errorDetail}`;
+    }
+    return "PlantUML rendering error - check console for details";
 }
 
 function addFileIndex(filePath: string, index: number, pageCount: number): string {
@@ -56,14 +85,62 @@ function processWrapper(process: childProcess.ChildProcess, savePath?: string): 
         if (process.stderr) {
             process.stderr.on("data", (data: Buffer) => stderr.push(data));
         }
-        process.on("error", reject);
+        process.on("error", (err) => {
+            console.error('PlantUML process error:', err);
+            reject(err);
+        });
         process.on("close", (code) => {
+            const stderrOutput = Buffer.concat(stderr).toString();
             if (code === 0) {
                 const out = Buffer.concat(stdout);
                 if (savePath) { fs.writeFileSync(savePath, out); }
+                
+                // Log information about which layout engine was actually used
+                const config = vscode.workspace.getConfiguration('plantuml');
+                const configuredEngine = config.get<string>('layoutEngine', 'dot');
+                
+                // Analyze stderr for engine indicators
+                let actualEngineUsed = 'unknown';
+                if (stderrOutput.includes('smetana') || stderrOutput.toLowerCase().includes('smetana')) {
+                    actualEngineUsed = 'smetana';
+                } else if (stderrOutput.includes('dot') || stderrOutput.includes('graphviz')) {
+                    actualEngineUsed = 'dot';
+                } else if (stderrOutput.includes('Cannot find Graphviz') || stderrOutput.includes('dot command not found')) {
+                    actualEngineUsed = 'smetana'; // Fallback occurred
+                    console.warn('PlantUML: DOT not found, likely fell back to Smetana');
+                }
+                
+                // Store verification result for status bar
+                if (actualEngineUsed !== 'unknown') {
+                    const isMatching = actualEngineUsed === configuredEngine;
+                    console.log(`PlantUML rendering: configured=${configuredEngine}, actual=${actualEngineUsed}, matching=${isMatching}`);
+                    
+                    // Store the result globally for status bar access
+                    (global as any).plantUMLLastVerification = {
+                        actualEngine: actualEngineUsed,
+                        configuredEngine,
+                        isMatching,
+                        timestamp: Date.now()
+                    };
+                }
+                
                 resolve(out);
             } else {
-                reject({ error: Buffer.concat(stderr).toString() });
+                console.error(`PlantUML process exited with code ${code}`);
+                console.error('PlantUML stderr:', stderrOutput);
+                
+                // Even on failure, try to extract engine information
+                if (stderrOutput.includes('Cannot find Graphviz') || stderrOutput.includes('dot command not found')) {
+                    console.warn('PlantUML: DOT configuration issue detected');
+                    (global as any).plantUMLLastVerification = {
+                        actualEngine: 'unknown', // Could be smetana fallback
+                        configuredEngine: vscode.workspace.getConfiguration('plantuml').get<string>('layoutEngine', 'dot'),
+                        isMatching: false,
+                        timestamp: Date.now()
+                    };
+                }
+                
+                reject({ error: stderrOutput || `Process exited with code ${code}` });
             }
         });
     });
@@ -90,6 +167,12 @@ class LocalRender {
     }
 
     private createTask(diagram: any, taskType: string, savePath?: string, format?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
+        // Validate configuration first
+        const configError = validatePlantUMLConfig();
+        if (configError) {
+            return { processes: [], promise: Promise.reject(new Error(configError)) };
+        }
+        
         const jarPath = this.getJarPath();
         let javaExists = true;
         try {
@@ -98,7 +181,7 @@ class LocalRender {
             javaExists = false;
         }
         if (!javaExists) {
-            return { processes: [], promise: Promise.reject(new Error('Java executable not found in PATH.')) };
+            return { processes: [], promise: Promise.reject(new Error('Java executable not found in PATH. Please install Java 8 or higher.')) };
         }
 
         // Check if JAR exists, if not attempt automatic download
@@ -132,13 +215,19 @@ class LocalRender {
                 let params = [
                     '-Djava.awt.headless=true',
                     '-jar',
-                    jarPath,
+                    jarPath
+                ];
+
+                // Add layout engine args after JAR but before other options
+                params.push(...config.commandArgs(diagram.parentUri));
+
+                params.push(
                     "-pipeimageindex",
                     `${index}`,
                     '-charset',
                     'utf-8',
                     taskType
-                ];
+                );
 
                 if (format) { params.push("-t" + format); }
                 if (diagram.path) { params.push("-filename", path.basename(diagram.path)); }
@@ -157,8 +246,10 @@ class LocalRender {
                 }
 
                 params.unshift('-Dplantuml.include.path=' + includePath);
-                params.unshift(...config.commandArgs(diagram.parentUri));
                 params.push(...config.jarArgs(diagram.parentUri));
+
+                console.log('PlantUML execution command:', config.java, params.join(' '));
+                console.log('PlantUML diagram content preview:', diagram.content.substring(0, 100) + '...');
 
                 let proc = childProcess.spawn(config.java, params);
                 processes.push(proc);
@@ -310,3 +401,27 @@ function getWebviewContent(plantUMLText: string): string {
 }
 
 export { localRender };
+
+// Configuration validation helper
+function validatePlantUMLConfig(): string | null {
+    const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
+    const layoutEngine = workspaceConfig.get<string>('layoutEngine', 'dot');
+    const dotPath = workspaceConfig.get<string>('dotPath');
+    
+    console.log(`PlantUML Configuration - Layout Engine: ${layoutEngine}, DOT Path: ${dotPath || 'auto-detect'}`);
+    
+    if (layoutEngine === 'smetana') {
+        console.log('✅ Using Smetana layout engine - no external dependencies required');
+        return null; // No validation needed for Smetana
+    }
+    
+    if (layoutEngine === 'dot') {
+        if (dotPath && !fs.existsSync(dotPath)) {
+            return `DOT executable not found at specified path: ${dotPath}`;
+        }
+        console.log('✅ Using DOT layout engine');
+        return null;
+    }
+    
+    return `Unknown layout engine: ${layoutEngine}`;
+}
