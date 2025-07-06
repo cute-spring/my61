@@ -69,10 +69,6 @@
         "title": "Export Usage Analytics Data"
       },
       {
-        "command": "copilotTools.resetAnalytics",
-        "title": "Reset Usage Analytics"
-      },
-      {
         "command": "copilotTools.syncAnalytics",
         "title": "Sync Analytics with Server"
       },

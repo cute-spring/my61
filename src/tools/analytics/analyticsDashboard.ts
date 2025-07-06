@@ -56,9 +56,6 @@ export class AnalyticsDashboard {
                     case 'export':
                         this.exportData();
                         return;
-                    case 'reset':
-                        this.resetData();
-                        return;
                     case 'refresh':
                         this.updateContent();
                         return;
@@ -126,12 +123,17 @@ export class AnalyticsDashboard {
             };
         });
 
-        const timelineData = daysData.map(d => 
-            `<div class="timeline-day">
-                <div class="timeline-bar" style="height: ${Math.max(d.count * 5, 2)}px" title="${d.count} uses"></div>
+        // Calculate max height for proper scaling (timeline container is 100px, leave 20px for label)
+        const maxBarHeight = 80;
+        const maxCount = Math.max(...daysData.map(d => d.count), 1);
+        
+        const timelineData = daysData.map(d => {
+            const height = d.count === 0 ? 2 : Math.max((d.count / maxCount) * maxBarHeight, 2);
+            return `<div class="timeline-day">
+                <div class="timeline-bar" style="height: ${height}px" title="${d.count} uses"></div>
                 <span class="timeline-label">${d.day}</span>
-            </div>`
-        ).join('');
+            </div>`;
+        }).join('');
 
         return `<!DOCTYPE html>
         <html lang="en">
@@ -569,7 +571,6 @@ export class AnalyticsDashboard {
                 <div class="buttons">
                     <button class="button" onclick="refresh()">🔄 Refresh</button>
                     <button class="button secondary" onclick="exportData()">📤 Export Data</button>
-                    <button class="button secondary" onclick="resetData()">🗑️ Reset Data</button>
                 </div>
             </div>
             
@@ -582,26 +583,6 @@ export class AnalyticsDashboard {
                 
                 function exportData() {
                     vscode.postMessage({ command: 'export' });
-                }
-                
-                function resetData() {
-                    console.log('Reset button clicked');
-                    if (confirm('Are you sure you want to reset all analytics data? This cannot be undone.')) {
-                        console.log('Reset confirmed, sending message');
-                        
-                        // Add visual feedback immediately
-                        const button = event.target;
-                        const originalText = button.textContent;
-                        button.textContent = '🔄 Resetting...';
-                        button.disabled = true;
-                        
-                        // Store button reference for later restoration
-                        window.resetButton = button;
-                        window.resetButtonOriginalText = originalText;
-                        
-                        // Send reset command
-                        vscode.postMessage({ command: 'reset' });
-                    }
                 }
                 
                 function syncNow() {
@@ -620,27 +601,7 @@ export class AnalyticsDashboard {
                     const message = event.data;
                     console.log('Webview received message:', message);
                     
-                    switch (message.command) {
-                        case 'resetComplete':
-                            console.log('Reset completion message received:', message);
-                            
-                            // Restore button state
-                            if (window.resetButton) {
-                                window.resetButton.textContent = window.resetButtonOriginalText || '🗑️ Reset Data';
-                                window.resetButton.disabled = false;
-                            }
-                            
-                            if (message.success) {
-                                console.log('Reset successful, requesting fresh content');
-                                // Small delay before refresh to ensure backend state is updated
-                                setTimeout(() => {
-                                    vscode.postMessage({ command: 'refresh' });
-                                }, 100);
-                            } else {
-                                console.warn('Reset failed:', message.error);
-                            }
-                            break;
-                    }
+                    // No message handling needed currently
                 });
             </script>
         </body>
@@ -666,60 +627,6 @@ export class AnalyticsDashboard {
         } catch (error) {
             console.error('Error exporting analytics data:', error);
             vscode.window.showErrorMessage('Failed to export analytics data');
-        }
-    }
-
-    private async resetData(): Promise<void> {
-        try {
-            console.log('Dashboard: Starting reset process');
-            
-            // Get analytics instance
-            const analytics = UsageAnalytics.getInstance();
-            
-            // Reset the data and wait for completion
-            await analytics.resetStats();
-            console.log('Dashboard: Reset completed, verifying...');
-            
-            // Verify the reset worked
-            const verification = analytics.verifyReset();
-            console.log('Dashboard: Reset verification:', verification);
-            
-            if (!verification.isReset) {
-                console.warn('Dashboard: Reset may not have completed properly:', verification.details);
-                vscode.window.showWarningMessage('Reset completed but some data may still be present. Please refresh the dashboard.');
-            } else {
-                console.log('Dashboard: Reset verified successfully');
-            }
-            
-            // Send completion message to webview first
-            if (this.panel) {
-                this.panel.webview.postMessage({ 
-                    command: 'resetComplete', 
-                    success: verification.isReset 
-                });
-            }
-            
-            // Force recreate the webview to ensure absolutely fresh content
-            console.log('Dashboard: Recreating webview for fresh content');
-            setTimeout(() => {
-                this.recreateWebview();
-            }, 500);
-            
-            // Show success message
-            vscode.window.showInformationMessage('Analytics data has been reset');
-            
-        } catch (error) {
-            console.error('Dashboard: Error resetting analytics data:', error);
-            vscode.window.showErrorMessage('Failed to reset analytics data');
-            
-            // Send error message to webview
-            if (this.panel) {
-                this.panel.webview.postMessage({ 
-                    command: 'resetComplete', 
-                    success: false,
-                    error: error instanceof Error ? error.message : String(error)
-                });
-            }
         }
     }
 

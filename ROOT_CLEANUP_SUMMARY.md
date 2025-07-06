@@ -8,39 +8,40 @@
 - `nondevtaskkiller-0.0.8.vsix`
 
 ### Debug and Test Scripts
-- `debug-analytics-data.js`
-- `debug-analytics-events.sh`
-- `debug-reset-button.sh`
-- `test-analytics-system.sh`
-- `test-dashboard-reset.sh`
-- `test-dot-autodetection.sh`
-- `test-layout-engine-detection.sh`
-- `test-plantuml-download.bat`
-- `test-plantuml-download.ps1`
-- `test-plantuml-download.sh`
-- `test-reset-functionality.sh`
-- `test-zoom-controls.html`
+- `debug-analytics-data.js` → **Moved to `scripts/debug/`**
+- `debug-analytics-events.sh` → **Moved to `scripts/debug/`**
+- `debug-reset-button.sh` → **Moved to `scripts/debug/`**
+- `test-analytics-system.sh` → **Moved to `scripts/test/`**
+- `test-dashboard-reset.sh` → **Moved to `scripts/test/`**
+- `test-dot-autodetection.sh` → **Moved to `scripts/test/`**
+- `test-layout-engine-detection.sh` → **Moved to `scripts/test/`**
+- `test-plantuml-download.bat` → **Moved to `scripts/test/`**
+- `test-plantuml-download.ps1` → **Moved to `scripts/test/`**
+- `test-plantuml-download.sh` → **Moved to `scripts/test/`**
+- `test-reset-functionality.sh` → **Moved to `scripts/test/`**
+- `test-smetana-fix.sh` → **Moved to `scripts/test/`**
+- `test-zoom-controls.html` → **Moved to `scripts/test/`**
 
-### Development Documentation
-- `ANALYTICS_BEHAVIOR_EXPLAINED.md`
-- `ANALYTICS_IMPLEMENTATION_COMPLETE.md`
-- `ANALYTICS_SERVER_SYNC_COMPLETE.md`
-- `ANALYTICS_SYSTEM.md`
-- `ANALYTICS_USAGE_EXPLANATION.md`
-- `ANNOTATION_REMOVAL.md`
+### Analytics Documentation
+- `ANALYTICS_BEHAVIOR_EXPLAINED.md` → **Moved to `docs/analytics/`**
+- `ANALYTICS_IMPLEMENTATION_COMPLETE.md` → **Moved to `docs/analytics/`**
+- `ANALYTICS_SERVER_SYNC_COMPLETE.md` → **Moved to `docs/analytics/`**
+- `ANALYTICS_SYSTEM.md` → **Moved to `docs/analytics/`**
+- `ANALYTICS_USAGE_EXPLANATION.md` → **Moved to `docs/analytics/`**
+
+### Development Documentation (Removed)
 - `COPILOT_ID_INTEGRATION.md`
-- `DASHBOARD_RESET_FIX.md`
-- `DOT_AUTODETECTION_FEATURE.md`
-- `ENHANCED_LAYOUT_INDICATOR.md`
-- `ENHANCED_STATUS_VISIBILITY.md`
+- `DASHBOARD_RESET_FIX.md` (empty file)
+- `DOT_AUTODETECTION_FEATURE.md` (empty file)
+- `ENHANCED_LAYOUT_INDICATOR.md` (empty file)
+- `ENHANCED_STATUS_VISIBILITY.md` (empty file)
 - `FUNCTION_LEVEL_ANALYTICS.md`
-- `LAYOUT_ENGINE_INDICATOR_COMPLETE.md`
-- `PLANTUML_SETUP.md`
-- `REFACTORING_COMPLETE.md`
-- `REFACTORING_FINAL.md`
-- `REFACTORING_PHASE1_COMPLETE.md`
+- `LAYOUT_ENGINE_INDICATOR_COMPLETE.md` (empty file)
+- `REFACTORING_COMPLETE.md` (empty file)
+- `REFACTORING_FINAL.md` (empty file)
+- `REFACTORING_PHASE1_COMPLETE.md` (empty file)
 - `RESET_BUTTON_TEST_GUIDE.md`
-- `SMETANA_FIX_COMPLETE.md`
+- `SMETANA_FIX_COMPLETE.md` (empty file)
 
 ### Template and Configuration Files
 - `vsc-extension-quickstart.md` (VS Code extension template)
@@ -63,6 +64,12 @@
 - `README.md` - Project documentation
 - `CHANGELOG.md` - Version history
 - `LICENSE` - License information
+- `PLANTUML_SETUP.md` - PlantUML setup instructions
+
+### Development Summary Files (Still in Root)
+- `ANNOTATION_REMOVAL.md` - Documents annotation feature removal
+- `MAIN_FEATURES_HIGHLIGHTING.md` - Documents main features highlighting changes
+- `ROOT_CLEANUP_SUMMARY.md` - This cleanup summary document
 
 ### Assets
 - `icon.png` - Extension icon
@@ -95,6 +102,29 @@
 
 ### .gitignore
 Added `.venv/` to prevent future Python virtual environment creation.
+
+## New Organized Structure
+
+### Created Directories
+- `docs/analytics/` - Analytics-related documentation
+- `scripts/test/` - Testing scripts for various features
+- `scripts/debug/` - Debug and troubleshooting scripts
+- `scripts/README.md` - Documentation for all scripts
+
+### Files Moved to Better Locations
+- **Analytics docs**: All `ANALYTICS_*.md` files → `docs/analytics/`
+- **Test scripts**: All `test-*.sh/.ps1/.bat` files → `scripts/test/`
+- **Debug scripts**: All `debug-*.sh/.js` files → `scripts/debug/`
+
+## Current Root Directory Status
+
+### Markdown Files Remaining
+- `README.md` ✅ (Essential - main documentation)
+- `CHANGELOG.md` ✅ (Essential - version history)
+- `PLANTUML_SETUP.md` ✅ (Essential - user setup guide)
+- `ANNOTATION_REMOVAL.md` ⚠️ (Summary document - could be moved)
+- `MAIN_FEATURES_HIGHLIGHTING.md` ⚠️ (Summary document - could be moved)
+- `ROOT_CLEANUP_SUMMARY.md` ⚠️ (This document - could be moved)
 
 ## Result
 The root directory is now clean and organized with only essential files needed for:

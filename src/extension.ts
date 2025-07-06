@@ -115,7 +115,6 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('copilotTools.testDotDetection', () => testDotDetection()),
     vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context)),
     vscode.commands.registerCommand('copilotTools.exportAnalytics', () => exportAnalytics()),
-    vscode.commands.registerCommand('copilotTools.resetAnalytics', () => resetAnalytics()),
     vscode.commands.registerCommand('copilotTools.syncAnalytics', () => syncAnalytics())
   );
 
@@ -638,6 +637,16 @@ class PlantUMLStatusBarManager {
 let plantUMLStatusBar: PlantUMLStatusBarManager | undefined;
 
 export function deactivate() {
+  // Flush any pending analytics data before deactivation
+  try {
+    const analytics = UsageAnalytics.getInstance();
+    analytics.forceSyncPending().catch(error => {
+      console.warn('Failed to flush pending analytics on deactivation:', error);
+    });
+  } catch (error) {
+    // Analytics might not be initialized, ignore
+  }
+
   if (toolManager) {
     toolManager.dispose();
   }
@@ -789,29 +798,6 @@ async function exportAnalytics(): Promise<void> {
   } catch (error) {
     console.error('Error exporting analytics:', error);
     vscode.window.showErrorMessage('Failed to export analytics data');
-  }
-}
-
-/**
- * Reset analytics data
- */
-async function resetAnalytics(): Promise<void> {
-  const confirmed = await vscode.window.showWarningMessage(
-    'Are you sure you want to reset all analytics data? This cannot be undone.',
-    { modal: true },
-    'Reset',
-    'Cancel'
-  );
-  
-  if (confirmed === 'Reset') {
-    try {
-      const analytics = UsageAnalytics.getInstance();
-      await analytics.resetStats();
-      vscode.window.showInformationMessage('Analytics data has been reset');
-    } catch (error) {
-      console.error('Error resetting analytics:', error);
-      vscode.window.showErrorMessage('Failed to reset analytics data');
-    }
   }
 }
 

@@ -11,6 +11,7 @@ import { UMLRenderer } from './uml/renderer';
 import { WebviewHtmlGenerator } from './ui/webviewHtmlGenerator';
 import { InputValidator, ErrorHandler, debounce } from './utils/helpers';
 import { DiagramType, WebviewMessage } from './uml/types';
+import { trackUsage } from '../analytics';
 
 /**
  * Main activation function for UML Chat Panel
@@ -27,6 +28,9 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
  * Create and manage the UML Chat Panel
  */
 async function createUMLChatPanel(context: vscode.ExtensionContext) {
+    // Track usage when panel is opened
+    trackUsage('uml.chatPanel', 'open');
+    
     // Initialize components
     const generator = new UMLGenerator();
     const chatManager = new ChatManager();
@@ -87,22 +91,27 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
                     break;
 
                 case 'exportSVG':
+                    trackUsage('uml.chatPanel', 'exportSVG');
                     await handleExportSVG(message);
                     break;
 
                 case 'clearChat':
+                    trackUsage('uml.chatPanel', 'clearChat');
                     handleClearChat(chatManager, debouncedUpdateChat, debouncedUpdatePreview);
                     break;
 
                 case 'exportChat':
+                    trackUsage('uml.chatPanel', 'exportChat');
                     await handleExportChat(chatManager);
                     break;
 
                 case 'importChat':
+                    trackUsage('uml.chatPanel', 'importChat');
                     await handleImportChat(chatManager, debouncedUpdateChat, debouncedUpdatePreview);
                     break;
 
                 case 'editAndResendUserMsg':
+                    trackUsage('uml.chatPanel', 'editAndResend');
                     await handleEditAndResend(message, generator, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
                     break;
 
@@ -141,6 +150,9 @@ async function handleSendRequirement(
     updatePreview: () => void
 ) {
     const { text, diagramType } = message;
+    
+    // Track message sending usage
+    trackUsage('uml.chatPanel', 'sendMessage', { diagramType });
     
     // Validate input
     const validation = InputValidator.validateRequirement(text);

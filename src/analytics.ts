@@ -3,6 +3,12 @@ import * as vscode from 'vscode';
 /**
  * Usage Analytics System
  * Tracks user interactions with extension features for insights and improvements
+ * 
+ * Performance Optimizations:
+ * - Backend sync uses batching and throttling to avoid performance impact
+ * - Sync operations are async and non-blocking
+ * - Local tracking is immediate, backend sync is delayed/batched
+ * - Maximum batch size and time delay configurable
  */
 
 export interface UsageMetrics {
@@ -19,6 +25,10 @@ export class UsageAnalytics {
     private context: vscode.ExtensionContext;
     private sessionId: string;
     private isEnabled: boolean = true;
+    private pendingSyncQueue: Array<{ featureName: string; functionName?: string; timestamp: number }> = [];
+    private syncTimeout: NodeJS.Timeout | undefined;
+    private readonly SYNC_DELAY_MS = 5000; // 5 seconds delay for batching
+    private readonly MAX_BATCH_SIZE = 10; // Max items in a batch
 
     private constructor(context: vscode.ExtensionContext) {
         this.context = context;
@@ -93,6 +103,9 @@ export class UsageAnalytics {
             if (functionName) {
                 this.incrementFunctionCounter(featureName, functionName);
             }
+
+            // Queue for async backend sync (batched and throttled)
+            this.queueForBackendSync(featureName, functionName);
 
         } catch (error) {
             console.error('Error tracking feature usage:', error);
@@ -580,6 +593,125 @@ export class UsageAnalytics {
         }
     }
 
+    /**
+     * Queue usage data for async backend sync with batching and throttling
+     */
+    private queueForBackendSync(featureName: string, functionName?: string): void {
+        try {
+            // Add to pending queue
+            this.pendingSyncQueue.push({
+                featureName,
+                functionName,
+                timestamp: Date.now()
+            });
+
+            // If we hit the max batch size, flush immediately
+            if (this.pendingSyncQueue.length >= this.MAX_BATCH_SIZE) {
+                this.flushPendingSync();
+                return;
+            }
+
+            // Clear existing timeout and set new one for batching
+            if (this.syncTimeout) {
+                clearTimeout(this.syncTimeout);
+            }
+
+            this.syncTimeout = setTimeout(() => {
+                this.flushPendingSync();
+            }, this.SYNC_DELAY_MS);
+
+        } catch (error) {
+            console.error('Error queuing backend sync:', error);
+        }
+    }
+
+    /**
+     * Flush pending sync queue to backend (async, non-blocking)
+     */
+    private async flushPendingSync(): Promise<void> {
+        if (this.pendingSyncQueue.length === 0) {
+            return;
+        }
+
+        // Clear timeout
+        if (this.syncTimeout) {
+            clearTimeout(this.syncTimeout);
+            this.syncTimeout = undefined;
+        }
+
+        // Copy and clear the queue
+        const batchToSync = [...this.pendingSyncQueue];
+        this.pendingSyncQueue = [];
+
+        // Process batch asynchronously without blocking
+        setImmediate(async () => {
+            try {
+                const userId = await this.getUserId();
+                
+                // Group by feature+function for deduplication
+                const syncMap = new Map<string, number>();
+                
+                for (const item of batchToSync) {
+                    const key = item.functionName ? `${item.featureName}.${item.functionName}` : item.featureName;
+                    syncMap.set(key, (syncMap.get(key) || 0) + 1);
+                }
+
+                // Send batched calls to backend
+                const syncPromises = Array.from(syncMap.entries()).map(async ([funcName, count]) => {
+                    for (let i = 0; i < count; i++) {
+                        try {
+                            await countCall(funcName, userId);
+                        } catch (error) {
+                            console.warn(`Failed to sync ${funcName} to backend:`, error);
+                        }
+                    }
+                });
+
+                // Execute all syncs in parallel (fire and forget)
+                Promise.allSettled(syncPromises).then(results => {
+                    const failures = results.filter(r => r.status === 'rejected');
+                    if (failures.length > 0) {
+                        console.warn(`${failures.length} backend sync operations failed out of ${results.length}`);
+                    }
+                }).catch(error => {
+                    console.error('Error in batch sync completion:', error);
+                });
+
+            } catch (error) {
+                console.error('Error in flushPendingSync:', error);
+            }
+        });
+    }
+
+    /**
+     * Force immediate sync of all pending data (e.g., on extension deactivation)
+     */
+    public async forceSyncPending(): Promise<void> {
+        return this.flushPendingSync();
+    }
+
+    /**
+     * Sync usage data to backend API
+     * @deprecated Use queueForBackendSync instead for better performance
+     * @param featureName The feature name
+     * @param functionName Optional function name
+     */
+    private async syncToBackend(featureName: string, functionName?: string): Promise<void> {
+        try {
+            // Get user ID for backend tracking
+            const userId = await this.getUserId();
+            
+            // Construct function name for backend
+            const funcName = functionName ? `${featureName}.${functionName}` : featureName;
+            
+            // Call the backend API (placeholder)
+            await countCall(funcName, userId);
+        } catch (error) {
+            console.error('Error syncing to backend:', error);
+            // Don't throw - backend sync failure shouldn't break local tracking
+        }
+    }
+
     private generateSessionId(): string {
         return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
@@ -621,4 +753,43 @@ export function trackUsageSafe(featureName: string, functionNameOrMetadata?: str
     } catch (error) {
         // Completely silent - no logging to avoid noise
     }
+}
+
+/**
+ * Call backend API to sync function usage count
+ * This is a placeholder function for integrating with your backend system
+ * @param funcName The name of the function being called
+ * @param userId The user identifier
+ */
+export async function countCall(funcName: string, userId: string): Promise<void> {
+    // TODO: Implement actual backend API call
+    // Example implementation would make an HTTP request to your backend:
+    /*
+    try {
+        const response = await fetch('https://your-backend-api.com/analytics/count', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiToken}`
+            },
+            body: JSON.stringify({
+                functionName: funcName,
+                userId: userId,
+                timestamp: Date.now()
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Backend count updated:', result);
+    } catch (error) {
+        console.error('Failed to sync count to backend:', error);
+    }
+    */
+    
+    // Placeholder: Log the call for now
+    console.log(`📊 Backend API call placeholder - Function: ${funcName}, User: ${userId}`);
 }
