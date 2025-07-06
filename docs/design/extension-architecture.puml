@@ -1,0 +1,271 @@
+@startuml Extension Architecture
+!theme blueprint
+title VS Code Extension: Copilot-Powered Productivity Tools Architecture
+
+package "VS Code Extension Context" {
+    class ExtensionMain {
+        +activate(context: ExtensionContext)
+        +deactivate()
+        -toolManager: ToolManager
+        -plantumlJarPath: string
+        -plantUMLStatusBar: PlantUMLStatusBarManager
+    }
+}
+
+package "Core Framework" {
+    interface ICopilotTool {
+        +command: string
+        +title: string
+        +isEnabled(settings): boolean
+        +handleInput(editor, selection, settings): Promise<void>
+        +dispose?(): void
+        +getSettingsSchema(): object
+    }
+    
+    class ToolManager {
+        -tools: ICopilotTool[]
+        -context: ExtensionContext
+        +registerTool(tool: ICopilotTool)
+        +unregisterTool(command: string)
+        +getTools(): ICopilotTool[]
+        +dispose()
+    }
+    
+    abstract class BaseTool {
+        #panel: WebviewPanel
+        +command: string
+        +title: string
+        +handleInput(editor, selection, settings)
+        #buildPrompt(...args): string
+        #parseResponse(response): any
+        #getWebviewHtml(...args): string
+        #handleWebviewMessage(panel, editor, selection, settings)
+        #getFeatureName(): string
+    }
+    
+    class LLMService {
+        +getLLMResponse(prompt: string): Promise<string>
+        -selectCopilotModel(): Promise<Model>
+        -sendChatRequest(messages, model): Promise<string>
+    }
+}
+
+package "5 Core Productivity Tools" {
+    class EmailRefineTool {
+        +command: "copilotTools.refineEmail"
+        +title: "Refine Email (with Subject Suggestions)"
+        +buildPrompt(text, settings): string
+        +parseResponse(response): EmailRefinement
+        +getWebviewHtml(refinement): string
+        +handleWebviewMessage(panel, editor, selection, settings)
+    }
+    
+    class TranslateTool {
+        +command: "copilotTools.translateText"
+        +title: "Translate Text (English <-> Chinese)"
+        +buildPrompt(text, settings): string
+        +parseResponse(response): Translation
+        +getWebviewHtml(translation): string
+        +handleWebviewMessage(panel, editor, selection, settings)
+    }
+    
+    class JiraRefineTool {
+        +command: "copilotTools.refineJira"
+        +title: "Refine Jira Issue Description"
+        +buildPrompt(text, settings): string
+        +parseResponse(response): JiraRefinement
+        +getWebviewHtml(refinement): string
+        +handleWebviewMessage(panel, editor, selection, settings)
+    }
+    
+    class PlantUMLPreviewTool {
+        +command: "copilotTools.previewAntUML"
+        +title: "Preview PlantUML Diagram"
+        +buildPrompt(text, settings): string
+        +parseResponse(response): PlantUMLCode
+        +getWebviewHtml(plantUML): string
+        +handleWebviewMessage(panel, editor, selection, settings)
+    }
+    
+    class UMLChatPanel {
+        +command: "extension.umlChatPanel"
+        +title: "UML Chat Designer (AI-powered)"
+        +createUMLChatPanel(context): void
+        +generatePlantUMLFromRequirement(requirement, history, diagramType): Promise<string>
+        +renderPlantUMLToSVG(plantUML): Promise<string>
+        +getWebviewContent(chatHistory, plantUML, loading, svgPanZoomUri): string
+    }
+}
+
+package "UML Chat Panel Components" {
+    class UMLGenerator {
+        +generateFromRequirement(requirement, history, diagramType): Promise<string>
+        +extractDiagramType(response): string
+        -selectCopilotModel(): Promise<Model>
+    }
+    
+    class ChatManager {
+        -chatHistory: ChatMessage[]
+        +addMessage(role, message): void
+        +getHistory(): ChatMessage[]
+        +clearHistory(): void
+        +exportSession(): SessionData
+        +importSession(data): void
+    }
+    
+    class UMLRenderer {
+        +renderToSVG(plantUML): Promise<string>
+        +localRender(plantUML, jarPath): Promise<string>
+        -executeJavaCommand(args): Promise<string>
+    }
+    
+    class WebviewHtmlGenerator {
+        +generateChatPanelHtml(chatHistory, plantUML, config): string
+        +generateZoomControls(): string
+        +generateLayoutIndicator(config): string
+        -getSvgPanZoomScript(): string
+    }
+}
+
+package "Analytics System" {
+    class UsageAnalytics {
+        -instance: UsageAnalytics
+        -context: ExtensionContext
+        -sessionId: string
+        -pendingSyncQueue: Array
+        +initialize(context): UsageAnalytics
+        +trackUsage(featureName, functionName?, metadata?): void
+        +getUsageStats(): object
+        +syncWithServer(): Promise<SyncResult>
+        +exportData(): Promise<void>
+        -startAutoSync(): void
+        -batchSync(): void
+    }
+    
+    class AnalyticsDashboard {
+        +showDashboard(context): void
+        +createDashboardWebview(context): WebviewPanel
+        +getAnalyticsData(analytics): DashboardData
+        +generateDashboardHTML(data): string
+        +handleDashboardMessage(panel, message): void
+    }
+}
+
+package "Configuration & UI" {
+    class SettingsWebview {
+        +openCopilotToolsSettingsWebview(context, tools): void
+        +createSettingsWebview(context): WebviewPanel
+        +generateSettingsHTML(tools): string
+        +handleSettingsMessage(panel, message): void
+    }
+    
+    class PlantUMLStatusBarManager {
+        -statusBarItem: StatusBarItem
+        +show(): void
+        +hide(): void
+        +updateStatus(config): void
+        +dispose(): void
+    }
+    
+    class WebviewHtmlGenerator {
+        +escapeHtml(text): string
+        +generateDiffView(original, refined): string
+        +generateSplitView(original, refined): string
+        +generateErrorView(error): string
+    }
+}
+
+package "Utilities & Helpers" {
+    class PlantUMLDownloader {
+        +getPlantumlJar(context): Promise<string>
+        +downloadPlantUMLJar(context): Promise<string>
+        +clearPlantumlJarCache(context): void
+        -checkJarExists(jarPath): boolean
+    }
+    
+    class DotPathDetector {
+        +detectDotPath(): Promise<string>
+        +testDotDetection(): void
+        +configurePlantUML(): void
+        +showPlantUMLStatus(): void
+    }
+    
+    class InputValidator {
+        +validateText(text): boolean
+        +validateSelection(selection): boolean
+        +sanitizeInput(input): string
+    }
+    
+    class ErrorHandler {
+        +handleError(error, context?): void
+        +showErrorMessage(message): void
+        +logError(error, metadata?): void
+    }
+}
+
+' Relationships
+ExtensionMain --> ToolManager : manages
+ToolManager --> ICopilotTool : registers
+ICopilotTool <|-- BaseTool
+BaseTool <|-- EmailRefineTool
+BaseTool <|-- TranslateTool
+BaseTool <|-- JiraRefineTool
+BaseTool <|-- PlantUMLPreviewTool
+
+ExtensionMain --> UMLChatPanel : activates
+UMLChatPanel --> UMLGenerator : uses
+UMLChatPanel --> ChatManager : uses
+UMLChatPanel --> UMLRenderer : uses
+UMLChatPanel --> WebviewHtmlGenerator : uses
+
+BaseTool --> LLMService : uses
+UMLGenerator --> LLMService : uses
+
+ExtensionMain --> UsageAnalytics : initializes
+BaseTool --> UsageAnalytics : tracks usage
+UMLChatPanel --> UsageAnalytics : tracks usage
+UsageAnalytics --> AnalyticsDashboard : provides data
+
+ExtensionMain --> SettingsWebview : opens
+ExtensionMain --> PlantUMLStatusBarManager : manages
+ExtensionMain --> PlantUMLDownloader : uses
+
+UMLRenderer --> PlantUMLDownloader : uses JAR
+PlantUMLStatusBarManager --> DotPathDetector : checks DOT path
+
+BaseTool --> WebviewHtmlGenerator : generates HTML
+BaseTool --> InputValidator : validates input
+BaseTool --> ErrorHandler : handles errors
+
+note right of ICopilotTool
+  Common interface for all tools
+  ensures consistent behavior
+  and easy registration
+end note
+
+note right of UsageAnalytics
+  Privacy-focused analytics
+  - Local storage only
+  - Batched sync for performance
+  - Optional server sync
+  - No sensitive data collection
+end note
+
+note right of UMLChatPanel
+  AI-powered UML designer with:
+  - Interactive chat interface
+  - Real-time diagram preview
+  - SVG pan & zoom
+  - Export capabilities
+  - Session save/load
+end note
+
+note left of BaseTool
+  Template pattern implementation:
+  - Common workflow logic
+  - Abstract methods for customization
+  - Webview management
+  - Analytics integration
+end note
+
+@enduml

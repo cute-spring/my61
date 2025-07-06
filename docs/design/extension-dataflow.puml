@@ -1,0 +1,142 @@
+@startuml Extension Data Flow and Interactions
+!theme blueprint
+title VS Code Extension: Data Flow and User Interactions
+
+actor User
+participant "VS Code Editor" as Editor
+participant "Extension Main" as Main
+participant "Tool Manager" as Manager
+participant "Base Tool" as Tool
+participant "LLM Service" as LLM
+participant "Webview Panel" as Webview
+participant "Analytics" as Analytics
+participant "UML Chat Panel" as ChatPanel
+
+== Extension Activation ==
+User -> Editor : Opens VS Code
+Editor -> Main : activate(context)
+Main -> Manager : new ToolManager(context)
+Main -> Manager : registerTool() for each tool
+Main -> Analytics : initialize(context)
+Main -> ChatPanel : activateUMLChatPanel(context)
+
+== Text Processing Tools Flow (Email/Translate/Jira/PlantUML Preview) ==
+User -> Editor : Selects text
+User -> Editor : Right-click → Choose tool or Ctrl+Alt+[Key]
+Editor -> Manager : executeCommand(toolCommand)
+Manager -> Tool : handleInput(editor, selection, settings)
+
+Tool -> Analytics : trackUsage(featureName, metadata)
+Tool -> Tool : validateInput(selectedText)
+Tool -> Tool : buildPrompt(text, settings)
+Tool -> LLM : getLLMResponse(prompt)
+
+LLM -> LLM : selectCopilotModel()
+LLM -> LLM : sendChatRequest(messages, model)
+LLM --> Tool : response text
+
+Tool -> Tool : parseResponse(response)
+Tool -> Webview : createWebviewPanel()
+Tool -> Webview : setHtml(getWebviewHtml(parsedData))
+Webview --> User : Shows diff/split view with results
+
+== Webview Interactions ==
+User -> Webview : Click "Apply" or "Copy"
+Webview -> Tool : postMessage({command: 'apply', text: newText})
+Tool -> Editor : edit.replace(selection, newText)
+Tool -> Analytics : trackUsage(featureName, 'apply')
+
+User -> Webview : Click "Export"
+Webview -> Tool : postMessage({command: 'export'})
+Tool -> Editor : saveDialog() and writeFile()
+
+== UML Chat Designer Flow ==
+User -> Editor : Command Palette → "UML Chat Designer"
+Editor -> ChatPanel : createUMLChatPanel(context)
+ChatPanel -> Analytics : trackUsage('uml.chatPanel', 'open')
+
+ChatPanel -> Webview : createWebviewPanel('umlChatPanel')
+ChatPanel -> Webview : setHtml(getWebviewContent())
+Webview --> User : Shows chat interface + diagram preview
+
+User -> Webview : Types requirement and clicks Send
+Webview -> ChatPanel : postMessage({command: 'sendMessage', text: requirement})
+ChatPanel -> Analytics : trackUsage('uml.chatPanel', 'generateDiagram')
+
+ChatPanel -> LLM : generatePlantUMLFromRequirement(requirement, history, diagramType)
+LLM --> ChatPanel : PlantUML code with explanation
+
+ChatPanel -> ChatPanel : renderPlantUMLToSVG(plantUMLCode)
+ChatPanel -> Webview : postMessage({command: 'updatePreview', svgContent: svg})
+Webview -> Webview : Update diagram display with pan/zoom
+
+User -> Webview : Right-click on diagram
+Webview -> Webview : Show context menu with "Copy as PNG"
+User -> Webview : Select "Copy as PNG"
+Webview -> Webview : Convert SVG to PNG and copy to clipboard
+
+== Analytics Dashboard Flow ==
+User -> Editor : Command Palette → "Show Usage Analytics Dashboard"
+Editor -> Analytics : showAnalytics(context)
+Analytics -> Analytics : getUsageStats()
+Analytics -> Analytics : getCombinedUsageStats()
+Analytics -> Webview : createWebviewPanel('analyticsDashboard')
+Webview --> User : Shows usage charts and statistics
+
+User -> Webview : Click "Export Data"
+Webview -> Analytics : postMessage({command: 'exportData'})
+Analytics -> Analytics : exportData()
+Analytics -> Editor : saveDialog() and writeFile()
+
+== Settings Configuration Flow ==
+User -> Editor : Command Palette → "Copilot Tools: Open Settings"
+Editor -> Main : openCopilotToolsSettingsWebview(context, tools)
+Main -> Webview : createWebviewPanel('copilotToolsSettings')
+Webview --> User : Shows configuration options
+
+User -> Webview : Modify settings and click Save
+Webview -> Main : postMessage({command: 'updateSettings', settings: newSettings})
+Main -> Editor : workspace.getConfiguration().update()
+
+== Error Handling ==
+Tool -> Tool : try/catch around operations
+Tool -> Analytics : trackUsage(featureName, 'error', {errorType})
+Tool -> User : showErrorMessage(friendlyMessage)
+Tool -> Tool : logError(error, metadata)
+
+== Performance Optimizations ==
+Analytics -> Analytics : Queue tracking events locally
+Analytics -> Analytics : Batch sync every 5 seconds (configurable)
+Analytics -> Analytics : startAutoSync() with throttling
+Analytics -> Analytics : forceSyncPending() on extension deactivation
+
+note over User, Analytics
+**Key Design Principles:**
+
+1. **Modular Architecture**: Each tool implements ICopilotTool interface
+2. **Template Pattern**: BaseTool provides common workflow logic
+3. **Privacy-First Analytics**: Local storage, optional sync, no sensitive data
+4. **Performance**: Async operations, batched analytics, debounced rendering
+5. **User Experience**: Consistent webview UI, keyboard shortcuts, error handling
+6. **Extensibility**: Easy to add new tools via interface implementation
+end note
+
+note over LLM
+**LLM Integration:**
+- Uses VS Code's built-in Copilot API
+- Supports GPT-4o model family
+- Structured prompts for consistent results
+- Error handling for API failures
+end note
+
+note over ChatPanel
+**UML Chat Features:**
+- Interactive chat with AI
+- Real-time diagram preview
+- SVG pan/zoom with svg-pan-zoom.js
+- Session save/load (.umlchat files)
+- Multiple diagram types support
+- Export capabilities (SVG, PNG)
+end note
+
+@enduml

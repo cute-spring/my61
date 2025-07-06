@@ -1,0 +1,260 @@
+@startuml Analytics System Design
+!theme blueprint
+title VS Code Extension: Analytics System Architecture
+
+package "Analytics Core" {
+    class UsageAnalytics {
+        - instance: UsageAnalytics {static}
+        - context: ExtensionContext
+        - sessionId: string
+        - isEnabled: boolean
+        - pendingSyncQueue: Array
+        - syncTimeout: NodeJS.Timeout
+        - SYNC_DELAY_MS: number = 5000
+        - MAX_BATCH_SIZE: number = 10
+        
+        + initialize(context): UsageAnalytics {static}
+        + getInstance(): UsageAnalytics {static}
+        + trackUsage(featureName, functionName?, metadata?)
+        + getUsageStats(): object
+        + getFunctionUsageStats(): object
+        + getDetailedMetrics(days): UsageMetrics[]
+        + getCombinedUsageStats(): CombinedStats
+        + syncWithServer(): Promise<SyncResult>
+        + exportData(): Promise<void>
+        + getSyncStatus(): SyncStatus
+        - startAutoSync(): void
+        - batchSync(): void
+        - scheduleSync(): void
+        - forceSyncPending(): void
+        - loadSettings(): void
+        - generateSessionId(): string
+        - ensureUserId(): Promise<string>
+    }
+    
+    interface UsageMetrics {
+        + featureName: string
+        + functionName?: string
+        + timestamp: number
+        + userId?: string
+        + sessionId: string
+        + metadata?: Record<string, any>
+    }
+    
+    interface SyncResult {
+        + success: boolean
+        + message: string
+        + syncedCount?: number
+        + errorCount?: number
+    }
+    
+    interface CombinedStats {
+        + totalUsage: number
+        + featuresUsed: number
+        + functionsUsed: number
+        + topFeatures: FeatureStats[]
+        + topFunctions: FunctionStats[]
+        + dailyUsage: DailyStats[]
+        + userType: string
+    }
+}
+
+package "Analytics Dashboard" {
+    class AnalyticsDashboard {
+        + showDashboard(context): void
+        + createDashboardWebview(context): WebviewPanel
+        + getAnalyticsData(analytics): DashboardData
+        + generateDashboardHTML(data): string
+        + handleDashboardMessage(panel, message): void
+        - generateChartData(stats): ChartData
+        - generateFeatureCards(features): string
+        - generateUsageChart(dailyUsage): string
+        - generateResetSection(): string
+    }
+    
+    interface DashboardData {
+        + totalUsage: number
+        + featuresData: FeatureData[]
+        + chartData: ChartData
+        + userInfo: UserInfo
+        + syncStatus: SyncStatus
+    }
+    
+    class DashboardWebview {
+        + panel: WebviewPanel
+        + context: ExtensionContext
+        + handleMessage(message): void
+        + updateData(data): void
+        + dispose(): void
+    }
+}
+
+package "Data Storage" {
+    class LocalStorage {
+        - context: ExtensionContext
+        + getUsageData(): object
+        + getFunctionData(): object
+        + getDetailedEvents(): UsageMetrics[]
+        + storeUsageEvent(event): void
+        + clearAllData(): void
+        + exportToFile(filePath): void
+        - getStorageKey(key): string
+    }
+    
+    class SessionManager {
+        - sessionId: string
+        - startTime: number
+        + generateSessionId(): string
+        + getSessionData(): SessionData
+        + isNewSession(): boolean
+    }
+}
+
+package "Privacy & Security" {
+    class PrivacyManager {
+        + isAnalyticsEnabled(): boolean
+        + getUserConsent(): boolean
+        + anonymizeData(data): object
+        + validateData(data): boolean
+        - sanitizeMetadata(metadata): object
+    }
+    
+    class UserIdentification {
+        + ensureUserId(context): Promise<string>
+        + getCopilotUserId(): Promise<string>
+        + generateAnonymousId(): string
+        + getUserType(userId): string
+        - checkGitHubSession(): Promise<Session>
+    }
+}
+
+package "Sync & Performance" {
+    class SyncManager {
+        - pendingQueue: Array
+        - syncInProgress: boolean
+        - maxRetries: number = 3
+        + queueForSync(event): void
+        + batchSync(): Promise<SyncResult>
+        + forceSyncPending(): Promise<SyncResult>
+        - createBatch(): Array
+        - executeBatch(batch): Promise<SyncResult>
+        - handleSyncError(error): void
+        - scheduleRetry(batch): void
+    }
+    
+    class PerformanceOptimizer {
+        + debounceTracking(fn, delay): Function
+        + throttleSync(fn, limit): Function
+        + optimizeBatchSize(queueSize): number
+        + isHighFrequencyPeriod(): boolean
+        - measureSyncPerformance(): object
+    }
+}
+
+package "External Integration" {
+    interface ServerAPI {
+        + syncEvents(events): Promise<SyncResult>
+        + getServerStatus(): Promise<ServerStatus>
+        + reportError(error): Promise<void>
+    }
+    
+    class CountCallService {
+        + countCall(funcName, userId): Promise<void>
+        + batchCountCall(events): Promise<SyncResult>
+        - buildRequestPayload(events): object
+        - handleResponse(response): SyncResult
+    }
+}
+
+' Relationships
+UsageAnalytics --> LocalStorage : stores data
+UsageAnalytics --> SessionManager : manages sessions
+UsageAnalytics --> PrivacyManager : checks privacy settings
+UsageAnalytics --> UserIdentification : gets user ID
+UsageAnalytics --> SyncManager : queues for sync
+UsageAnalytics --> PerformanceOptimizer : optimizes operations
+
+AnalyticsDashboard --> UsageAnalytics : gets data
+AnalyticsDashboard --> DashboardWebview : creates webview
+DashboardWebview --> UsageAnalytics : updates data
+
+SyncManager --> CountCallService : syncs with server
+CountCallService --> ServerAPI : implements interface
+
+LocalStorage --> PrivacyManager : validates before storage
+SyncManager --> PerformanceOptimizer : optimizes sync timing
+
+' Feature tracking entry points
+note as TrackingPoints
+**Feature Tracking Entry Points:**
+
+1. **Email Refine Tool**
+   - trackUsage('email', 'open', {hasSelection, selectionLength})
+   - trackUsage('email', 'generate')
+   - trackUsage('email', 'apply')
+   - trackUsage('email', 'export')
+
+2. **Translate Tool**
+   - trackUsage('translate', 'open', {hasSelection, direction})
+   - trackUsage('translate', 'generate')
+   - trackUsage('translate', 'apply')
+
+3. **Jira Refine Tool**
+   - trackUsage('jira', 'open', {hasSelection})
+   - trackUsage('jira', 'generate')
+   - trackUsage('jira', 'apply')
+
+4. **PlantUML Preview**
+   - trackUsage('plantuml', 'open', {hasSelection})
+   - trackUsage('plantuml', 'generate')
+   - trackUsage('plantuml', 'export')
+
+5. **UML Chat Designer**
+   - trackUsage('uml.chatPanel', 'open')
+   - trackUsage('uml.chatPanel', 'generateDiagram', {diagramType})
+   - trackUsage('uml.chatPanel', 'exportSVG')
+   - trackUsage('uml.chatPanel', 'saveSession')
+   - trackUsage('uml.chatPanel', 'loadSession')
+
+6. **Analytics System**
+   - trackUsage('analytics', 'showDashboard')
+   - trackUsage('analytics', 'exportData')
+   - trackUsage('analytics', 'sync')
+   - trackUsage('analytics', 'reset')
+end note
+
+note as PrivacyFeatures
+**Privacy & Security Features:**
+
+1. **Local-First Storage**
+   - All data stored in VS Code's ExtensionContext
+   - No automatic data transmission
+   - User controls all data export
+
+2. **User Identification**
+   - Preferred: GitHub Copilot account ID (consistent across devices)
+   - Fallback: Generated anonymous ID
+   - No personal information collected
+
+3. **Data Anonymization**
+   - No file paths or sensitive content stored
+   - Only feature usage patterns tracked
+   - Metadata is sanitized
+
+4. **User Control**
+   - Analytics can be disabled in settings
+   - Manual data export only
+   - Clear data reset functionality
+   - Transparent dashboard showing all collected data
+
+5. **Performance Optimization**
+   - Batched sync to minimize performance impact
+   - Async operations to avoid blocking UI
+   - Configurable sync intervals
+   - Automatic cleanup of old data
+end note
+
+TrackingPoints .. UsageAnalytics
+PrivacyFeatures .. PrivacyManager
+
+@enduml

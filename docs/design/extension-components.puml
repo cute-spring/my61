@@ -1,0 +1,217 @@
+@startuml
+!theme blueprint
+title VS Code Extension: Component Dependencies and Module Structure
+
+package "Extension Entry Point" <<folder>> {
+    [extension.ts] as ExtMain
+    note top of ExtMain
+        Main entry point:
+        - activate() & deactivate()
+        - Command registrations
+        - Tool manager initialization
+        - PlantUML setup
+    end note
+}
+
+package "Core Framework" <<folder>> {
+    [ICopilotTool Interface] as ITool
+    [ToolManager] as TManager
+    [BaseTool Abstract Class] as BTools
+    [LLM Service] as LLMs
+    
+    note top of ITool
+        Defines contract for all tools:
+        - command, title, isEnabled
+        - handleInput, dispose
+        - getSettingsSchema
+    end note
+}
+
+package "5 Core Tools" <<folder>> {
+    [EmailRefineTool] as EmailTool
+    [TranslateTool] as TransTool
+    [JiraRefineTool] as JiraTool
+    [PlantUMLPreviewTool] as UMLTool
+    [UMLChatPanel] as ChatTool
+    
+    note bottom of EmailTool
+        Features:
+        - Email refinement with subject suggestions
+        - Diff view for changes
+        - Professional tone adjustments
+    end note
+    
+    note bottom of TransTool
+        Features:
+        - English ↔ Chinese translation
+        - Simplified/Traditional Chinese support
+        - Context-aware translation
+    end note
+    
+    note bottom of JiraTool
+        Features:
+        - Jira issue description refinement
+        - Acceptance criteria suggestions
+        - Technical specification formatting
+    end note
+    
+    note bottom of UMLTool
+        Features:
+        - PlantUML code generation from text
+        - Real-time SVG preview
+        - Multiple diagram type support
+    end note
+    
+    note bottom of ChatTool
+        Features:
+        - AI-powered UML chat designer
+        - Interactive diagram creation
+        - Session management
+        - Export capabilities
+    end note
+}
+
+package "UML Chat Components" <<folder>> {
+    [UMLGenerator] as UMLGen
+    [ChatManager] as ChatMgr
+    [UMLRenderer] as UMLRend
+    [WebviewHtmlGenerator] as WebHTML
+    
+    package "UML Subfolder" <<folder>> {
+        [constants.ts] as UMLConst
+        [types.ts] as UMLTypes
+        [generator.ts] as UMLGenFile
+        [renderer.ts] as UMLRendFile
+    }
+}
+
+package "Analytics System" <<folder>> {
+    [UsageAnalytics] as Analytics
+    [AnalyticsDashboard] as Dashboard
+    
+    note right of Analytics
+        Features:
+        - Privacy-focused tracking
+        - Local storage with optional sync
+        - Batched performance optimization
+        - Function-level metrics
+        - User session management
+    end note
+}
+
+package "Configuration & UI" <<folder>> {
+    [SettingsWebview] as Settings
+    [PlantUMLStatusBarManager] as StatusBar
+    
+    package "UI Components" <<folder>> {
+        [webviewHtmlGenerator.ts] as WebGen
+        [escapeHtml.ts] as Escape
+        
+        package "CSS" <<folder>> {
+            [plantumlPreview.css] as PreviewCSS
+        }
+        
+        package "JS" <<folder>> {
+            [svg-pan-zoom.min.js] as SvgJS
+        }
+    }
+}
+
+package "Utilities" <<folder>> {
+    [PlantUMLDownloader] as Downloader
+    [DotPathDetector] as DotDetect
+    [InputValidator] as Validator
+    [ErrorHandler] as ErrorH
+    [helpers.ts] as Helpers
+}
+
+package "External Dependencies" <<cloud>> {
+    [VS Code API] as VSCode
+    [GitHub Copilot API] as Copilot
+    [PlantUML JAR] as PlantJAR
+    [Graphviz DOT] as GraphvizDOT
+    [Node.js fs/path] as NodeJS
+    [axios] as HTTP
+}
+
+' Main dependencies
+ExtMain --> TManager : creates & manages
+ExtMain --> Analytics : initializes
+ExtMain --> ChatTool : activates
+ExtMain --> StatusBar : shows status
+ExtMain --> Settings : opens on command
+
+' Tool Manager relationships
+TManager --> ITool : manages collection
+ITool <|.. BTools : implements
+BTools <|-- EmailTool : extends
+BTools <|-- TransTool : extends
+BTools <|-- JiraTool : extends
+BTools <|-- UMLTool : extends
+
+' Base Tool dependencies
+BTools --> LLMs : gets AI responses
+BTools --> Analytics : tracks usage
+BTools --> WebGen : generates HTML
+BTools --> Validator : validates input
+BTools --> ErrorH : handles errors
+
+' UML Chat Panel dependencies
+ChatTool --> UMLGen : generates PlantUML
+ChatTool --> ChatMgr : manages conversation
+ChatTool --> UMLRend : renders diagrams
+ChatTool --> WebHTML : generates webview
+ChatTool --> Analytics : tracks usage
+
+' UML component internal dependencies
+UMLGen --> UMLConst : uses constants
+UMLGen --> UMLTypes : uses type definitions
+UMLRend --> UMLRendFile : implementation
+UMLGen --> UMLGenFile : implementation
+
+' Analytics dependencies
+Analytics --> Dashboard : provides data
+Dashboard --> WebGen : generates dashboard HTML
+
+' Utility dependencies
+UMLRend --> Downloader : gets PlantUML JAR
+StatusBar --> DotDetect : detects DOT path
+WebGen --> Escape : sanitizes HTML
+WebHTML --> SvgJS : includes zoom library
+WebHTML --> PreviewCSS : styles webview
+
+' External API dependencies
+LLMs --> Copilot : uses Copilot API
+UMLRend --> PlantJAR : executes PlantUML
+UMLRend --> GraphvizDOT : optional for layout
+Downloader --> HTTP : downloads JAR
+ExtMain --> VSCode : uses VS Code APIs
+BTools --> VSCode : creates webviews
+Analytics --> NodeJS : file operations
+
+' Cross-cutting concerns
+ExtMain ..> VSCode : extension lifecycle
+TManager ..> VSCode : command registration
+BTools ..> VSCode : webview creation
+Analytics ..> VSCode : context storage
+Settings ..> VSCode : configuration
+
+' Configuration flow
+Settings --> VSCode : reads/writes config
+StatusBar --> VSCode : reads PlantUML config
+DotDetect --> VSCode : detects DOT path
+
+legend top
+    **Architecture Highlights:**
+    
+    **1. Modular Design**: Each tool is independent and implements common interface
+    **2. Separation of Concerns**: Clear separation between UI, logic, and data
+    **3. Template Pattern**: BaseTool provides common functionality
+    **4. Dependency Injection**: Tools receive dependencies through constructor/methods
+    **5. Single Responsibility**: Each component has one clear purpose
+    **6. Observer Pattern**: Analytics observes all tool interactions
+    **7. Strategy Pattern**: Different rendering strategies for different diagram types
+    **8. Factory Pattern**: Tool manager creates and manages tool instances
+end legend
+
+@enduml
