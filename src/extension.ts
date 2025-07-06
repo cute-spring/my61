@@ -3,10 +3,10 @@
 import * as vscode from 'vscode';
 import { openCopilotToolsSettingsWebview } from './tools/config/settingsWebview';
 import { EmailRefineTool, TranslateTool, JiraRefineTool, PlantUMLPreviewTool } from './tools';
-import { ANNOTATION_PROMPT } from './prompts';
-import { applyDecoration, clearDecorations } from './decorations';
 import { activateUMLChatPanel } from './tools/umlChatPanelRefactored';
 import { localRender, activate as activatePreview } from './tools/preview';
+import { UsageAnalytics, trackUsage } from './analytics';
+import { AnalyticsDashboard } from './tools/analytics/analyticsDashboard';
 import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios';
@@ -72,6 +72,10 @@ export class ToolManager {
 let toolManager: ToolManager;
 
 export async function activate(context: vscode.ExtensionContext) {
+  // Initialize usage analytics
+  UsageAnalytics.initialize(context);
+  trackUsage('extension', 'activate');
+
   toolManager = new ToolManager(context);
   const tools = [
     new EmailRefineTool(),
@@ -88,35 +92,6 @@ export async function activate(context: vscode.ExtensionContext) {
       openCopilotToolsSettingsWebview(context, tools);
     })
   );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('copilotTools.clearAnnotations', () => {
-      const editor = vscode.window.activeTextEditor;
-      if (editor) {
-        clearDecorations(editor);
-      }
-    })
-  );
-
-  const disposable = vscode.commands.registerTextEditorCommand('copilotTools.annotateCode', async (textEditor: vscode.TextEditor) => {
-    const settings = vscode.workspace.getConfiguration('copilotTools');
-    const annotationScope = settings.get('annotation.scope', 'visibleArea');
-    const codeWithLineNumbers = getCodeWithLineNumbers(textEditor, annotationScope);
-    if (!codeWithLineNumbers) {
-      vscode.window.showInformationMessage('No code to annotate.');
-      return;
-    }
-    const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
-    const messages = [
-      vscode.LanguageModelChatMessage.User(ANNOTATION_PROMPT),
-      vscode.LanguageModelChatMessage.User(codeWithLineNumbers),
-    ];
-    if (model) {
-      const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
-      await parseChatResponse(chatResponse, textEditor);
-    }
-  });
-  context.subscriptions.push(disposable);
 
   try {
     plantumlJarPath = await getPlantumlJar(context);
@@ -137,7 +112,18 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('copilotTools.clearPlantumlJarCache', () => clearPlantumlJarCache(context)),
     vscode.commands.registerCommand('copilotTools.configurePlantUML', () => configurePlantUML()),
     vscode.commands.registerCommand('copilotTools.showPlantUMLStatus', () => showPlantUMLStatus()),
-    vscode.commands.registerCommand('copilotTools.testDotDetection', () => testDotDetection())
+    vscode.commands.registerCommand('copilotTools.testDotDetection', () => testDotDetection()),
+    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context)),
+    vscode.commands.registerCommand('copilotTools.exportAnalytics', () => exportAnalytics()),
+    vscode.commands.registerCommand('copilotTools.resetAnalytics', () => resetAnalytics()),
+    vscode.commands.registerCommand('copilotTools.syncAnalytics', () => syncAnalytics())
+  );
+
+  // Debug command to show raw analytics data
+  context.subscriptions.push(
+    vscode.commands.registerCommand('copilotTools.debugAnalytics', () => {
+      debugAnalytics(context);
+    })
   );
 
   // Initialize PlantUML status bar manager
@@ -178,55 +164,6 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     })
   );
-}
-
-async function parseChatResponse(chatResponse: vscode.LanguageModelChatResponse, textEditor: vscode.TextEditor) {
-  let accumulatedResponse = "";
-  for await (const fragment of chatResponse.text) {
-    accumulatedResponse += fragment;
-    if (fragment.includes("}")) {
-      try {
-        const annotation = JSON.parse(accumulatedResponse);
-        applyDecoration(textEditor, annotation.line, annotation.suggestion);
-        accumulatedResponse = "";
-      } catch(e) {
-        // ignore parse errors
-        console.error("Error parsing chat response", e);
-      }
-    }
-  }
-}
-
-function getCodeWithLineNumbers(textEditor: vscode.TextEditor, scope: string): string | undefined {
-  let startLine: number;
-  let endLine: number;
-  const document = textEditor.document;
-
-  switch (scope) {
-    case 'selection':
-      if (textEditor.selection.isEmpty) {
-        return undefined;
-      }
-      startLine = textEditor.selection.start.line;
-      endLine = textEditor.selection.end.line;
-      break;
-    case 'visibleArea':
-      startLine = textEditor.visibleRanges[0].start.line;
-      endLine = textEditor.visibleRanges[0].end.line;
-      break;
-    case 'fullDocument':
-      startLine = 0;
-      endLine = document.lineCount - 1;
-      break;
-    default:
-      return undefined;
-  }
-
-  let code = '';
-  for (let i = startLine; i <= endLine; i++) {
-    code += `${i + 1}: ${document.lineAt(i).text} \n`;
-  }
-  return code;
 }
 
 async function getPlantumlJar(context: vscode.ExtensionContext): Promise<string | null> {
@@ -311,6 +248,8 @@ export async function clearPlantumlJarCache(context: vscode.ExtensionContext) {
 }
 
 export async function configurePlantUML() {
+  trackUsage('plantuml', 'configure');
+  
   const config = vscode.workspace.getConfiguration('plantuml');
   const currentLayoutEngine = config.get<string>('layoutEngine', 'dot');
   const currentDotPath = config.get<string>('dotPath') || '';
@@ -708,6 +647,8 @@ export function deactivate() {
 }
 
 export async function showPlantUMLStatus() {
+  trackUsage('plantuml', 'showStatus');
+  
   const config = vscode.workspace.getConfiguration('plantuml');
   const configuredEngine = config.get<string>('layoutEngine', 'dot');
   const dotPath = config.get<string>('dotPath');
@@ -759,6 +700,8 @@ export async function showPlantUMLStatus() {
 }
 
 export async function testDotDetection() {
+  trackUsage('plantuml', 'testDotDetection');
+  
   try {
     vscode.window.showInformationMessage('🔍 Testing DOT auto-detection...', { modal: false });
     
@@ -806,5 +749,182 @@ export async function testDotDetection() {
     
   } catch (error) {
     vscode.window.showErrorMessage(`DOT detection test failed: ${error}`);
+  }
+}
+
+/**
+ * Show analytics dashboard
+ */
+async function showAnalytics(context: vscode.ExtensionContext): Promise<void> {
+  trackUsage('analytics.dashboard.show');
+  try {
+    const dashboard = AnalyticsDashboard.getInstance(context);
+    await dashboard.show();
+  } catch (error) {
+    console.error('Error showing analytics dashboard:', error);
+    vscode.window.showErrorMessage('Failed to open analytics dashboard');
+  }
+}
+
+/**
+ * Export analytics data
+ */
+async function exportAnalytics(): Promise<void> {
+  trackUsage('analytics.export');
+  try {
+    const analytics = UsageAnalytics.getInstance();
+    const data = analytics.exportUsageData();
+    
+    const uri = await vscode.window.showSaveDialog({
+      defaultUri: vscode.Uri.file(`analytics-export-${new Date().toISOString().split('T')[0]}.json`),
+      filters: {
+        'JSON Files': ['json']
+      }
+    });
+    
+    if (uri) {
+      await vscode.workspace.fs.writeFile(uri, Buffer.from(data, 'utf8'));
+      vscode.window.showInformationMessage(`Analytics data exported to ${uri.fsPath}`);
+    }
+  } catch (error) {
+    console.error('Error exporting analytics:', error);
+    vscode.window.showErrorMessage('Failed to export analytics data');
+  }
+}
+
+/**
+ * Reset analytics data
+ */
+async function resetAnalytics(): Promise<void> {
+  const confirmed = await vscode.window.showWarningMessage(
+    'Are you sure you want to reset all analytics data? This cannot be undone.',
+    { modal: true },
+    'Reset',
+    'Cancel'
+  );
+  
+  if (confirmed === 'Reset') {
+    try {
+      const analytics = UsageAnalytics.getInstance();
+      await analytics.resetStats();
+      vscode.window.showInformationMessage('Analytics data has been reset');
+    } catch (error) {
+      console.error('Error resetting analytics:', error);
+      vscode.window.showErrorMessage('Failed to reset analytics data');
+    }
+  }
+}
+
+/**
+ * Sync analytics with server
+ */
+async function syncAnalytics(): Promise<void> {
+  trackUsage('analytics.sync.manual');
+  try {
+    const analytics = UsageAnalytics.getInstance();
+    const result = await analytics.syncWithServer();
+    
+    if (result.success) {
+      vscode.window.showInformationMessage(`Analytics sync successful: ${result.message}`);
+    } else {
+      vscode.window.showWarningMessage(`Analytics sync failed: ${result.message}`);
+    }
+  } catch (error) {
+    console.error('Error syncing analytics:', error);
+    vscode.window.showErrorMessage('Failed to sync analytics data');
+  }
+}
+
+/**
+ * Debug command to show raw analytics data
+ */
+async function debugAnalytics(context: vscode.ExtensionContext): Promise<void> {
+  try {
+    const analytics = UsageAnalytics.getInstance();
+    
+    // Get all stored data
+    const usageStats = analytics.getUsageStats();
+    const functionStats = analytics.getFunctionUsageStats();
+    const detailedMetrics = analytics.getDetailedMetrics(7); // Last 7 days
+    const combinedStats = analytics.getCombinedUsageStats();
+    const syncStatus = analytics.getSyncStatus();
+    
+    // Get user ID information
+    const storedUserId = context.globalState.get<string>('analyticsUserId', 'not-set');
+    const isCopilotId = storedUserId.startsWith('copilot_');
+    const isAnonymousId = storedUserId.startsWith('user_');
+    
+    // Check if GitHub session is available
+    let githubSessionStatus = 'Unknown';
+    try {
+      const session = await vscode.authentication.getSession('github', [], { silent: true });
+      if (session?.account?.id) {
+        githubSessionStatus = `Available (ID: ${session.account.id}, Label: ${session.account.label})`;
+      } else {
+        githubSessionStatus = 'Not signed in';
+      }
+    } catch (error) {
+      githubSessionStatus = 'Error checking session';
+    }
+    
+    // Create debug output
+    const recentEvents = detailedMetrics.map((event, i) => 
+      `${i + 1}. ${event.featureName}${event.functionName ? '.' + event.functionName : ''} at ${new Date(event.timestamp).toLocaleString()}`
+    ).join('\n');
+
+    const topFunctionsList = combinedStats.topFunctions.slice(0, 10).map((func, i) => 
+      `${i + 1}. ${func.feature}.${func.function}: ${func.count} uses`
+    ).join('\n');
+
+    const userIdExplanation = isCopilotId ? 
+      '✅ Using GitHub Copilot account ID for consistent user tracking across devices.' :
+      '⚠️ Using anonymous ID. Sign in to GitHub in VS Code for consistent tracking.';
+
+    const output = `=== ANALYTICS DEBUG DATA ===
+
+USER IDENTIFICATION:
+- Stored User ID: ${storedUserId}
+- Type: ${isCopilotId ? '✅ GitHub Copilot ID' : isAnonymousId ? '⚠️ Anonymous fallback ID' : '❓ Unknown type'}
+- GitHub Session: ${githubSessionStatus}
+
+FEATURE USAGE COUNTS:
+${JSON.stringify(usageStats, null, 2)}
+
+FUNCTION USAGE COUNTS:
+${JSON.stringify(functionStats, null, 2)}
+
+RECENT DETAILED EVENTS (Last 7 days): ${detailedMetrics.length} events
+${recentEvents}
+
+TOP FUNCTIONS:
+${topFunctionsList}
+
+SYNC STATUS:
+- Unsynced events: ${syncStatus.unsyncedCount}
+- Last sync attempt: ${syncStatus.lastSyncAttempt || 'Never'}
+
+EXPLANATION:
+- Total events: ${detailedMetrics.length}
+- Feature breakdown: ${Object.keys(usageStats).length} features
+- Function breakdown: ${Object.keys(functionStats).reduce((sum, feature) => sum + Object.keys(functionStats[feature] || {}).length, 0)} functions
+
+${userIdExplanation}
+
+Each interaction with the extension creates a separate event.
+In development mode, reloading the extension creates new sessions.
+Function-level tracking means multiple events per feature use.`;
+
+    // Show in new document
+    const doc = await vscode.workspace.openTextDocument({
+      content: output,
+      language: 'plaintext'
+    });
+    await vscode.window.showTextDocument(doc);
+    
+    trackUsage('analytics', 'debug');
+    
+  } catch (error) {
+    console.error('Error debugging analytics:', error);
+    vscode.window.showErrorMessage('Failed to debug analytics data');
   }
 }

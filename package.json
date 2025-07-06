@@ -1,8 +1,8 @@
 {
   "name": "nondevtaskkiller",
   "displayName": "Copilot-Powered Productivity",
-  "description": "VS Code extension with modular tools: Email Refine, Translate (English <-> Chinese), Jira Refine. Each tool is a class implementing a common interface, registered with a ToolManager. Commands: copilotTools.refineEmail, copilotTools.translateText, copilotTools.refineJira. UI: diff/split view, quick pick, popups. Settings page for API key, translation default, feature toggles. Error handling, privacy note, extensible for new tools.",
-  "version": "0.0.8",
+  "description": "VS Code extension with 5 core productivity tools: Email Refine, Translate (English ↔ Chinese), Jira Refine, PlantUML Preview, and AI-powered UML Designer. Features modular architecture, diff/split views, keyboard shortcuts, comprehensive settings, and privacy-focused analytics.",
+  "version": "0.0.9",
   "license": "MIT",
   "icon": "icon.png",
   "engines": {
@@ -37,10 +37,6 @@
         "title": "Refine Jira Issue Description"
       },
       {
-        "command": "copilotTools.annotateCode",
-        "title": "Copilot: Annotate Code for Improvements"
-      },
-      {
         "command": "copilotTools.openSettings",
         "title": "Copilot Tools: Open Settings"
       },
@@ -63,6 +59,26 @@
       {
         "command": "copilotTools.testDotDetection",
         "title": "Test DOT Auto-Detection"
+      },
+      {
+        "command": "copilotTools.showAnalytics",
+        "title": "Show Usage Analytics Dashboard"
+      },
+      {
+        "command": "copilotTools.exportAnalytics",
+        "title": "Export Usage Analytics Data"
+      },
+      {
+        "command": "copilotTools.resetAnalytics",
+        "title": "Reset Usage Analytics"
+      },
+      {
+        "command": "copilotTools.syncAnalytics",
+        "title": "Sync Analytics with Server"
+      },
+      {
+        "command": "copilotTools.debugAnalytics",
+        "title": "Debug Analytics Data (Development)"
       }
     ],
     "menus": {
@@ -77,10 +93,6 @@
         },
         {
           "command": "copilotTools.refineJira",
-          "when": "editorHasSelection"
-        },
-        {
-          "command": "copilotTools.annotateCode",
           "when": "editorHasSelection"
         },
         {
@@ -103,11 +115,6 @@
       {
         "command": "copilotTools.refineJira",
         "key": "ctrl+alt+j",
-        "when": "editorTextFocus && editorHasSelection"
-      },
-      {
-        "command": "copilotTools.annotateCode",
-        "key": "ctrl+alt+a",
         "when": "editorTextFocus && editorHasSelection"
       },
       {
@@ -151,16 +158,6 @@
           "default": true,
           "description": "Enable/disable Jira Refine tool"
         },
-        "copilotTools.annotation.scope": {
-          "type": "string",
-          "enum": [
-            "selection",
-            "visibleArea",
-            "fullDocument"
-          ],
-          "default": "visibleArea",
-          "description": "Determines the scope of code to be annotated."
-        },
         "plantuml.jarPath": {
           "type": [
             "string",
@@ -195,6 +192,16 @@
           "type": "boolean",
           "default": true,
           "description": "Show PlantUML layout engine status in the status bar for quick visibility and configuration."
+        },
+        "copilotTools.analytics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable usage analytics to track feature usage and improve the extension. Data is stored locally and never transmitted."
+        },
+        "copilotTools.analytics.detailedLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable detailed logging of analytics events to the console (for development and debugging)."
         }
       }
     }

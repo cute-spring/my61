@@ -3,6 +3,7 @@ import { BaseTool } from '../base/baseTool';
 import { escapeHtml } from '../ui/escapeHtml';
 import { getLLMResponse } from '../../llm';
 import { marked } from 'marked';
+import { trackUsage } from '../../analytics';
 
 interface ParsedEmail {
   refined: string;

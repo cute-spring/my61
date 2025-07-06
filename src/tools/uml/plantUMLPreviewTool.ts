@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { ICopilotTool } from '../../extension';
 import { localRender } from '../preview';
+import { trackUsage } from '../../analytics';
 
 export class PlantUMLPreviewTool implements ICopilotTool {
   command = 'copilotTools.previewAntUML';
@@ -19,6 +20,13 @@ export class PlantUMLPreviewTool implements ICopilotTool {
   }
 
   async handleInput(editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration): Promise<void> {
+    // Track PlantUML preview usage
+    trackUsage('plantuml', {
+      hasSelection: !selection.isEmpty,
+      selectionLength: editor.document.getText(selection).length,
+      fileExtension: editor.document.fileName.split('.').pop()
+    });
+    
     const document = editor.document;
     const plantUMLText = document.getText(selection.isEmpty ? undefined : selection);
     const diagram = {

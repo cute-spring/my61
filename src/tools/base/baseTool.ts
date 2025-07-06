@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ICopilotTool } from '../../copilotTool';
 import { getLLMResponse } from '../../llm';
+import { trackUsage } from '../../analytics';
 
 export abstract class BaseTool implements ICopilotTool {
   abstract command: string;
@@ -13,7 +14,27 @@ export abstract class BaseTool implements ICopilotTool {
 
   protected panel: vscode.WebviewPanel | undefined;
 
+  // Map command names to analytics feature names
+  protected getFeatureName(): string {
+    const commandMap: Record<string, string> = {
+      'copilotTools.refineEmail': 'email',
+      'copilotTools.translateText': 'translate', 
+      'copilotTools.refineJira': 'jira',
+      'copilotTools.previewAntUML': 'plantuml',
+      'extension.umlChatPanel': 'umlChat'
+    };
+    return commandMap[this.command] || this.command;
+  }
+
   async handleInput(editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration) {
+    // Track tool usage at the beginning of function execution
+    const featureName = this.getFeatureName();
+    trackUsage(featureName, {
+      hasSelection: !selection.isEmpty,
+      selectionLength: editor.document.getText(selection).length,
+      fileExtension: editor.document.fileName.split('.').pop()
+    });
+
     const text = editor.document.getText(selection);
     if (!text.trim()) {
       vscode.window.showErrorMessage('Please select text.');

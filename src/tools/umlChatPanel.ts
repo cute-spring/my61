@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import { promises as fsp } from 'fs';
+import { trackUsage } from '../analytics';
 
 // THIS IS THE CORRECTED LINE.
 // It assumes you have a `preview.ts` file in the same directory with a `localRender` export.
@@ -104,6 +105,8 @@ function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {
 export function activateUMLChatPanel(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.umlChatPanel', async () => {
+            trackUsage('uml.chatPanel', 'open');
+            
             const panel = vscode.window.createWebviewPanel(
                 'umlChatPanel',
                 'UML Chat Designer',
@@ -155,6 +158,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             panel.webview.onDidReceiveMessage(async message => {
                 switch (message.command) {
                     case 'sendRequirement': {
+                        trackUsage('uml.chatPanel', 'sendMessage', { diagramType: message.diagramType });
                         const userInput = message.text.trim();
                         if (!userInput) { return; }
                         chatHistory.push({ role: 'user', message: userInput });

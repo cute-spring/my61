@@ -7,3 +7,4 @@ node_modules
 !src/tools/ui/js/svg-pan-zoom.min.js
 *.js.map
 *.map
+.venv/

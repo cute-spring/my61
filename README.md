@@ -4,11 +4,19 @@ A modular, extensible productivity extension for VS Code, powered by Copilot/LLM
 
 ## Features
 
-- **Refine Email**: Select email text, get a professional rewrite and subject suggestions. Diff/split view, quick pick for subject lines, accept/refine/copy options.
-- **Translate Text**: English <-> Chinese (Simplified/Traditional, auto-detect). Popup/quick pick for output, configurable default, copy/replace/insert options.
-- **Refine Jira**: Select Jira description, get a structured, concise version. Side-by-side diff, accept/refine/copy options.
-- **Settings Page**: Configure API key, translation default (Simplified/Traditional), enable/disable features, privacy note.
-- **Extensible Tool Framework**: Add new tools by implementing a simple interface and registering with ToolManager.
+### Core Productivity Tools
+
+- **🎯 Refine Email**: Select email text, get a professional rewrite and subject suggestions. Diff/split view, quick pick for subject lines, accept/refine/copy options.
+- **🌏 Translate Text**: English ↔ Chinese (Simplified/Traditional, auto-detect). Popup/quick pick for output, configurable default, copy/replace/insert options.
+- **📋 Refine Jira**: Select Jira description, get a structured, concise version. Side-by-side diff, accept/refine/copy options.
+- **📊 Preview UML**: Generate PlantUML diagrams from selected text with live preview and export capabilities.
+- **🤖 UML Designer**: AI-powered, chat-driven tool for creating and refining UML diagrams through natural language conversation.
+
+### Additional Features
+
+- **Settings Management**: Configure API key, translation defaults, feature toggles, and PlantUML settings.
+- **Usage Analytics**: Track feature usage with privacy-focused local analytics and optional export.
+- **Extensible Framework**: Add new tools by implementing a simple interface and registering with ToolManager.
 
 ## UML Chat Designer
 
@@ -152,13 +160,24 @@ This extension contributes the following settings:
 
 ## Usage
 
-1. Select text in the editor.
-2. Open Command Palette (⇧⌘P) and run one of:
+### Main Commands
+
+1. **Select text** in the editor
+2. **Open Command Palette** (`⇧⌘P`) and run one of the core commands:
    - `Refine Email (with Subject Suggestions)`
    - `Translate Text (English <-> Chinese)`
    - `Refine Jira Issue Description`
-3. Or use the context menu or hotkeys (configurable).
-4. Follow UI prompts to review, accept, or further refine results.
+   - `Preview PlantUML Diagram`
+   - `UML Chat Designer (AI-powered)`
+3. **Or use hotkeys** (Ctrl+Alt+E, T, J, U, P) or right-click context menu
+4. **Follow UI prompts** to review, accept, or further refine results
+
+### Additional Commands
+
+Access these through the Command Palette for configuration and management:
+- `Copilot Tools: Open Settings` - Configure extension settings
+- `Configure PlantUML Layout Engine and DOT Path` - Set up diagram rendering
+- `Show Usage Analytics Dashboard` - View feature usage statistics
 
 ## Privacy
 
