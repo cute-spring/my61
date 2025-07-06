@@ -1,0 +1,32 @@
+@startuml
+!theme blueprint
+
+title IT-Related Sequence Diagram: Comprehensive User Login Flow
+
+actor User
+participant "Web Browser" as Browser
+participant "Web Server" as Server
+participant "Authentication Service" as AuthService
+participant "Database" as DB
+
+User -> Browser : Enter username and password
+Browser -> Server : Send login request
+Server -> AuthService : Validate credentials
+AuthService -> DB : Query user credentials
+DB --> AuthService : Return user credentials
+alt Credentials valid
+    AuthService -> Server : Authentication success
+    Server -> Browser : Return success response
+    Browser -> User : Display dashboard
+    Browser -> Server : Fetch user profile data
+    Server -> DB : Query user profile
+    DB --> Server : Return user profile
+    Server -> Browser : Send user profile data
+    Browser -> User : Display user profile
+else Credentials invalid
+    AuthService -> Server : Authentication failed
+    Server -> Browser : Return error response
+    Browser -> User : Display error message
+end
+
+@enduml

@@ -1,0 +1,36 @@
+@startuml
+!theme blueprint
+
+title IT-Related Sequence Diagram: User Login Flow
+
+actor User
+participant "Web Browser" as Browser
+participant "Web Server" as Server
+participant "Database" as DB
+participant "Logging Service" as Logger
+participant "Session Manager" as Session
+
+User -> Browser : Enter username and password
+Browser -> Server : Send login request
+Server -> Logger : Log login attempt
+Server -> DB : Query user credentials
+DB --> Server : Return user credentials
+alt Credentials valid
+    Server -> Session : Create user session
+    Session --> Server : Return session token
+    Server -> Logger : Log successful login
+    Server -> Browser : Return success response with session token
+    Browser -> User : Display dashboard
+else Credentials invalid
+    Server -> Logger : Log failed login attempt
+    Server -> Browser : Return error response
+    Browser -> User : Display error message
+end
+
+alt Server error
+    Server -> Logger : Log server error
+    Server -> Browser : Return server error response
+    Browser -> User : Display server error message
+end
+
+@enduml

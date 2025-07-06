@@ -1,0 +1,20 @@
+@startuml software_deployment
+!theme blueprint
+
+title IT-Related Activity Diagram: Software Deployment Process
+
+start
+:Write code;
+:Commit changes to repository;
+:Run automated tests;
+if ("Tests pass?") then (Yes)
+  :Build application;
+  :Deploy to production;
+  :Monitor application;
+  stop
+else (No)
+  :Fix code;
+  -[#black]-> :Run automated tests;
+endif
+
+@enduml

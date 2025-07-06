@@ -1,0 +1,18 @@
+@startuml
+!theme blueprint
+
+title Non-IT-Related Sequence Diagram: Restaurant Order Process
+
+actor Customer
+participant "Waiter" as Waiter
+participant "Kitchen" as Kitchen
+participant "Cashier" as Cashier
+
+Customer -> Waiter : Place order
+Waiter -> Kitchen : Send order details
+Kitchen --> Waiter : Prepare and return food
+Waiter -> Customer : Serve food
+Customer -> Cashier : Pay bill
+Cashier --> Customer : Provide receipt
+
+@enduml

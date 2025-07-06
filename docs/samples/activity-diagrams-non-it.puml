@@ -1,0 +1,20 @@
+@startuml vacation_planning
+!theme blueprint
+
+title Non-IT-Related Activity Diagram: Vacation Planning Process
+
+start
+:Choose destination;
+:Book flights and accommodation;
+:Create itinerary;
+if ("Budget sufficient?") then (Yes)
+  :Pack luggage;
+  :Travel to destination;
+  :Enjoy vacation;
+else (No)
+  :Adjust plans;
+  -right-> if ("Budget sufficient?") 
+endif
+stop
+
+@enduml
