@@ -2,7 +2,7 @@
   "name": "nondevtaskkiller",
   "displayName": "Copilot-Powered Productivity",
   "description": "VS Code extension with 5 core productivity tools: Email Refine, Translate (English ↔ Chinese), Jira Refine, PlantUML Preview, and AI-powered UML Designer. Features modular architecture, diff/split views, keyboard shortcuts, comprehensive settings, and privacy-focused analytics.",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "license": "MIT",
   "icon": "icon.png",
   "engines": {
@@ -50,31 +50,19 @@
       },
       {
         "command": "copilotTools.configurePlantUML",
-        "title": "Configure PlantUML Layout Engine and DOT Path"
+        "title": "Configure PlantUML (Manual Override)"
       },
       {
         "command": "copilotTools.showPlantUMLStatus",
         "title": "Show PlantUML Status and Configuration"
       },
       {
-        "command": "copilotTools.testDotDetection",
-        "title": "Test DOT Auto-Detection"
+        "command": "copilotTools.runAutoDetection",
+        "title": "Run PlantUML Auto-Detection"
       },
       {
         "command": "copilotTools.showAnalytics",
         "title": "Show Usage Analytics Dashboard"
-      },
-      {
-        "command": "copilotTools.exportAnalytics",
-        "title": "Export Usage Analytics Data"
-      },
-      {
-        "command": "copilotTools.syncAnalytics",
-        "title": "Sync Analytics with Server"
-      },
-      {
-        "command": "copilotTools.debugAnalytics",
-        "title": "Debug Analytics Data (Development)"
       }
     ],
     "menus": {
@@ -169,10 +157,10 @@
             "smetana"
           ],
           "default": "dot",
-          "description": "Layout engine for PlantUML diagrams. 'dot' (default) uses Graphviz/DOT for high-quality layouts but requires DOT executable. 'smetana' is a pure Java implementation that works without external dependencies but may have different layout quality.",
+          "description": "Layout engine for PlantUML diagrams. The extension automatically detects and configures the best available option on first run: 'dot' (Graphviz) for high-quality layouts if available, otherwise 'smetana' (pure Java) as fallback.",
           "enumDescriptions": [
-            "Graphviz DOT engine - High quality layouts, requires DOT executable (dot.exe)",
-            "Smetana engine - Pure Java, no external dependencies required"
+            "Graphviz DOT engine - High quality layouts, auto-detected if available",
+            "Smetana engine - Pure Java fallback when DOT is not available"
           ]
         },
         "plantuml.dotPath": {
@@ -181,7 +169,7 @@
             "null"
           ],
           "default": null,
-          "description": "Optional. The full path to the DOT executable (e.g., 'C:\\Program Files\\Graphviz\\bin\\dot.exe' on Windows). Only used when layoutEngine is set to 'dot'. If not set, PlantUML will try to find DOT in the system PATH.",
+          "description": "Path to the DOT executable (auto-detected on first run if available). Only used when layoutEngine is 'dot'. Leave empty to use auto-detected path or system PATH.",
           "scope": "machine-overridable"
         },
         "plantuml.showStatusBar": {

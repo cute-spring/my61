@@ -4,6 +4,80 @@ All notable changes to the "nondevtaskkiller" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.10] - 2025-07-10
+
+### 🤖 **PlantUML Auto-Detection and Zero-Configuration Experience**
+
+#### ✨ **Major New Features**
+
+##### 🚀 **Automatic Layout Engine Configuration**
+- **Zero-configuration startup** - Extension automatically detects and configures the best available PlantUML layout engine
+- **Enhanced DOT validation** - Tests actual diagram processing capability, not just file existence
+- **Enterprise security handling** - Gracefully handles blocked executables and permission restrictions
+- **Smart DOT detection** - Automatically finds and configures Graphviz/DOT installations across Windows, macOS, and Linux
+- **Intelligent fallback** - Falls back to Smetana (pure Java) when DOT is not available or cannot be executed
+- **Preserve user settings** - Respects existing manual configurations, never overrides user choices
+
+##### 🔧 **Enhanced Configuration Management**
+- **Auto-detection on activation** - Runs automatically when extension loads for the first time
+- **Manual trigger option** - New `Run PlantUML Auto-Detection` command for re-detection
+- **Reset to auto-detection** - Option to clear manual settings and re-run auto-detection
+- **Improved manual configuration** - Enhanced UI with auto-detection, manual, and reset options
+
+#### 🎯 **User Experience Improvements**
+
+##### 📱 **Better Onboarding**
+- **Automatic setup notifications** - Clear messages about what was auto-configured
+- **Smart welcome experience** - Shows configuration results and offers testing options
+- **Transparent process** - Users know exactly what was detected and configured
+
+##### ⚙️ **Command Updates**
+- `copilotTools.runAutoDetection` - Manually trigger auto-detection process
+- `copilotTools.configurePlantUML` renamed to "Configure PlantUML (Manual Override)"
+- Enhanced `copilotTools.testDotDetection` with auto-detection information
+
+#### 🛠️ **Technical Implementation**
+
+##### 🏗️ **New Functions**
+- `autoConfigurePlantUML()` - Core auto-configuration logic with user setting preservation
+- `runAutoDetection()` - Manual trigger for auto-detection with UI feedback
+- Enhanced configuration workflow with auto-detection integration
+
+##### ⚡ **Improved Detection Logic**
+- **User configuration respect** - Checks for existing manual settings before auto-configuring
+- **Cross-platform compatibility** - Leverages existing DotPathDetector for comprehensive detection
+- **Error resilience** - Graceful fallback to Smetana if detection fails
+
+#### 📚 **Documentation**
+
+##### 📖 **Comprehensive Documentation**
+- **New documentation**: `docs/PLANTUML_AUTO_DETECTION.md` - Complete auto-detection feature guide
+- **Updated README** - Revised configuration section to highlight auto-detection
+- **Enhanced settings descriptions** - Updated package.json settings to reflect auto-detection behavior
+
+##### 🔍 **Updated Help Text**
+- Command descriptions updated to reflect auto-detection capabilities
+- Better user guidance in detection test results
+- Clear migration path for existing users
+
+#### 🎨 **Settings Updates**
+- Updated `plantuml.layoutEngine` description to mention auto-detection
+- Enhanced `plantuml.dotPath` description for auto-detected paths
+- Backward compatible with all existing configurations
+
+#### 🔄 **Migration & Compatibility**
+- **Seamless upgrade** - Existing users keep their manual configurations
+- **Opt-in auto-detection** - Can reset to auto-detection at any time
+- **Non-disruptive** - No changes to existing functionality, only additions
+
+#### 🧹 **Code Cleanup**
+- **Command palette cleanup** - Removed development/debug commands from user interface
+- **Extension size reduction** - Removed ~110 lines of debug code
+- **Production-ready** - No development commands exposed in release version
+- **Cleaner architecture** - Only user-facing commands remain in package.json
+
+---
+
 ## [0.0.1] - 2025-07-02
 
 ### 🎉 Major UML Chat Panel Refactoring & Enhancement

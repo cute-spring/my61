@@ -34,22 +34,31 @@ See [PLANTUML_SETUP.md](PLANTUML_SETUP.md) for detailed setup instructions.
 
 ### Layout Engine Configuration
 
-The extension supports two PlantUML layout engines with intelligent auto-detection:
+The extension **automatically detects and configures** the best available PlantUML layout engine on first run, providing a seamless out-of-the-box experience:
+
+#### **🤖 Automatic Configuration**
+- **DOT Engine Detection**: Automatically searches for and validates Graphviz/DOT installations
+- **Execution Validation**: Tests actual diagram processing capability, not just file existence
+- **Enterprise-Ready**: Handles security restrictions and permission issues gracefully
+- **Smart Fallback**: Falls back to Smetana (pure Java) when DOT is unavailable or blocked
+- **Zero Configuration**: Works immediately without manual setup
+- **Preserve User Settings**: Respects existing manual configurations
 
 #### **🎯 Layout Engines**
-- **DOT Engine** (default): Uses Graphviz/DOT for high-quality diagram layout. Requires Graphviz installation.
-- **Smetana Engine**: Pure Java layout engine that doesn't require Graphviz. Works out-of-the-box but may have layout limitations for complex diagrams.
+- **DOT Engine** (preferred): Uses Graphviz/DOT for high-quality diagram layout. Auto-detected if available.
+- **Smetana Engine** (fallback): Pure Java layout engine that doesn't require Graphviz. Works out-of-the-box but may have layout limitations for complex diagrams.
 
 #### **🔍 Intelligent DOT Auto-Detection**
-When you select the DOT engine, the extension automatically searches for Graphviz installations in common locations:
+When auto-configuring the DOT engine, the extension automatically searches for Graphviz installations in common locations:
 - **Windows**: Program Files, Chocolatey, Scoop, Registry
 - **macOS**: Homebrew, MacPorts, standard directories
 - **Linux**: System packages, Snap, Flatpak, user installations
 
-#### **⚙️ Easy Configuration**
-1. Press `Ctrl+Alt+P` or run `Configure PlantUML Layout Engine and DOT Path`
-2. Select your preferred layout engine
-3. For DOT engine: Extension will auto-detect installations or let you specify custom paths
+#### **⚙️ Manual Override**
+While auto-detection handles most cases, you can still manually configure:
+1. Press `Ctrl+Alt+P` or run `Configure PlantUML (Manual Override)`
+2. Choose between auto-detection, manual configuration, or reset to auto-detection
+3. For manual mode: Select layout engine and custom paths
 4. Test your configuration with the UML Chat Designer
 
 #### **📊 Status Visibility**

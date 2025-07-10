@@ -233,27 +233,67 @@ export class DotPathDetector {
 
     /**
      * Validate that a path points to a working DOT executable
+     * This includes both file existence and execution permission checks
      */
     static async validateDotExecutable(dotPath: string): Promise<boolean> {
         try {
             // Check if file exists and is executable
             if (!fs.existsSync(dotPath)) {
+                console.log(`DOT validation failed: File does not exist at ${dotPath}`);
                 return false;
             }
             
             const stats = fs.statSync(dotPath);
             if (!stats.isFile()) {
+                console.log(`DOT validation failed: Path is not a file: ${dotPath}`);
                 return false;
             }
             
-            // Try to execute with version flag
-            const { stdout, stderr } = await execAsync(`"${dotPath}" -V`, { timeout: 5000 });
-            const output = (stdout + stderr).toLowerCase();
+            // First, try to execute with version flag to check basic execution
+            try {
+                const { stdout, stderr } = await execAsync(`"${dotPath}" -V`, { timeout: 5000 });
+                const output = (stdout + stderr).toLowerCase();
+                
+                // Check if it's actually Graphviz DOT
+                const isGraphviz = output.includes('graphviz') || output.includes('dot version');
+                if (!isGraphviz) {
+                    console.log(`DOT validation failed: Not a Graphviz DOT executable: ${dotPath}`);
+                    return false;
+                }
+            } catch (error) {
+                console.log(`DOT validation failed: Cannot execute -V command: ${dotPath}`, error);
+                return false;
+            }
             
-            // Check if it's actually Graphviz DOT
-            return output.includes('graphviz') || output.includes('dot version');
+            // Enhanced validation: Test actual diagram processing capability
+            // This is crucial for enterprise environments where execution might be blocked
+            try {
+                const testDotContent = 'digraph { A -> B; }';
+                const testCommand = `echo "${testDotContent}" | "${dotPath}" -Tsvg`;
+                
+                const { stdout, stderr } = await execAsync(testCommand, { 
+                    timeout: 10000,
+                    maxBuffer: 1024 * 1024 // 1MB buffer for SVG output
+                });
+                
+                // Check if we got valid SVG output
+                const hasValidSvg = stdout.includes('<svg') && stdout.includes('</svg>');
+                if (!hasValidSvg) {
+                    console.log(`DOT validation failed: Cannot process test diagram: ${dotPath}`);
+                    console.log('stderr:', stderr);
+                    return false;
+                }
+                
+                console.log(`DOT validation successful: ${dotPath} can process diagrams`);
+                return true;
+                
+            } catch (error) {
+                console.log(`DOT validation failed: Cannot process test diagram: ${dotPath}`, error);
+                return false;
+            }
             
         } catch (error) {
+            console.log(`DOT validation failed with unexpected error: ${dotPath}`, error);
             return false;
         }
     }

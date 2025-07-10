@@ -109,44 +109,53 @@ export async function activate(context: vscode.ExtensionContext) {
   activateUMLChatPanel(context);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('copilotTools.clearPlantumlJarCache', () => clearPlantumlJarCache(context)),
     vscode.commands.registerCommand('copilotTools.configurePlantUML', () => configurePlantUML()),
     vscode.commands.registerCommand('copilotTools.showPlantUMLStatus', () => showPlantUMLStatus()),
-    vscode.commands.registerCommand('copilotTools.testDotDetection', () => testDotDetection()),
-    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context)),
-    vscode.commands.registerCommand('copilotTools.exportAnalytics', () => exportAnalytics()),
-    vscode.commands.registerCommand('copilotTools.syncAnalytics', () => syncAnalytics())
+    vscode.commands.registerCommand('copilotTools.runAutoDetection', () => runAutoDetection()),
+    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context))
   );
 
-  // Debug command to show raw analytics data
-  context.subscriptions.push(
-    vscode.commands.registerCommand('copilotTools.debugAnalytics', () => {
-      debugAnalytics(context);
-    })
-  );
-
+  // Auto-configure PlantUML layout engine on first activation
+  const autoConfigResult = await autoConfigurePlantUML();
+  
   // Initialize PlantUML status bar manager
   plantUMLStatusBar = new PlantUMLStatusBarManager();
   plantUMLStatusBar.show();
   context.subscriptions.push(plantUMLStatusBar);
 
-  // Show a welcome notification on first run (or if status bar is hidden)
+  // Show a welcome notification on first run or if auto-configuration occurred
   const config = vscode.workspace.getConfiguration('plantuml');
   const hasShownWelcome = context.globalState.get('plantuml.hasShownWelcome', false);
   const showStatusBar = config.get<boolean>('showStatusBar', true);
   
-  if (!hasShownWelcome || !showStatusBar) {
-    const layoutEngine = config.get<string>('layoutEngine', 'dot');
+  if (!hasShownWelcome || autoConfigResult.wasConfigured) {
+    const layoutEngine = autoConfigResult.engine;
+    let message: string;
+    
+    if (autoConfigResult.wasConfigured) {
+      if (layoutEngine === 'dot') {
+        message = `PlantUML auto-configured with DOT (Graphviz) layout engine for high-quality diagrams.`;
+      } else {
+        message = `PlantUML auto-configured with Smetana (Pure Java) layout engine - works without external dependencies.`;
+      }
+    } else {
+      message = `PlantUML is using ${layoutEngine === 'smetana' ? 'Smetana (Pure Java)' : 'DOT (Graphviz)'} layout engine.`;
+    }
+    
+    const statusMessage = showStatusBar ? 'Status shown in bottom bar.' : 'Enable status bar in settings for quick access.';
+    
+    const buttons = autoConfigResult.wasConfigured && layoutEngine === 'smetana' 
+      ? ['Test UML Chat', 'Try Manual Config', 'Got it']  // Different button text for Smetana fallback
+      : ['Test UML Chat', 'Manual Config', 'Got it'];
+    
     vscode.window.showInformationMessage(
-      `PlantUML is using ${layoutEngine === 'smetana' ? 'Smetana (Pure Java)' : 'DOT (Graphviz)'} layout engine. ${showStatusBar ? 'Status shown in bottom bar.' : 'Enable status bar in settings for quick access.'}`,
-      'Configure',
-      'Show Status',
-      'Got it'
+      `${message} ${statusMessage}`,
+      ...buttons
     ).then(selection => {
-      if (selection === 'Configure') {
+      if (selection === 'Test UML Chat') {
+        vscode.commands.executeCommand('extension.umlChatPanel');
+      } else if (selection === 'Manual Config' || selection === 'Try Manual Config') {
         vscode.commands.executeCommand('copilotTools.configurePlantUML');
-      } else if (selection === 'Show Status') {
-        vscode.commands.executeCommand('copilotTools.showPlantUMLStatus');
       }
     });
     context.globalState.update('plantuml.hasShownWelcome', true);
@@ -231,21 +240,6 @@ async function downloadPlantumlJar(storagePath: string): Promise<string | null> 
   });
 }
 
-export async function clearPlantumlJarCache(context: vscode.ExtensionContext) {
-  const storagePath = context.globalStorageUri.fsPath;
-  const jarPath = path.join(storagePath, JAR_FILENAME);
-  if (fs.existsSync(jarPath)) {
-    try {
-      fs.unlinkSync(jarPath);
-      vscode.window.showInformationMessage('PlantUML JAR cache cleared.');
-    } catch (err) {
-      vscode.window.showErrorMessage('Failed to clear PlantUML JAR cache: ' + err);
-    }
-  } else {
-    vscode.window.showInformationMessage('No cached PlantUML JAR found.');
-  }
-}
-
 export async function configurePlantUML() {
   trackUsage('plantuml', 'configure');
   
@@ -253,7 +247,47 @@ export async function configurePlantUML() {
   const currentLayoutEngine = config.get<string>('layoutEngine', 'dot');
   const currentDotPath = config.get<string>('dotPath') || '';
 
-  // Show layout engine selection
+  // First, ask if user wants auto-detection or manual configuration
+  const configChoice = await vscode.window.showQuickPick([
+    {
+      label: '🤖 Run Auto-Detection',
+      description: 'Automatically detect and configure the best layout engine',
+      detail: 'Recommended - detects DOT if available, falls back to Smetana',
+      value: 'auto'
+    },
+    {
+      label: '⚙️ Manual Configuration',
+      description: 'Manually select layout engine and paths',
+      detail: 'Override auto-detection with custom settings',
+      value: 'manual'
+    },
+    {
+      label: '🔄 Reset to Auto-Detection',
+      description: 'Clear manual settings and re-run auto-detection',
+      detail: 'Remove custom configuration and use auto-detected settings',
+      value: 'reset'
+    }
+  ], {
+    placeHolder: 'Choose configuration method',
+    title: 'PlantUML Configuration'
+  });
+
+  if (!configChoice) {
+    return; // User cancelled
+  }
+
+  if (configChoice.value === 'auto' || configChoice.value === 'reset') {
+    // Clear any existing manual configuration and run auto-detection
+    if (configChoice.value === 'reset') {
+      await config.update('layoutEngine', undefined, vscode.ConfigurationTarget.Global);
+      await config.update('dotPath', undefined, vscode.ConfigurationTarget.Global);
+    }
+    
+    await runAutoDetection();
+    return;
+  }
+
+  // Manual configuration - show layout engine selection
   const layoutEngineChoice = await vscode.window.showQuickPick([
     {
       label: 'DOT (Graphviz)',
@@ -447,6 +481,89 @@ async function promptForCustomDotPath(config: vscode.WorkspaceConfiguration, cur
         vscode.window.showWarningMessage(`Could not validate DOT path: ${error}`);
       }
     }
+  }
+}
+
+/**
+ * Automatically detect and configure the best available layout engine
+ * This function runs on extension activation to set up PlantUML without user intervention
+ */
+export async function autoConfigurePlantUML(): Promise<{ engine: string, dotPath?: string, wasConfigured: boolean }> {
+  const config = vscode.workspace.getConfiguration('plantuml');
+  
+  // Check if user has already manually configured the layout engine
+  const hasUserConfiguration = config.inspect('layoutEngine')?.globalValue !== undefined || 
+                                config.inspect('dotPath')?.globalValue !== undefined;
+  
+  if (hasUserConfiguration) {
+    // User has already configured, don't override their settings
+    const currentEngine = config.get<string>('layoutEngine', 'dot');
+    const currentDotPath = config.get<string>('dotPath');
+    console.log(`PlantUML: Using existing user configuration - ${currentEngine}${currentDotPath ? ` at ${currentDotPath}` : ''}`);
+    return { 
+      engine: currentEngine, 
+      dotPath: currentDotPath || undefined, 
+      wasConfigured: false 
+    };
+  }
+
+  console.log('PlantUML: No existing configuration found, running auto-detection...');
+
+  try {
+    // Try to detect DOT first (preferred for better quality)
+    const { DotPathDetector } = await import('./tools/utils/dotPathDetector.js');
+    const detection = await DotPathDetector.detectDotPath();
+    
+    if (detection.found && detection.path) {
+      console.log(`PlantUML: DOT detected at ${detection.path}, validating execution capability...`);
+      
+      // Additional validation to ensure DOT is not only present but executable
+      // This is crucial for enterprise environments with security restrictions
+      const isExecutable = await DotPathDetector.validateDotExecutable(detection.path);
+      
+      if (isExecutable) {
+        // DOT is available and executable, configure it as the layout engine
+        await config.update('layoutEngine', 'dot', vscode.ConfigurationTarget.Global);
+        await config.update('dotPath', detection.path, vscode.ConfigurationTarget.Global);
+        
+        console.log(`PlantUML auto-configured with DOT engine: ${detection.path} (version: ${detection.version || 'unknown'})`);
+        
+        return { 
+          engine: 'dot', 
+          dotPath: detection.path, 
+          wasConfigured: true 
+        };
+      } else {
+        console.warn(`PlantUML: DOT found at ${detection.path} but cannot be executed (possibly blocked by security policy)`);
+        // Fall through to Smetana configuration
+      }
+    } else {
+      console.log('PlantUML: DOT executable not found in common locations');
+    }
+    
+    // DOT not found or not executable, fallback to Smetana
+    await config.update('layoutEngine', 'smetana', vscode.ConfigurationTarget.Global);
+    await config.update('dotPath', null, vscode.ConfigurationTarget.Global);
+    
+    const reason = detection.found ? 'DOT found but not executable (security restrictions?)' : 'DOT not available';
+    console.log(`PlantUML auto-configured with Smetana engine (${reason})`);
+    
+    return { 
+      engine: 'smetana', 
+      wasConfigured: true 
+    };
+    
+  } catch (error) {
+    console.warn('PlantUML auto-configuration failed, falling back to Smetana:', error);
+    
+    // If detection fails, default to Smetana (safest option)
+    await config.update('layoutEngine', 'smetana', vscode.ConfigurationTarget.Global);
+    await config.update('dotPath', null, vscode.ConfigurationTarget.Global);
+    
+    return { 
+      engine: 'smetana', 
+      wasConfigured: true 
+    };
   }
 }
 
@@ -723,6 +840,17 @@ export async function testDotDetection() {
       message += `✅ **Found:** ${detection.path}\n`;
       message += `📋 **Version:** ${detection.version || 'unknown'}\n`;
       message += `🔍 **Method:** ${detection.method}\n`;
+      
+      // Test actual execution capability
+      vscode.window.showInformationMessage('🔬 Testing execution capability...', { modal: false });
+      const isExecutable = await DotPathDetector.validateDotExecutable(detection.path);
+      
+      if (isExecutable) {
+        message += `✅ **Execution Test:** Passed - Can process diagrams\n`;
+      } else {
+        message += `❌ **Execution Test:** Failed - Found but cannot execute\n`;
+        message += `⚠️ **Possible Cause:** Security policy or permission restrictions\n`;
+      }
     } else {
       message += `❌ **Not Found**\n`;
       message += `🔍 **Method:** ${detection.method}\n`;
@@ -736,17 +864,20 @@ export async function testDotDetection() {
       }
     }
     
-    message += '\n\n*This helps verify auto-detection accuracy*';
+    message += '\n\n*Note: Auto-detection now includes execution validation for security-restricted environments.*';
     
     const choice = await vscode.window.showInformationMessage(
       message,
       { modal: true },
-      'Configure PlantUML',
+      'Run Auto-Config',
+      'Manual Config',
       'Show All Paths',
       'Close'
     );
     
-    if (choice === 'Configure PlantUML') {
+    if (choice === 'Run Auto-Config') {
+      await runAutoDetection();
+    } else if (choice === 'Manual Config') {
       await configurePlantUML();
     } else if (choice === 'Show All Paths' && detection.searchedPaths) {
       const allPaths = detection.searchedPaths.join('\n');
@@ -822,95 +953,105 @@ async function syncAnalytics(): Promise<void> {
 }
 
 /**
- * Debug command to show raw analytics data
+ * Test and run auto-detection manually (for troubleshooting or re-detection)
+ * Includes comprehensive DOT detection testing
  */
-async function debugAnalytics(context: vscode.ExtensionContext): Promise<void> {
+export async function runAutoDetection() {
+  trackUsage('plantuml', 'runAutoDetection');
+  
   try {
-    const analytics = UsageAnalytics.getInstance();
+    // First, show detailed DOT detection results for troubleshooting
+    vscode.window.showInformationMessage('🔍 Running comprehensive auto-detection...', { modal: false });
     
-    // Get all stored data
-    const usageStats = analytics.getUsageStats();
-    const functionStats = analytics.getFunctionUsageStats();
-    const detailedMetrics = analytics.getDetailedMetrics(7); // Last 7 days
-    const combinedStats = analytics.getCombinedUsageStats();
-    const syncStatus = analytics.getSyncStatus();
+    const { DotPathDetector } = await import('./tools/utils/dotPathDetector.js');
+    const detection = await DotPathDetector.detectDotPath();
     
-    // Get user ID information
-    const storedUserId = context.globalState.get<string>('analyticsUserId', 'not-set');
-    const isCopilotId = storedUserId.startsWith('copilot_');
-    const isAnonymousId = storedUserId.startsWith('user_');
+    let detectionMessage = '**DOT Detection Results:**\n\n';
     
-    // Check if GitHub session is available
-    let githubSessionStatus = 'Unknown';
-    try {
-      const session = await vscode.authentication.getSession('github', [], { silent: true });
-      if (session?.account?.id) {
-        githubSessionStatus = `Available (ID: ${session.account.id}, Label: ${session.account.label})`;
+    if (detection.found && detection.path) {
+      detectionMessage += `✅ **Found:** ${detection.path}\n`;
+      detectionMessage += `📋 **Version:** ${detection.version || 'unknown'}\n`;
+      detectionMessage += `🔍 **Method:** ${detection.method}\n`;
+      
+      // Test actual execution capability
+      const isExecutable = await DotPathDetector.validateDotExecutable(detection.path);
+      
+      if (isExecutable) {
+        detectionMessage += `✅ **Execution Test:** Passed - Can process diagrams\n`;
       } else {
-        githubSessionStatus = 'Not signed in';
+        detectionMessage += `❌ **Execution Test:** Failed - Found but cannot execute\n`;
+        detectionMessage += `⚠️ **Possible Cause:** Security policy or permission restrictions\n`;
       }
-    } catch (error) {
-      githubSessionStatus = 'Error checking session';
+    } else {
+      detectionMessage += `❌ **Not Found**\n`;
+      detectionMessage += `🔍 **Method:** ${detection.method}\n`;
     }
     
-    // Create debug output
-    const recentEvents = detailedMetrics.map((event, i) => 
-      `${i + 1}. ${event.featureName}${event.functionName ? '.' + event.functionName : ''} at ${new Date(event.timestamp).toLocaleString()}`
-    ).join('\n');
-
-    const topFunctionsList = combinedStats.topFunctions.slice(0, 10).map((func, i) => 
-      `${i + 1}. ${func.feature}.${func.function}: ${func.count} uses`
-    ).join('\n');
-
-    const userIdExplanation = isCopilotId ? 
-      '✅ Using GitHub Copilot account ID for consistent user tracking across devices.' :
-      '⚠️ Using anonymous ID. Sign in to GitHub in VS Code for consistent tracking.';
-
-    const output = `=== ANALYTICS DEBUG DATA ===
-
-USER IDENTIFICATION:
-- Stored User ID: ${storedUserId}
-- Type: ${isCopilotId ? '✅ GitHub Copilot ID' : isAnonymousId ? '⚠️ Anonymous fallback ID' : '❓ Unknown type'}
-- GitHub Session: ${githubSessionStatus}
-
-FEATURE USAGE COUNTS:
-${JSON.stringify(usageStats, null, 2)}
-
-FUNCTION USAGE COUNTS:
-${JSON.stringify(functionStats, null, 2)}
-
-RECENT DETAILED EVENTS (Last 7 days): ${detailedMetrics.length} events
-${recentEvents}
-
-TOP FUNCTIONS:
-${topFunctionsList}
-
-SYNC STATUS:
-- Unsynced events: ${syncStatus.unsyncedCount}
-- Last sync attempt: ${syncStatus.lastSyncAttempt || 'Never'}
-
-EXPLANATION:
-- Total events: ${detailedMetrics.length}
-- Feature breakdown: ${Object.keys(usageStats).length} features
-- Function breakdown: ${Object.keys(functionStats).reduce((sum, feature) => sum + Object.keys(functionStats[feature] || {}).length, 0)} functions
-
-${userIdExplanation}
-
-Each interaction with the extension creates a separate event.
-In development mode, reloading the extension creates new sessions.
-Function-level tracking means multiple events per feature use.`;
-
-    // Show in new document
-    const doc = await vscode.workspace.openTextDocument({
-      content: output,
-      language: 'plaintext'
-    });
-    await vscode.window.showTextDocument(doc);
+    // Show detection results first
+    const viewResults = await vscode.window.showInformationMessage(
+      detectionMessage,
+      { modal: false },
+      'Continue with Auto-Config',
+      'Show Search Paths',
+      'Cancel'
+    );
     
-    trackUsage('analytics', 'debug');
+    if (viewResults === 'Show Search Paths' && detection.searchedPaths) {
+      const allPaths = detection.searchedPaths.slice(0, 10).join('\n') + 
+                     (detection.searchedPaths.length > 10 ? '\n... and more' : '');
+      vscode.window.showInformationMessage(
+        `**Searched ${detection.searchedPaths.length} locations:**\n\n${allPaths}`,
+        { modal: true }
+      );
+      return;
+    } else if (viewResults !== 'Continue with Auto-Config') {
+      return;
+    }
+    
+    // Now run the actual auto-configuration
+    const result = await autoConfigurePlantUML();
+    
+    if (result.wasConfigured) {
+      let message: string;
+      
+      if (result.engine === 'dot') {
+        message = `✅ Auto-detection complete! Configured with DOT (Graphviz) layout engine at: ${result.dotPath}. This provides the highest quality diagrams.`;
+      } else {
+        message = `✅ Auto-detection complete! Configured with Smetana (Pure Java) layout engine. This works reliably without external dependencies.`;
+        
+        // Check if DOT was found but not executable
+        if (detection.found) {
+          message += `\n\n💡 Note: DOT was found at ${detection.path} but cannot be executed (likely due to security restrictions).`;
+        }
+      }
+      
+      const choice = await vscode.window.showInformationMessage(
+        message,
+        'Test UML Chat',
+        'Show Status',
+        'OK'
+      );
+      
+      if (choice === 'Test UML Chat') {
+        vscode.commands.executeCommand('extension.umlChatPanel');
+      } else if (choice === 'Show Status') {
+        vscode.commands.executeCommand('copilotTools.showPlantUMLStatus');
+      }
+    } else {
+      vscode.window.showInformationMessage(
+        `ℹ️ Using existing configuration: ${result.engine === 'smetana' ? 'Smetana (Pure Java)' : 'DOT (Graphviz)'} layout engine. Use manual configuration to override.`,
+        'Manual Config'
+      ).then(selection => {
+        if (selection === 'Manual Config') {
+          vscode.commands.executeCommand('copilotTools.configurePlantUML');
+        }
+      });
+    }
+    
+    // Refresh status bar
+    plantUMLStatusBar?.refresh();
     
   } catch (error) {
-    console.error('Error debugging analytics:', error);
-    vscode.window.showErrorMessage('Failed to debug analytics data');
+    vscode.window.showErrorMessage(`Auto-detection failed: ${error}`);
   }
 }
