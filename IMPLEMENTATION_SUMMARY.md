@@ -7,7 +7,7 @@ Th### Technical Benefits
 ### Reliability
 - ✅ Always works with Smetana fallback
 - ✅ Preserves user settings
-- ✅ **Enhanced execution validation** - tests actual diagram processing
+- ✅ **Enhanced execution validation** - tests complex diagrams with DOT-specific features (clusters, subgraphs, layout constraints) that require actual DOT execution, not simple diagrams that PlantUML.jar can render alone
 - ✅ **Enterprise security handling** - gracefully handles blocked executables
 - ✅ Graceful error handling
 - ✅ Cross-platform compatibility
@@ -22,7 +22,7 @@ Th### Technical Benefits
 ### Maintainability
 - ✅ Leverages existing DotPathDetector with enhanced validation
 - ✅ Modular design with clear separation
-- ✅ **Comprehensive execution testing** beyond file existence
+- ✅ **Comprehensive execution testing** with complex diagrams requiring DOT-specific features beyond basic PlantUML.jar capabilities
 - ✅ Extensive documentationeplaces the manual layout engine selection with an intelligent auto-detection system that automatically configures the best available PlantUML layout engine without user intervention.
 
 ## Key Changes Made

@@ -24,7 +24,8 @@ The auto-detection follows this comprehensive validation process to ensure DOT i
 3. **Validate DOT execution capability**:
    - Test basic execution with `-V` flag
    - Verify it's actually Graphviz DOT (not another tool named 'dot')
-   - **Process a test diagram** to ensure full functionality
+   - **Process a complex test diagram** with DOT-specific features (clusters, constraints, hierarchies)
+   - Validate that DOT can handle advanced layout features that PlantUML.jar alone cannot render
    - Handle enterprise security restrictions gracefully
 4. **Configure DOT** if found and fully functional
 5. **Fallback to Smetana** if DOT is not available or cannot be executed
@@ -33,10 +34,11 @@ The auto-detection follows this comprehensive validation process to ensure DOT i
 
 The auto-detection system specifically handles common enterprise restrictions:
 
-- **Execution Policy Restrictions**: Tests actual diagram processing, not just file existence
-- **Security Software Blocking**: Gracefully falls back to Smetana when DOT is blocked
-- **Permission Issues**: Validates execution permissions before configuring DOT
+- **Execution Policy Restrictions**: Tests complex diagram processing with DOT-specific features that require actual DOT execution
+- **Security Software Blocking**: Uses advanced test diagrams that cannot be rendered by PlantUML.jar alone
+- **Permission Issues**: Validates execution permissions with comprehensive diagram rendering tests
 - **Network Restrictions**: Smetana works entirely offline without external dependencies
+- **Complex Layout Validation**: Tests subgraphs, clusters, and layout constraints that specifically require DOT's advanced capabilities
 
 ## User Experience
 

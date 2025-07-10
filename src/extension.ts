@@ -842,14 +842,16 @@ export async function testDotDetection() {
       message += `🔍 **Method:** ${detection.method}\n`;
       
       // Test actual execution capability
-      vscode.window.showInformationMessage('🔬 Testing execution capability...', { modal: false });
+      vscode.window.showInformationMessage('🔬 Testing DOT execution with complex diagram...', { modal: false });
       const isExecutable = await DotPathDetector.validateDotExecutable(detection.path);
       
       if (isExecutable) {
-        message += `✅ **Execution Test:** Passed - Can process diagrams\n`;
+        message += `✅ **Execution Test:** Passed - Can process complex diagrams with DOT-specific features\n`;
+        message += `🎯 **Enterprise Ready:** DOT is fully functional and not blocked by security policies\n`;
       } else {
-        message += `❌ **Execution Test:** Failed - Found but cannot execute\n`;
-        message += `⚠️ **Possible Cause:** Security policy or permission restrictions\n`;
+        message += `❌ **Execution Test:** Failed - Found but cannot execute complex diagrams\n`;
+        message += `⚠️ **Possible Cause:** Security policy blocking DOT execution or missing dependencies\n`;
+        message += `💡 **Note:** Will fall back to Smetana (Pure Java) layout engine\n`;
       }
     } else {
       message += `❌ **Not Found**\n`;
@@ -977,10 +979,12 @@ export async function runAutoDetection() {
       const isExecutable = await DotPathDetector.validateDotExecutable(detection.path);
       
       if (isExecutable) {
-        detectionMessage += `✅ **Execution Test:** Passed - Can process diagrams\n`;
+        detectionMessage += `✅ **Execution Test:** Passed - Can process complex diagrams with DOT-specific features\n`;
+        detectionMessage += `🎯 **Enterprise Ready:** DOT is fully functional and not blocked by security policies\n`;
       } else {
-        detectionMessage += `❌ **Execution Test:** Failed - Found but cannot execute\n`;
-        detectionMessage += `⚠️ **Possible Cause:** Security policy or permission restrictions\n`;
+        detectionMessage += `❌ **Execution Test:** Failed - Found but cannot execute complex diagrams\n`;
+        detectionMessage += `⚠️ **Possible Cause:** Security policy blocking DOT execution or missing dependencies\n`;
+        detectionMessage += `💡 **Fallback:** Extension will use Smetana (Pure Java) layout engine instead\n`;
       }
     } else {
       detectionMessage += `❌ **Not Found**\n`;

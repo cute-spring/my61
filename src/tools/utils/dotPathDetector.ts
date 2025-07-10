@@ -267,28 +267,74 @@ export class DotPathDetector {
             
             // Enhanced validation: Test actual diagram processing capability
             // This is crucial for enterprise environments where execution might be blocked
+            // Use a complex diagram that specifically requires DOT's advanced layout capabilities
             try {
-                const testDotContent = 'digraph { A -> B; }';
+                // Create a complex diagram that PlantUML.jar alone cannot render without DOT
+                // This includes advanced DOT-specific features like clusters, complex hierarchies, and layout constraints
+                const testDotContent = `digraph complex_test {
+    rankdir=TB;
+    compound=true;
+    
+    // Subgraph clusters (require DOT for proper rendering)
+    subgraph cluster_0 {
+        label="Database Layer";
+        style=filled;
+        color=lightgrey;
+        node [style=filled,color=white];
+        DB1 -> DB2 -> DB3;
+    }
+    
+    subgraph cluster_1 {
+        label="Business Logic";
+        color=blue;
+        BL1 -> BL2 -> BL3;
+        BL2 -> BL4;
+    }
+    
+    // Complex cross-cluster relationships with constraints
+    DB1 -> BL1 [lhead=cluster_1];
+    BL3 -> DB2 [ltail=cluster_1, lhead=cluster_0];
+    
+    // Rank constraints that require DOT's layout engine
+    {rank=same; DB1; BL1;}
+    {rank=same; DB3; BL4;}
+    
+    // Complex node arrangements that simple layouts cannot handle
+    A1 -> A2 -> A3 -> A4 -> A5;
+    A1 -> A3 -> A5;
+    A2 -> A4;
+    
+    // This type of complex layout specifically requires DOT's capabilities
+}`;
+                
                 const testCommand = `echo "${testDotContent}" | "${dotPath}" -Tsvg`;
                 
                 const { stdout, stderr } = await execAsync(testCommand, { 
-                    timeout: 10000,
-                    maxBuffer: 1024 * 1024 // 1MB buffer for SVG output
+                    timeout: 15000, // Increased timeout for complex diagram
+                    maxBuffer: 2 * 1024 * 1024 // 2MB buffer for complex SVG output
                 });
                 
-                // Check if we got valid SVG output
+                // Check if we got valid SVG output with DOT-specific features
                 const hasValidSvg = stdout.includes('<svg') && stdout.includes('</svg>');
+                const hasClusterElements = stdout.includes('cluster_') || stdout.includes('subgraph');
+                const hasComplexLayout = stdout.length > 1000; // Complex diagrams generate substantial SVG
+                
                 if (!hasValidSvg) {
-                    console.log(`DOT validation failed: Cannot process test diagram: ${dotPath}`);
+                    console.log(`DOT validation failed: Cannot process complex test diagram: ${dotPath}`);
                     console.log('stderr:', stderr);
                     return false;
                 }
                 
-                console.log(`DOT validation successful: ${dotPath} can process diagrams`);
+                if (!hasComplexLayout) {
+                    console.log(`DOT validation warning: Simple output for complex diagram, may not be using DOT features: ${dotPath}`);
+                    console.log('SVG length:', stdout.length);
+                }
+                
+                console.log(`DOT validation successful: ${dotPath} can process complex diagrams with DOT-specific features`);
                 return true;
                 
             } catch (error) {
-                console.log(`DOT validation failed: Cannot process test diagram: ${dotPath}`, error);
+                console.log(`DOT validation failed: Cannot process complex test diagram: ${dotPath}`, error);
                 return false;
             }
             

@@ -12,7 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ##### 🚀 **Automatic Layout Engine Configuration**
 - **Zero-configuration startup** - Extension automatically detects and configures the best available PlantUML layout engine
-- **Enhanced DOT validation** - Tests actual diagram processing capability, not just file existence
+- **Enhanced DOT validation** - Tests complex diagrams with DOT-specific features (clusters, constraints, hierarchies) that require actual DOT execution, not just simple diagrams that PlantUML.jar can render alone
 - **Enterprise security handling** - Gracefully handles blocked executables and permission restrictions
 - **Smart DOT detection** - Automatically finds and configures Graphviz/DOT installations across Windows, macOS, and Linux
 - **Intelligent fallback** - Falls back to Smetana (pure Java) when DOT is not available or cannot be executed
