@@ -52,7 +52,7 @@ async function generatePlantUMLFromRequirement(requirement: string, history: str
     }
     const prompt = [
         vscode.LanguageModelChatMessage.User(
-            `You are an expert software architect and technical writer.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\n\nIMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:\n\nExplanation:\n<your explanation here>\n\nDiagram Type: <EXACTLY one of: class, sequence, activity, usecase, state, component, deployment>\n\n@startuml\n<PlantUML code here>\n@enduml\n`
+            `You are an expert software architect and technical writer specializing in AI-driven rapid diagram generation.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\n\nIMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:\n\nExplanation:\n<your explanation here>\n\nDiagram Type: <EXACTLY one of: activity, sequence, usecase, class, component>\n\n@startuml\n<PlantUML code here>\n@enduml\n`
         ),
         ...history.map(msg => vscode.LanguageModelChatMessage.User(msg)),
         vscode.LanguageModelChatMessage.User(requirement)
@@ -73,18 +73,17 @@ async function generatePlantUMLFromRequirement(requirement: string, history: str
 }
 
 // Extract diagram type from LLM response - LLM is forced to provide this
+// Focused on diagram types with significant AI-driven comparative advantages
 function extractDiagramTypeFromResponse(response: string): string {
     const diagramTypeMatch = response.match(/Diagram Type:\s*([^\n\r]+)/i);
     if (diagramTypeMatch && diagramTypeMatch[1]) {
         const type = diagramTypeMatch[1].trim().toLowerCase();
-        // Normalize to exact supported types
-        if (type === 'class' || type.includes('class')) { return 'class'; }
-        if (type === 'sequence' || type.includes('sequence')) { return 'sequence'; }
+        // Normalize to exact supported types with AI advantages
         if (type === 'activity' || type.includes('activity')) { return 'activity'; }
+        if (type === 'sequence' || type.includes('sequence')) { return 'sequence'; }
         if (type === 'usecase' || type === 'use case' || type.includes('usecase') || type.includes('use case')) { return 'usecase'; }
-        if (type === 'state' || type.includes('state')) { return 'state'; }
+        if (type === 'class' || type.includes('class')) { return 'class'; }
         if (type === 'component' || type.includes('component')) { return 'component'; }
-        if (type === 'deployment' || type.includes('deployment')) { return 'deployment'; }
     }
     // This should rarely happen since LLM is forced to provide the type
     console.warn('LLM did not provide a valid diagram type, this should not happen with the new prompt');

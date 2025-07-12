@@ -22,7 +22,7 @@ export interface SessionData {
     lastDiagramType?: string;
 }
 
-export type DiagramType = '' | 'class' | 'sequence' | 'activity' | 'usecase' | 'state' | 'component' | 'deployment';
+export type DiagramType = '' | 'activity' | 'sequence' | 'usecase' | 'class' | 'component';
 
 export interface WebviewMessage {
     command: 'sendRequirement' | 'renderSpecificUML' | 'exportSVG' | 'clearChat' | 'importChat' | 'exportChat' | 'editAndResendUserMsg';
