@@ -40,7 +40,11 @@ export class WebviewHtmlGenerator {
                         <label for="diagramType" style="margin-right: 8px; font-weight: 500;">Diagram Type:</label>
                         <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
                     </div>
-                    <textarea id="requirementInput" placeholder="Describe your UML requirement..."></textarea>
+                    <div style="position: relative;">
+                        <textarea id="requirementInput" placeholder="Describe your UML requirement... (Press Enter to send, Shift+Enter for new line, Esc to clear)"></textarea>
+                        <div id="charCounter" style="position: absolute; bottom: 8px; right: 8px; font-size: 0.8em; color: #6c757d; background: rgba(255,255,255,0.8); padding: 2px 6px; border-radius: 3px; pointer-events: none;">0</div>
+                        <button id="clearInputBtn" style="position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.9); border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; display: none;" title="Clear input">✕</button>
+                    </div>
                     <div id="buttonRow">
                         <div class="primary-actions">
                             <button id="sendBtn" class="primary" title="Send (Enter)" aria-label="Send Requirement">
@@ -381,7 +385,39 @@ export class WebviewHtmlGenerator {
                 border-top: 1px solid #eee; 
                 background: #f9f9f9; 
             }
-            #requirementInput { width: 100%; box-sizing: border-box; min-height: 60px; max-height: 120px; padding: 8px; font-size: 1.1em; resize: vertical; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+            #requirementInput { 
+                width: 100%; 
+                box-sizing: border-box; 
+                min-height: 80px; 
+                max-height: 300px; 
+                padding: 12px; 
+                font-size: 1.1em; 
+                font-family: inherit;
+                resize: vertical; 
+                margin-bottom: 10px; 
+                border: 2px solid #e1e5e9; 
+                border-radius: 8px; 
+                background: #fff;
+                transition: all 0.2s ease;
+                line-height: 1.5;
+                overflow-y: auto;
+                /* Enhanced focus states */
+                outline: none;
+            }
+            #requirementInput:focus {
+                border-color: #007acc;
+                box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+                background: #fafbfc;
+            }
+            #requirementInput::placeholder {
+                color: #6c757d;
+                font-style: italic;
+            }
+            /* Auto-resize functionality */
+            #requirementInput.auto-resize {
+                overflow: hidden;
+                resize: none;
+            }
             
             /* --- Button Layout and Styling --- */
             #buttonRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -421,81 +457,134 @@ export class WebviewHtmlGenerator {
                 box-shadow: 0 2px 4px rgba(0,102,204,0.3) !important;
             }
 
-            /* --- Edit Mode Buttons (Resend/Cancel) --- */
+            /* --- Enhanced Edit Mode Buttons --- */
             .edit-mode-buttons {
                 display: flex !important;
-                gap: 6px !important;
-                margin-top: 8px !important;
+                gap: 8px !important;
+                margin-top: 12px !important;
                 align-items: center !important;
+                justify-content: flex-end !important;
             }
             .resend-btn {
-                background: #28a745 !important;
+                background: linear-gradient(135deg, #28a745, #20c997) !important;
                 color: #fff !important;
-                border: 1px solid #28a745 !important;
-                padding: 6px 12px !important;
+                border: none !important;
+                padding: 8px 16px !important;
                 font-size: 0.9em !important;
-                border-radius: 4px !important;
+                border-radius: 6px !important;
                 cursor: pointer !important;
-                font-weight: 500 !important;
+                font-weight: 600 !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                gap: 4px !important;
+                gap: 6px !important;
+                box-shadow: 0 2px 4px rgba(40,167,69,0.2) !important;
             }
             .resend-btn:hover, .resend-btn:focus {
-                background: #218838 !important;
-                border-color: #1e7e34 !important;
+                background: linear-gradient(135deg, #218838, #1ea085) !important;
                 transform: translateY(-1px) !important;
-                box-shadow: 0 2px 6px rgba(40,167,69,0.3) !important;
+                box-shadow: 0 4px 8px rgba(40,167,69,0.3) !important;
+            }
+            .resend-btn:active {
+                transform: translateY(0) !important;
+                box-shadow: 0 2px 4px rgba(40,167,69,0.2) !important;
             }
             .resend-btn::before {
                 content: '🚀' !important;
-                font-size: 0.85em !important;
+                font-size: 0.9em !important;
             }
             .cancel-btn {
-                background: #6c757d !important;
+                background: linear-gradient(135deg, #6c757d, #5a6268) !important;
                 color: #fff !important;
-                border: 1px solid #6c757d !important;
-                padding: 6px 12px !important;
+                border: none !important;
+                padding: 8px 16px !important;
                 font-size: 0.9em !important;
-                border-radius: 4px !important;
+                border-radius: 6px !important;
                 cursor: pointer !important;
-                font-weight: 500 !important;
+                font-weight: 600 !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                gap: 4px !important;
+                gap: 6px !important;
+                box-shadow: 0 2px 4px rgba(108,117,125,0.2) !important;
             }
             .cancel-btn:hover, .cancel-btn:focus {
-                background: #5a6268 !important;
-                border-color: #545b62 !important;
+                background: linear-gradient(135deg, #5a6268, #495057) !important;
                 transform: translateY(-1px) !important;
-                box-shadow: 0 2px 6px rgba(108,117,125,0.3) !important;
+                box-shadow: 0 4px 8px rgba(108,117,125,0.3) !important;
+            }
+            .cancel-btn:active {
+                transform: translateY(0) !important;
+                box-shadow: 0 2px 4px rgba(108,117,125,0.2) !important;
             }
             .cancel-btn::before {
                 content: '✕' !important;
-                font-size: 0.85em !important;
+                font-size: 0.9em !important;
             }
 
-            /* --- Edit Mode Textarea Styling --- */
+            /* --- Enhanced Edit Mode Styling --- */
+            .edit-mode-container {
+                position: relative !important;
+                margin-top: 8px !important;
+                background: #f8f9fa !important;
+                border: 2px solid #007acc !important;
+                border-radius: 8px !important;
+                padding: 12px !important;
+                box-shadow: 0 2px 8px rgba(0,123,255,0.1) !important;
+                transition: all 0.2s ease !important;
+            }
+            .edit-mode-container:focus-within {
+                border-color: #0056b3 !important;
+                box-shadow: 0 0 0 3px rgba(0,123,255,0.1), 0 4px 12px rgba(0,123,255,0.15) !important;
+                background: #fff !important;
+            }
+            
             .edit-mode-textarea {
                 width: 100% !important;
-                min-height: 60px !important;
-                margin-top: 6px !important;
-                padding: 8px !important;
-                font-size: 1em !important;
+                min-height: 80px !important;
+                max-height: 300px !important;
+                padding: 12px !important;
+                font-size: 1.1em !important;
                 font-family: inherit !important;
-                border: 2px solid #007acc !important;
-                border-radius: 4px !important;
+                border: none !important;
+                border-radius: 6px !important;
                 resize: vertical !important;
-                background: #fff !important;
-                transition: border-color 0.2s ease !important;
+                background: transparent !important;
+                transition: all 0.2s ease !important;
                 box-sizing: border-box !important;
+                line-height: 1.5 !important;
+                outline: none !important;
             }
             .edit-mode-textarea:focus {
-                outline: none !important;
-                border-color: #0056b3 !important;
-                box-shadow: 0 0 0 3px rgba(0,123,255,0.1) !important;
+                background: #fff !important;
+                box-shadow: inset 0 0 0 2px rgba(0,123,255,0.2) !important;
+            }
+            
+            .edit-mode-header {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                margin-bottom: 8px !important;
+                font-size: 0.9em !important;
+                color: #007acc !important;
+                font-weight: 500 !important;
+            }
+            
+            .edit-mode-char-counter {
+                font-size: 0.8em !important;
+                color: #6c757d !important;
+                background: rgba(255,255,255,0.8) !important;
+                padding: 2px 6px !important;
+                border-radius: 3px !important;
+                font-weight: normal !important;
+            }
+            
+            .edit-mode-char-counter.warning {
+                color: #ffc107 !important;
+            }
+            
+            .edit-mode-char-counter.danger {
+                color: #dc3545 !important;
             }
 
             /* --- Dropdown Menu for 'More Actions' --- */
@@ -588,20 +677,84 @@ export class WebviewHtmlGenerator {
                 }
             });
 
-            // --- Event Listeners ---
-            sendBtn.onclick = () => {
-                vscode.postMessage({ command: 'sendRequirement', text: requirementInput.value, diagramType: document.getElementById('diagramType').value });
+            // --- Enhanced Input Handling with Auto-resize ---
+            function autoResizeTextarea() {
+                const textarea = requirementInput;
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
+            }
+
+            // Character counter functionality
+            const charCounter = document.getElementById('charCounter');
+            const clearInputBtn = document.getElementById('clearInputBtn');
+            
+            function updateCharCounter() {
+                const count = requirementInput.value.length;
+                charCounter.textContent = count;
+                // Show/hide clear button based on content
+                clearInputBtn.style.display = count > 0 ? 'block' : 'none';
+                // Change color based on length
+                if (count > 1000) {
+                    charCounter.style.color = '#dc3545';
+                } else if (count > 500) {
+                    charCounter.style.color = '#ffc107';
+                } else {
+                    charCounter.style.color = '#6c757d';
+                }
+            }
+            
+            // Clear button functionality
+            clearInputBtn.onclick = () => {
                 requirementInput.value = '';
+                requirementInput.style.height = '80px';
+                updateCharCounter();
+                requirementInput.focus();
+            };
+
+            // Auto-resize on input
+            requirementInput.addEventListener('input', () => {
+                autoResizeTextarea();
+                updateCharCounter();
+            });
+            
+            // Initialize auto-resize and counter
+            autoResizeTextarea();
+            updateCharCounter();
+
+            sendBtn.onclick = () => {
+                const text = requirementInput.value.trim();
+                if (text) {
+                    vscode.postMessage({ command: 'sendRequirement', text: text, diagramType: document.getElementById('diagramType').value });
+                    requirementInput.value = '';
+                    // Reset height and counter after sending
+                    requirementInput.style.height = '80px';
+                    updateCharCounter();
+                }
             };
             
+            // Enhanced keyboard handling with better UX
             requirementInput.addEventListener('keydown', (e) => {
+                // Send on Enter (without Shift)
                 if (e.key === 'Enter' && !e.shiftKey) { 
                     e.preventDefault(); 
                     sendBtn.click(); 
                 }
+                // Alternative: Ctrl+Enter to send
                 if (e.key === 'Enter' && e.ctrlKey) {
                     e.preventDefault();
                     sendBtn.click();
+                }
+                // Tab handling for accessibility
+                if (e.key === 'Tab') {
+                    // Let default tab behavior work
+                    return;
+                }
+                // Escape to clear input
+                if (e.key === 'Escape') {
+                    requirementInput.value = '';
+                    requirementInput.style.height = '80px';
+                    updateCharCounter();
+                    requirementInput.blur();
                 }
             });
             
@@ -1439,7 +1592,7 @@ export class WebviewHtmlGenerator {
             }
             console.log('=== END DEBUG INFO ===');
 
-            // Delegate click event for edit buttons
+            // Enhanced edit mode functionality
             chat.addEventListener('click', function(event) {
                 const target = event.target;
                 if (target && target.classList.contains('edit-user-msg-btn')) {
@@ -1449,44 +1602,99 @@ export class WebviewHtmlGenerator {
                     const pre = userDiv.querySelector('pre');
                     if (!pre) return;
                     
-                    const oldMsg = pre.textContent;
-                    const textarea = document.createElement('textarea');
-                    textarea.value = oldMsg;
-                    textarea.className = 'edit-mode-textarea';
+                    // Create enhanced edit mode container
+                    const editContainer = document.createElement('div');
+                    editContainer.className = 'edit-mode-container';
                     
+                    // Create header with character counter
+                    const header = document.createElement('div');
+                    header.className = 'edit-mode-header';
+                    header.innerHTML = '<span>✏️ Editing message</span><span class="edit-mode-char-counter">0</span>';
+                    
+                    // Create textarea with enhanced styling
+                    const textarea = document.createElement('textarea');
+                    textarea.value = pre.textContent;
+                    textarea.className = 'edit-mode-textarea';
+                    textarea.placeholder = 'Edit your message here... (Ctrl+Enter to save, Esc to cancel)';
+                    
+                    // Create button container
                     const buttonContainer = document.createElement('div');
                     buttonContainer.className = 'edit-mode-buttons';
                     
+                    // Add enhanced buttons
                     const saveBtn = document.createElement('button');
                     saveBtn.textContent = 'Resend';
                     saveBtn.className = 'resend-btn';
-                    saveBtn.title = 'Send the modified message';
+                    saveBtn.title = 'Send the modified message (Ctrl+Enter)';
                     
                     const cancelBtn = document.createElement('button');
                     cancelBtn.textContent = 'Cancel';
                     cancelBtn.className = 'cancel-btn';
-                    cancelBtn.title = 'Cancel editing and restore original message';
+                    cancelBtn.title = 'Cancel editing and restore original message (Esc)';
                     
                     buttonContainer.appendChild(saveBtn);
                     buttonContainer.appendChild(cancelBtn);
                     
-                    userDiv.replaceChild(textarea, pre);
-                    target.style.display = 'none';
-                    userDiv.appendChild(buttonContainer);
+                    // Assemble the edit container
+                    editContainer.appendChild(header);
+                    editContainer.appendChild(textarea);
+                    editContainer.appendChild(buttonContainer);
                     
+                    // Replace pre and edit button with enhanced edit container
+                    userDiv.replaceChild(editContainer, pre);
+                    target.style.display = 'none';
+                    
+                    // Auto-resize functionality for edit textarea
+                    function autoResizeEditTextarea() {
+                        textarea.style.height = 'auto';
+                        textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
+                    }
+                    
+                    // Character counter functionality
+                    function updateEditCharCounter() {
+                        const count = textarea.value.length;
+                        const counter = header.querySelector('.edit-mode-char-counter');
+                        counter.textContent = count;
+                        
+                        // Update counter color based on length
+                        counter.classList.remove('warning', 'danger');
+                        if (count > 1000) {
+                            counter.classList.add('danger');
+                        } else if (count > 500) {
+                            counter.classList.add('warning');
+                        }
+                    }
+                    
+                    // Initialize auto-resize and counter
+                    autoResizeEditTextarea();
+                    updateEditCharCounter();
+                    
+                    // Add event listeners
+                    textarea.addEventListener('input', () => {
+                        autoResizeEditTextarea();
+                        updateEditCharCounter();
+                    });
+                    
+                    // Focus and select all text
                     textarea.focus();
                     textarea.select();
                     
+                    // Save handler
                     saveBtn.onclick = function() {
-                        vscode.postMessage({ command: 'editAndResendUserMsg', index: idx, newText: textarea.value });
+                        const newText = textarea.value.trim();
+                        if (newText) {
+                            vscode.postMessage({ command: 'editAndResendUserMsg', index: idx, newText: newText });
+                        }
                     };
                     
+                    // Cancel handler
                     cancelBtn.onclick = function() {
-                        userDiv.replaceChild(pre, textarea);
+                        // Restore original pre and edit button
+                        userDiv.replaceChild(pre, editContainer);
                         target.style.display = '';
-                        buttonContainer.remove();
                     };
                     
+                    // Enhanced keyboard shortcuts
                     textarea.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter' && e.ctrlKey) {
                             e.preventDefault();
@@ -1494,7 +1702,42 @@ export class WebviewHtmlGenerator {
                         } else if (e.key === 'Escape') {
                             e.preventDefault();
                             cancelBtn.click();
+                        } else if (e.key === 'Tab') {
+                            // Allow tab for indentation
+                            if (e.shiftKey) {
+                                // Shift+Tab for outdent
+                                e.preventDefault();
+                                const start = textarea.selectionStart;
+                                const end = textarea.selectionEnd;
+                                const value = textarea.value;
+                                
+                                if (start === end) {
+                                    // Single cursor - remove one tab/space
+                                    const beforeCursor = value.substring(0, start);
+                                    const afterCursor = value.substring(end);
+                                    const newValue = beforeCursor.replace(/\t$/, '') + afterCursor;
+                                    textarea.value = newValue;
+                                    textarea.selectionStart = textarea.selectionEnd = start - 1;
+                                }
+                            } else {
+                                // Tab for indent
+                                e.preventDefault();
+                                const start = textarea.selectionStart;
+                                const end = textarea.selectionEnd;
+                                const value = textarea.value;
+                                
+                                textarea.value = value.substring(0, start) + '\t' + value.substring(end);
+                                textarea.selectionStart = textarea.selectionEnd = start + 1;
+                            }
                         }
+                    });
+                    
+                    // Add visual feedback for changes
+                    const originalText = pre.textContent;
+                    textarea.addEventListener('input', function() {
+                        const hasChanges = textarea.value !== originalText;
+                        saveBtn.style.opacity = hasChanges ? '1' : '0.7';
+                        saveBtn.disabled = !hasChanges;
                     });
                 }
             });
