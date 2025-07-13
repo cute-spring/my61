@@ -74,9 +74,10 @@ export class UMLGenerator {
 
     /**
      * Get system prompt for UML generation
+     * Focused on diagram types with significant AI-driven comparative advantages
      */
     private getSystemPrompt(typeInstruction: string): string {
-        return `You are an expert software architect and technical writer.
+        return `You are an expert software architect and technical writer specializing in AI-driven rapid diagram generation.
 First, briefly explain the user's system, question, or process in 2-3 sentences.
 Then, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.
 If the user provides an update, modify the previous diagram and explanation accordingly.
@@ -87,7 +88,7 @@ IMPORTANT: You MUST always include the diagram type in your response. Format you
 Explanation:
 <your explanation here>
 
-Diagram Type: <EXACTLY one of: class, sequence, activity, usecase, state, component, deployment>
+Diagram Type: <EXACTLY one of: activity, sequence, usecase, class, component>
 
 @startuml
 <PlantUML code here>
@@ -96,6 +97,7 @@ Diagram Type: <EXACTLY one of: class, sequence, activity, usecase, state, compon
 
     /**
      * Extract diagram type from LLM response
+     * Focused on diagram types with significant AI-driven comparative advantages
      */
     extractDiagramType(response: string): DiagramType {
         const diagramTypeMatch = response.match(/Diagram Type:\s*([^\n\r]+)/i);
@@ -106,14 +108,12 @@ Diagram Type: <EXACTLY one of: class, sequence, activity, usecase, state, compon
 
         const type = diagramTypeMatch[1].trim().toLowerCase();
         const typeMap: Record<string, DiagramType> = {
-            'class': 'class',
-            'sequence': 'sequence', 
             'activity': 'activity',
+            'sequence': 'sequence', 
             'usecase': 'usecase',
             'use case': 'usecase',
-            'state': 'state',
-            'component': 'component',
-            'deployment': 'deployment'
+            'class': 'class',
+            'component': 'component'
         };
 
         for (const [key, value] of Object.entries(typeMap)) {

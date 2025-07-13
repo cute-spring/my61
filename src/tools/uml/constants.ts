@@ -1,16 +1,21 @@
 /**
  * Configuration constants for UML Chat Panel
+ * 
+ * Focused on diagram types with significant AI-driven comparative advantages:
+ * - Activity Diagrams: Quick business process modeling from natural language
+ * - Sequence Diagrams: Rapid system interaction design through conversation
+ * - Use Case Diagrams: Fast functional requirement visualization
+ * - Class Diagrams: Progressive system design with iterative refinement
+ * - Component Diagrams: Quick architecture prototyping
  */
 
 export const DIAGRAM_TYPES = [
     { value: '', label: 'Auto-detect' },
-    { value: 'class', label: 'Class Diagram' },
-    { value: 'sequence', label: 'Sequence Diagram' },
-    { value: 'activity', label: 'Activity Diagram' },
-    { value: 'usecase', label: 'Use Case Diagram' },
-    { value: 'state', label: 'State Diagram' },
-    { value: 'component', label: 'Component Diagram' },
-    { value: 'deployment', label: 'Deployment Diagram' }
+    { value: 'activity', label: 'Activity Diagram (Business Process)' },
+    { value: 'sequence', label: 'Sequence Diagram (System Interaction)' },
+    { value: 'usecase', label: 'Use Case Diagram (Functional Requirements)' },
+    { value: 'class', label: 'Class Diagram (System Structure)' },
+    { value: 'component', label: 'Component Diagram (Architecture)' }
 ] as const;
 
 export const ZOOM_CONFIG = {
@@ -25,6 +30,8 @@ export const UI_CONFIG = {
     MAX_PANEL_WIDTH: 900,
     DEFAULT_PANEL_WIDTH: '20vw'
 } as const;
+
+
 
 export const UML_TEMPLATES = {
     DEFAULT_PLANTUML: '@startuml\n\n@enduml',
@@ -49,3 +56,5 @@ To enable diagram rendering, you need:
 For now, you can still discuss UML concepts and get PlantUML code - you just won't see the visual diagrams until setup is complete.
 `
 } as const;
+
+

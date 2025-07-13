@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# Test script for Reactive Tutorial Button State Management
+echo "🔄 Testing Reactive Tutorial Button State Management"
+echo "=================================================="
+
+echo ""
+echo "NEW IMPLEMENTATION: Lightweight Reactive State Management"
+echo "- Replaces manual checkEmptyState() calls"
+echo "- Automatic state synchronization"
+echo "- Centralized state management"
+echo "- Better debugging and logging"
+
+echo ""
+echo "TESTING STEPS:"
+echo "1. Open VS Code"
+echo "2. Run command: 'UML Chat Designer'"
+echo "3. Open Developer Tools (F12) → Console"
+echo "4. Look for reactive state messages"
+
+echo ""
+echo "EXPECTED CONSOLE MESSAGES:"
+echo "✅ [REACTIVE] DOM fully loaded, initializing state manager"
+echo "✅ [REACTIVE] Center button found on DOMContentLoaded: true"
+echo "✅ [REACTIVE] State changed: { from: {...}, to: {...}, buttonVisible: true }"
+echo "✅ [REACTIVE] ✅ Showing center tutorial button"
+
+echo ""
+echo "TEST SCENARIOS:"
+
+echo ""
+echo "📝 Test 1: Initial State (No Diagram)"
+echo "- Expected: Button visible in center of right panel"
+echo "- Console: '[REACTIVE] State changed: { ..., buttonVisible: true }'"
+echo "- Console: '[REACTIVE] ✅ Showing center tutorial button'"
+
+echo ""
+echo "📝 Test 2: Send Diagram Request"
+echo "- Action: Send request 'Create a simple class diagram'"
+echo "- Expected: Button hides when SVG content is rendered"
+echo "- Console: '[REACTIVE] State changed: { ..., hasSvg: true, buttonVisible: false }'"
+echo "- Console: '[REACTIVE] ❌ Hiding center tutorial button'"
+
+echo ""
+echo "📝 Test 3: Clear Chat"
+echo "- Action: Click 'Clear Chat' button"
+echo "- Expected: Button shows again when SVG is removed"
+echo "- Console: '[REACTIVE] State changed: { ..., hasSvg: false, buttonVisible: true }'"
+echo "- Console: '[REACTIVE] ✅ Showing center tutorial button'"
+
+echo ""
+echo "📝 Test 4: Onboarding Modal"
+echo "- Action: Click tutorial button to open onboarding"
+echo "- Expected: Button hides while modal is open"
+echo "- Console: '[REACTIVE] State changed: { ..., isOnboardingActive: true, buttonVisible: false }'"
+echo "- Console: '[REACTIVE] ❌ Hiding center tutorial button'"
+
+echo ""
+echo "📝 Test 5: Close Onboarding"
+echo "- Action: Close onboarding modal (X, Skip, or Finish)"
+echo "- Expected: Button shows again if no diagram"
+echo "- Console: '[REACTIVE] State changed: { ..., isOnboardingActive: false, buttonVisible: true }'"
+echo "- Console: '[REACTIVE] ✅ Showing center tutorial button'"
+
+echo ""
+echo "📝 Test 6: Switch Between Diagrams"
+echo "- Action: Click on different bot messages to render different diagrams"
+echo "- Expected: Button stays hidden while any diagram is shown"
+echo "- Console: '[REACTIVE] State changed: { ..., hasSvg: true, buttonVisible: false }'"
+
+echo ""
+echo "DEBUGGING COMMANDS:"
+echo "Run these in the browser console for debugging:"
+
+echo ""
+echo "1. Check current state:"
+echo "   tutorialButtonState.state"
+
+echo ""
+echo "2. Check if button should be visible:"
+echo "   tutorialButtonState.shouldShowButton()"
+
+echo ""
+echo "3. Manually set SVG state:"
+echo "   tutorialButtonState.setSvgContent(false)  // Should show button"
+echo "   tutorialButtonState.setSvgContent(true)   // Should hide button"
+
+echo ""
+echo "4. Manually set onboarding state:"
+echo "   tutorialButtonState.setOnboardingActive(true)   // Should hide button"
+echo "   tutorialButtonState.setOnboardingActive(false)  // Should show button (if no SVG)"
+
+echo ""
+echo "5. Check DOM element:"
+echo "   document.getElementById('onboardingBtnCenter')"
+
+echo ""
+echo "ADVANTAGES OF REACTIVE APPROACH:"
+echo "✅ No manual checkEmptyState() calls needed"
+echo "✅ Automatic DOM observation and state sync"
+echo "✅ Centralized state management"
+echo "✅ Better debugging with state change logs"
+echo "✅ No timing issues or race conditions"
+echo "✅ Declarative approach - easier to reason about"
+
+echo ""
+echo "SUCCESS CRITERIA:"
+echo "- Button visibility changes automatically with state"
+echo "- Console shows clear state transition logs"
+echo "- No manual DOM manipulation needed"
+echo "- Consistent behavior across all scenarios"
+echo "- No timing issues or race conditions"
+
+echo ""
+echo "🎯 If tests pass, the reactive state management is working correctly!"
+echo "🐛 If tests fail, check console for error messages and state logs" 

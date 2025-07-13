@@ -1,0 +1,1081 @@
+import * as vscode from 'vscode';
+import { BaseTool } from '../base/baseTool';
+import { getLLMResponse } from '../../llm';
+// Import or define your Jira API integration here
+
+interface RequirementData {
+  description: string;
+  summary?: string;
+  refinedRequirements?: string;
+  jiraStructure?: { epic: string; stories: string[] };
+  context?: {
+    projectName?: string;
+    readmeContent?: string;
+    userRole?: string;
+  };
+}
+
+interface ChatMessage {
+  sender: 'User' | 'AI' | 'System';
+  message: string;
+  timestamp: Date;
+  step?: number;
+}
+
+export class JiraPlanningTool extends BaseTool {
+  command = 'copilotTools.planJira';
+  title = 'AI Jira Planning Assistant';
+
+  private workflowStep = 0;
+  private chatHistory: ChatMessage[] = [];
+  private requirementData: RequirementData = { description: '' };
+  private isProcessing = false;
+  private sessionId: string = '';
+  private templates: { [key: string]: RequirementData } = {};
+
+  constructor() {
+    super();
+    this.sessionId = this.generateSessionId();
+    this.loadTemplates();
+  }
+
+  isEnabled(settings: vscode.WorkspaceConfiguration): boolean {
+    return true; // Always enabled for now
+  }
+
+  buildPrompt(...args: any[]): string {
+    // Build initial prompt for requirement gathering
+    return 'Describe the feature or requirement you want to plan.';
+  }
+
+  parseResponse(response: string): any {
+    // Parse LLM response for each workflow step
+    return response;
+  }
+
+  getWebviewHtml(...args: any[]): string {
+    const stepNames = ['Requirements', 'Summary', 'SME Review', 'Jira Structure', 'Creation', 'Complete'];
+    const progressBar = stepNames.map((step, index) => 
+      `<span class="${index <= this.workflowStep ? 'completed' : 'pending'}">${step}</span>`
+    ).join(' → ');
+    
+    const messages = this.chatHistory.map((msg) => 
+      `<div class="message ${msg.sender.toLowerCase()}">
+         <strong>${msg.sender}:</strong> ${this.escapeHtml(msg.message)}
+         <small>${msg.timestamp.toLocaleTimeString()}</small>
+       </div>`
+    ).join('');
+    
+    const actionButtons = this.workflowStep > 0 ? 
+      `<button id='resetBtn' class='action-btn'>Reset Workflow</button>
+       <button id='backBtn' class='action-btn'>Previous Step</button>
+       <button id='saveBtn' class='action-btn'>Save Session</button>
+       <button id='exportBtn' class='action-btn'>Export</button>` : 
+      `<button id='loadBtn' class='action-btn'>Load Session</button>
+       <button id='templateBtn' class='action-btn'>Use Template</button>`;
+    
+    return `
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 10px; }
+          .progress { margin-bottom: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+          .completed { color: green; font-weight: bold; }
+          .pending { color: gray; }
+          .message { margin: 10px 0; padding: 8px; border-radius: 5px; }
+          .user { background: #e3f2fd; }
+          .ai { background: #f3e5f5; }
+          .system { background: #fff3e0; }
+          .input-area { margin-top: 20px; }
+          .action-btn { margin: 5px; padding: 5px 10px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; }
+          .processing { opacity: 0.7; }
+          #userInput { width: 70%; padding: 8px; }
+          #sendBtn { padding: 8px 15px; margin-left: 5px; }
+        </style>
+      </head>
+      <body>
+        <div id='chat-panel'>
+          <h2>AI Jira Planning Assistant</h2>
+          <div class='progress'><strong>Progress:</strong> ${progressBar}</div>
+          <div id='messages'>${messages}</div>
+          <div class='input-area'>
+            <input id='userInput' type='text' placeholder='Type your message...' ${this.isProcessing ? 'disabled' : ''}/>
+            <button id='sendBtn' ${this.isProcessing ? 'disabled' : ''}>Send</button>
+            ${actionButtons}
+          </div>
+          ${this.isProcessing ? '<div class="processing">AI is thinking...</div>' : ''}
+        </div>
+        <script>
+          const vscode = acquireVsCodeApi();
+          
+          function sendMessage() {
+            const input = document.getElementById('userInput');
+            if (input.value.trim()) {
+              vscode.postMessage({ type: 'userInput', message: input.value });
+              input.value = '';
+            }
+          }
+          
+          document.getElementById('sendBtn').onclick = sendMessage;
+          document.getElementById('userInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') sendMessage();
+          });
+          
+          const resetBtn = document.getElementById('resetBtn');
+          if (resetBtn) resetBtn.onclick = () => vscode.postMessage({ type: 'reset' });
+          
+          const backBtn = document.getElementById('backBtn');
+          if (backBtn) backBtn.onclick = () => vscode.postMessage({ type: 'back' });
+          
+          const saveBtn = document.getElementById('saveBtn');
+          if (saveBtn) saveBtn.onclick = () => vscode.postMessage({ type: 'save' });
+          
+          const exportBtn = document.getElementById('exportBtn');
+          if (exportBtn) exportBtn.onclick = () => vscode.postMessage({ type: 'export' });
+          
+          const loadBtn = document.getElementById('loadBtn');
+          if (loadBtn) loadBtn.onclick = () => vscode.postMessage({ type: 'load' });
+          
+          const templateBtn = document.getElementById('templateBtn');
+          if (templateBtn) templateBtn.onclick = () => vscode.postMessage({ type: 'template' });
+        </script>
+      </body>
+      </html>
+    `;
+  }
+
+  async handleWebviewMessage(panel: vscode.WebviewPanel, editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration, ...args: any[]) {
+    panel.webview.onDidReceiveMessage(async (msg) => {
+      try {
+        if (msg.type === 'userInput') {
+          if (this.isProcessing) {
+            return;
+          }
+          
+          this.addMessage('User', msg.message);
+          this.isProcessing = true;
+          panel.webview.html = this.getWebviewHtml();
+          
+          const context = await this.gatherContext(editor);
+          let aiResponse = await this.processWorkflowStep(msg.message, context);
+          
+          this.addMessage('AI', aiResponse);
+          this.isProcessing = false;
+          panel.webview.html = this.getWebviewHtml();
+          
+        } else if (msg.type === 'reset') {
+          this.resetWorkflow();
+          panel.webview.html = this.getWebviewHtml();
+          
+        } else if (msg.type === 'back') {
+          this.goToPreviousStep();
+          panel.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'save') {
+          await this.saveSession();
+          this.addMessage('System', 'Session saved successfully!');
+        } else if (msg.type === 'export') {
+          await this.exportSession();
+          this.addMessage('System', 'Requirements exported successfully!');
+        } else if (msg.type === 'load') {
+          await this.loadSession();
+          panel.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'template') {
+          await this.useTemplate();
+          panel.webview.html = this.getWebviewHtml();
+        }
+      } catch (error) {
+        this.isProcessing = false;
+        this.addMessage('System', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        panel.webview.html = this.getWebviewHtml();
+      }
+    });
+    
+    if (this.chatHistory.length === 0) {
+      const context = await this.gatherContext(editor);
+      const greeting = `Welcome! I'll help you plan a feature for ${context?.projectName || 'your project'}. Describe the feature or requirement you want to plan.`;
+      this.addMessage('AI', greeting);
+      panel.webview.html = this.getWebviewHtml();
+    }
+  }
+
+  async handleInput(editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration) {
+    // Override the base class to work without requiring an active editor
+    // Track tool usage at the beginning of function execution
+    const featureName = this.getFeatureName();
+    this.trackUsage('tool_opened', {
+      hasSelection: false,
+      selectionLength: 0,
+      fileExtension: 'none'
+    });
+
+    // Create and show the webview panel
+    this.panel = vscode.window.createWebviewPanel(
+      'jiraPlanningTool',
+      'AI Jira Planning Assistant',
+      vscode.ViewColumn.Beside,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true
+      }
+    );
+
+    // Use a dummy editor if none provided (for context gathering)
+    const contextEditor = editor || await this.createDummyEditor();
+    
+    // Initialize the chat
+    if (this.chatHistory.length === 0) {
+      const context = await this.gatherContext(contextEditor);
+      const greeting = `Welcome! I'll help you plan a feature for ${context?.projectName || 'your project'}. Describe the feature or requirement you want to plan.`;
+      this.addMessage('AI', greeting);
+    }
+
+    this.panel.webview.html = this.getWebviewHtml();
+
+    // Handle webview messages
+    this.panel.webview.onDidReceiveMessage(async (msg) => {
+      try {
+        if (msg.type === 'userInput') {
+          if (this.isProcessing) {
+            return;
+          }
+          
+          this.addMessage('User', msg.message);
+          this.isProcessing = true;
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+          const context = await this.gatherContext(contextEditor);
+          let aiResponse = await this.processWorkflowStep(msg.message, context);
+          
+          this.addMessage('AI', aiResponse);
+          this.isProcessing = false;
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+        } else if (msg.type === 'reset') {
+          this.resetWorkflow();
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+        } else if (msg.type === 'back') {
+          this.goToPreviousStep();
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'save') {
+          await this.saveSession();
+          this.addMessage('System', 'Session saved successfully!');
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'export') {
+          await this.exportSession();
+          this.addMessage('System', 'Requirements exported successfully!');
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'load') {
+          await this.loadSession();
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'template') {
+          await this.useTemplate();
+          this.panel!.webview.html = this.getWebviewHtml();
+        }
+      } catch (error) {
+        this.isProcessing = false;
+        this.addMessage('System', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        this.panel!.webview.html = this.getWebviewHtml();
+      }
+    });
+
+    // Handle panel disposal
+    this.panel.onDidDispose(() => {
+      this.panel = undefined;
+    });
+  }
+
+  async handleInputWithoutEditor(settings: vscode.WorkspaceConfiguration) {
+    // Handle tool execution without requiring an active editor
+    // Track tool usage at the beginning of function execution
+    const featureName = this.getFeatureName();
+    this.trackUsage('tool_opened', {
+      hasSelection: false,
+      selectionLength: 0,
+      fileExtension: 'none'
+    });
+
+    // Create and show the webview panel
+    this.panel = vscode.window.createWebviewPanel(
+      'jiraPlanningTool',
+      'AI Jira Planning Assistant',
+      vscode.ViewColumn.Beside,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true
+      }
+    );
+
+    // Initialize the chat
+    if (this.chatHistory.length === 0) {
+      const context = await this.gatherContextWithoutEditor();
+      const greeting = `Welcome! I'll help you plan a feature for ${context?.projectName || 'your project'}. Describe the feature or requirement you want to plan.`;
+      this.addMessage('AI', greeting);
+    }
+
+    this.panel.webview.html = this.getWebviewHtml();
+
+    // Handle webview messages
+    this.panel.webview.onDidReceiveMessage(async (msg) => {
+      try {
+        if (msg.type === 'userInput') {
+          if (this.isProcessing) {
+            return;
+          }
+          
+          this.addMessage('User', msg.message);
+          this.isProcessing = true;
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+          const context = await this.gatherContextWithoutEditor();
+          let aiResponse = await this.processWorkflowStep(msg.message, context);
+          
+          this.addMessage('AI', aiResponse);
+          this.isProcessing = false;
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+        } else if (msg.type === 'reset') {
+          this.resetWorkflow();
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+        } else if (msg.type === 'back') {
+          this.goToPreviousStep();
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'save') {
+          await this.saveSession();
+          this.addMessage('System', 'Session saved successfully!');
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'export') {
+          await this.exportSession();
+          this.addMessage('System', 'Requirements exported successfully!');
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'load') {
+          await this.loadSession();
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'template') {
+          await this.useTemplate();
+          this.panel!.webview.html = this.getWebviewHtml();
+        }
+      } catch (error) {
+        this.isProcessing = false;
+        this.addMessage('System', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        this.panel!.webview.html = this.getWebviewHtml();
+      }
+    });
+
+    // Handle panel disposal
+    this.panel.onDidDispose(() => {
+      this.panel = undefined;
+    });
+  }
+
+  private async gatherContextWithoutEditor(): Promise<RequirementData['context']> {
+    // Gather context without requiring an active editor
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    let context: RequirementData['context'] = {};
+
+    if (workspaceFolder) {
+      context.projectName = workspaceFolder.name;
+      
+      // Try to read README file
+      const readmePath = vscode.Uri.joinPath(workspaceFolder.uri, 'README.md');
+      try {
+        const readmeContent = await vscode.workspace.fs.readFile(readmePath);
+        context.readmeContent = new TextDecoder().decode(readmeContent).substring(0, 1000); // First 1000 chars
+      } catch (error) {
+        // README not found, continue without it
+      }
+    }
+
+    // Get user role from settings
+    const settings = vscode.workspace.getConfiguration('copilotTools');
+    context.userRole = settings.get('defaultUserRole', 'Developer');
+
+    return context;
+  }
+
+  private async createDummyEditor(): Promise<vscode.TextEditor> {
+    // Create a temporary document for context gathering
+    const doc = await vscode.workspace.openTextDocument({
+      content: '',
+      language: 'plaintext'
+    });
+    return await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
+  }
+
+  async handleInputWithoutEditor(settings: vscode.WorkspaceConfiguration) {
+    // Handle tool execution without requiring an active editor
+    // Track tool usage at the beginning of function execution
+    const featureName = this.getFeatureName();
+    this.trackUsage('tool_opened', {
+      hasSelection: false,
+      selectionLength: 0,
+      fileExtension: 'none'
+    });
+
+    // Create and show the webview panel
+    this.panel = vscode.window.createWebviewPanel(
+      'jiraPlanningTool',
+      'AI Jira Planning Assistant',
+      vscode.ViewColumn.Beside,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true
+      }
+    );
+
+    // Initialize the chat
+    if (this.chatHistory.length === 0) {
+      const context = await this.gatherContextWithoutEditor();
+      const greeting = `Welcome! I'll help you plan a feature for ${context?.projectName || 'your project'}. Describe the feature or requirement you want to plan.`;
+      this.addMessage('AI', greeting);
+    }
+
+    this.panel.webview.html = this.getWebviewHtml();
+
+    // Handle webview messages
+    this.panel.webview.onDidReceiveMessage(async (msg) => {
+      try {
+        if (msg.type === 'userInput') {
+          if (this.isProcessing) {
+            return;
+          }
+          
+          this.addMessage('User', msg.message);
+          this.isProcessing = true;
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+          const context = await this.gatherContextWithoutEditor();
+          let aiResponse = await this.processWorkflowStep(msg.message, context);
+          
+          this.addMessage('AI', aiResponse);
+          this.isProcessing = false;
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+        } else if (msg.type === 'reset') {
+          this.resetWorkflow();
+          this.panel!.webview.html = this.getWebviewHtml();
+          
+        } else if (msg.type === 'back') {
+          this.goToPreviousStep();
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'save') {
+          await this.saveSession();
+          this.addMessage('System', 'Session saved successfully!');
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'export') {
+          await this.exportSession();
+          this.addMessage('System', 'Requirements exported successfully!');
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'load') {
+          await this.loadSession();
+          this.panel!.webview.html = this.getWebviewHtml();
+        } else if (msg.type === 'template') {
+          await this.useTemplate();
+          this.panel!.webview.html = this.getWebviewHtml();
+        }
+      } catch (error) {
+        this.isProcessing = false;
+        this.addMessage('System', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        this.panel!.webview.html = this.getWebviewHtml();
+      }
+    });
+
+    // Handle panel disposal
+    this.panel.onDidDispose(() => {
+      this.panel = undefined;
+    });
+  }
+
+  private async gatherContextWithoutEditor(): Promise<RequirementData['context']> {
+    // Gather context without requiring an active editor
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    let context: RequirementData['context'] = {};
+
+    if (workspaceFolder) {
+      context.projectName = workspaceFolder.name;
+      
+      // Try to read README file
+      const readmePath = vscode.Uri.joinPath(workspaceFolder.uri, 'README.md');
+      try {
+        const readmeContent = await vscode.workspace.fs.readFile(readmePath);
+        context.readmeContent = new TextDecoder().decode(readmeContent);
+      } catch (error) {
+        // README not found, continue without it
+      }
+    }
+
+    // Get user role from settings
+    const settings = vscode.workspace.getConfiguration('copilotTools.jiraPlanning');
+    context.userRole = settings.get('userRole', 'Developer');
+
+    return context;
+  }
+
+  getSettingsSchema(): { [key: string]: any } {
+    return {
+      jiraUrl: {
+        type: 'string',
+        title: 'Jira URL',
+        description: 'Your Jira instance URL (e.g., https://company.atlassian.net)',
+        default: ''
+      },
+      jiraUsername: {
+        type: 'string',
+        title: 'Jira Username/Email',
+        description: 'Your Jira username or email address',
+        default: ''
+      },
+      jiraApiToken: {
+        type: 'string',
+        title: 'Jira API Token',
+        description: 'Your Jira API token (create at: id.atlassian.com/manage-profile/security/api-tokens)',
+        default: ''
+      },
+      defaultProjectKey: {
+        type: 'string',
+        title: 'Default Jira Project Key',
+        description: 'Default project key for creating tickets (e.g., PROJ)',
+        default: ''
+      },
+      enableSessionPersistence: {
+        type: 'boolean',
+        title: 'Enable Session Persistence',
+        description: 'Save and restore chat sessions between VS Code restarts',
+        default: true
+      },
+      defaultUserRole: {
+        type: 'string',
+        title: 'Default User Role',
+        description: 'Your role for context-aware prompts',
+        enum: ['Developer', 'Product Manager', 'Business Analyst', 'Designer', 'QA Engineer'],
+        default: 'Developer'
+      }
+    };
+  }
+
+  // Helper Methods
+  private addMessage(sender: 'User' | 'AI' | 'System', message: string, step?: number) {
+    this.chatHistory.push({
+      sender,
+      message,
+      timestamp: new Date(),
+      step: step || this.workflowStep
+    });
+  }
+
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private resetWorkflow() {
+    this.workflowStep = 0;
+    this.chatHistory = [];
+    this.requirementData = { description: '' };
+    this.isProcessing = false;
+    this.addMessage('AI', 'Workflow reset. Describe the feature or requirement you want to plan.');
+  }
+
+  private goToPreviousStep() {
+    if (this.workflowStep > 0) {
+      this.workflowStep--;
+      this.addMessage('System', `Returned to step ${this.workflowStep + 1}. You can modify your previous input.`);
+    }
+  }
+
+  private async gatherContext(editor: vscode.TextEditor): Promise<RequirementData['context']> {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+    const projectName = workspaceFolder?.name;
+    
+    let readmeContent = '';
+    try {
+      const readmeUri = vscode.Uri.joinPath(workspaceFolder!.uri, 'README.md');
+      const readmeDoc = await vscode.workspace.openTextDocument(readmeUri);
+      readmeContent = readmeDoc.getText().substring(0, 1000); // First 1000 chars
+    } catch {
+      // README not found or not readable
+    }
+
+    return {
+      projectName,
+      readmeContent,
+      userRole: 'Developer' // Could be enhanced to detect from settings
+    };
+  }
+
+  private async processWorkflowStep(userMessage: string, context: RequirementData['context']): Promise<string> {
+    const contextString = context?.projectName ? 
+      `Project: ${context.projectName}. ${context.readmeContent ? `Project info: ${context.readmeContent}` : ''}` : '';
+    
+    let aiPrompt = '';
+    let response = '';
+
+    switch (this.workflowStep) {
+      case 0:
+        this.requirementData.description = userMessage;
+        aiPrompt = `You are an AI assistant helping plan a feature for ${context?.projectName || 'a project'}. 
+                   ${contextString}
+                   User described: "${userMessage}". 
+                   Ask 2-3 clarifying questions to gather more requirements. Be specific and practical.`;
+        response = await this.getLLMResponseWithFallback(aiPrompt);
+        this.workflowStep = 1;
+        break;
+
+      case 1:
+        const allRequirements = this.chatHistory
+          .filter(m => m.sender === 'User')
+          .map(m => m.message)
+          .join(' ');
+        aiPrompt = `Summarize these requirements clearly and concisely:
+                   ${allRequirements}
+                   
+                   Format as:
+                   **Summary:** [brief description]
+                   **Key Requirements:** [bullet points]
+                   **Scope:** [what's included/excluded]
+                   
+                   Ask user to confirm if this summary is accurate.`;
+        response = await this.getLLMResponseWithFallback(aiPrompt);
+        this.requirementData.summary = response;
+        this.workflowStep = 2;
+        break;
+
+      case 2:
+        aiPrompt = `As an expert SME, analyze this confirmed summary and suggest improvements:
+                   ${this.requirementData.summary}
+                   
+                   Probe for:
+                   - Edge cases and error scenarios
+                   - Non-functional requirements (performance, security, accessibility)
+                   - Success metrics and acceptance criteria
+                   - Integration points and dependencies
+                   
+                   Ask specific, actionable questions.`;
+        response = await this.getLLMResponseWithFallback(aiPrompt);
+        this.workflowStep = 3;
+        break;
+
+      case 3:
+        const refinedRequirements = this.chatHistory
+          .filter(m => m.step === 2 || m.step === 3)
+          .map(m => m.message)
+          .join(' ');
+        
+        aiPrompt = `Create a Jira Epic and User Stories for:
+                   Original: ${this.requirementData.summary}
+                   Refined: ${refinedRequirements}
+                   
+                   Format as:
+                   **Epic:** [Epic title and description]
+                   **User Stories:**
+                   1. As a [user], I want [goal] so that [benefit]
+                   2. [Additional stories...]
+                   
+                   **Technical Tasks:** [Sub-tasks for each story]
+                   **Labels:** [Suggested Jira labels]
+                   
+                   Present this for user approval.`;
+        response = await this.getLLMResponseWithFallback(aiPrompt);
+        this.workflowStep = 4;
+        break;
+
+      case 4:
+        if (userMessage.toLowerCase().includes('approve') || userMessage.toLowerCase().includes('yes')) {
+          await this.createJiraTickets(this.chatHistory);
+          response = 'Great! I\'ll create the Jira tickets now. Would you like me to also create a Git branch for the first story?';
+          this.workflowStep = 5;
+        } else {
+          response = 'Please let me know what you\'d like to change about the proposed structure.';
+        }
+        break;
+
+      case 5:
+        if (userMessage.toLowerCase().includes('yes') || userMessage.toLowerCase().includes('branch')) {
+          await this.createGitBranch('feature/story-1');
+          response = 'Jira tickets created and Git branch set up! The workflow is complete. You can start development or create a new planning session.';
+        } else {
+          response = 'Jira tickets have been created successfully! The workflow is complete.';
+        }
+        this.workflowStep = 6;
+        break;
+
+      default:
+        response = 'Workflow complete! Use the Reset button to start a new planning session.';
+    }
+
+    return response;
+  }
+
+  private async getLLMResponseWithFallback(prompt: string): Promise<string> {
+    try {
+      const response = await getLLMResponse(prompt);
+      return response || 'I apologize, but I\'m having trouble generating a response. Please try rephrasing your input.';
+    } catch (error) {
+      return `Error processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
+    }
+  }
+
+  // Session Management Methods
+  private generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  private async saveSession(): Promise<void> {
+    try {
+      const sessionData = {
+        sessionId: this.sessionId,
+        workflowStep: this.workflowStep,
+        chatHistory: this.chatHistory,
+        requirementData: this.requirementData,
+        timestamp: new Date().toISOString()
+      };
+
+      const globalState = this.panel?.webview; // Get webview context
+      // In a real implementation, you'd use VS Code's global/workspace state
+      // For now, we'll use localStorage equivalent through webview
+      await vscode.workspace.getConfiguration().update(
+        `copilotTools.jiraPlanningSession.${this.sessionId}`, 
+        sessionData, 
+        vscode.ConfigurationTarget.Workspace
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to save session: ${error}`);
+    }
+  }
+
+  private async loadSession(): Promise<void> {
+    try {
+      const sessions = vscode.workspace.getConfiguration('copilotTools').get('jiraPlanningSession') as { [key: string]: any } || {};
+      const sessionKeys = Object.keys(sessions);
+      
+      if (sessionKeys.length === 0) {
+        vscode.window.showInformationMessage('No saved sessions found.');
+        return;
+      }
+
+      const selected = await vscode.window.showQuickPick(
+        sessionKeys.map(key => ({
+          label: key,
+          description: `Saved on ${new Date(sessions[key]?.timestamp).toLocaleString()}`
+        })),
+        { placeHolder: 'Select a session to load' }
+      );
+
+      if (selected && sessions[selected.label]) {
+        const sessionData = sessions[selected.label];
+        this.workflowStep = sessionData.workflowStep;
+        this.chatHistory = sessionData.chatHistory;
+        this.requirementData = sessionData.requirementData;
+        this.addMessage('System', `Session "${selected.label}" loaded successfully!`);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to load session: ${error}`);
+    }
+  }
+
+  private async exportSession(): Promise<void> {
+    try {
+      const exportData = {
+        projectName: this.requirementData.context?.projectName || 'Unknown Project',
+        timestamp: new Date().toISOString(),
+        requirements: this.requirementData,
+        chatHistory: this.chatHistory.map(msg => `${msg.sender}: ${msg.message}`).join('\n\n'),
+        summary: this.generateExportSummary()
+      };
+
+      const content = this.formatExportContent(exportData);
+      
+      const doc = await vscode.workspace.openTextDocument({
+        content,
+        language: 'markdown'
+      });
+      
+      await vscode.window.showTextDocument(doc);
+      vscode.window.showInformationMessage('Requirements exported to new document');
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to export session: ${error}`);
+    }
+  }
+
+  // Template System Methods
+  private loadTemplates(): void {
+    this.templates = {
+      'web-feature': {
+        description: 'New web application feature',
+        context: { userRole: 'Developer' }
+      },
+      'api-endpoint': {
+        description: 'New API endpoint development',
+        context: { userRole: 'Developer' }
+      },
+      'bug-fix': {
+        description: 'Bug fix and resolution',
+        context: { userRole: 'Developer' }
+      },
+      'ui-component': {
+        description: 'New UI component development',
+        context: { userRole: 'Designer' }
+      },
+      'performance-improvement': {
+        description: 'Performance optimization task',
+        context: { userRole: 'Developer' }
+      }
+    };
+  }
+
+  private async useTemplate(): Promise<void> {
+    try {
+      const templateOptions = Object.keys(this.templates).map(key => ({
+        label: key.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        value: key,
+        description: this.templates[key].description
+      }));
+
+      const selected = await vscode.window.showQuickPick(templateOptions, {
+        placeHolder: 'Select a requirement template'
+      });
+
+      if (selected) {
+        const template = this.templates[selected.value];
+        this.resetWorkflow();
+        this.requirementData = { ...template };
+        this.addMessage('System', `Template "${selected.label}" applied. Please describe your specific requirements.`);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to load template: ${error}`);
+    }
+  }
+
+  // Export Formatting Methods
+  private generateExportSummary(): string {
+    const stepSummary = [
+      `Workflow completed ${this.workflowStep}/6 steps`,
+      `Total messages: ${this.chatHistory.length}`,
+      `Requirements gathered: ${this.requirementData.description ? 'Yes' : 'No'}`,
+      `Summary created: ${this.requirementData.summary ? 'Yes' : 'No'}`,
+      `Jira structure: ${this.requirementData.jiraStructure ? 'Yes' : 'No'}`
+    ];
+    return stepSummary.join('\n');
+  }
+
+  private formatExportContent(data: any): string {
+    return `# Requirements Document: ${data.projectName}
+
+## Generated on: ${new Date(data.timestamp).toLocaleString()}
+
+## Summary
+${data.summary}
+
+## Requirements Details
+**Description:** ${data.requirements.description || 'Not specified'}
+
+**Summary:** ${data.requirements.summary || 'Not completed'}
+
+**Context:**
+- Project: ${data.requirements.context?.projectName || 'Unknown'}
+- User Role: ${data.requirements.context?.userRole || 'Not specified'}
+
+## Jira Structure
+${data.requirements.jiraStructure ? 
+  `**Epic:** ${data.requirements.jiraStructure.epic}
+**Stories:** ${data.requirements.jiraStructure.stories?.join(', ') || 'None defined'}` : 
+  'Not yet defined'}
+
+## Chat History
+${data.chatHistory}
+
+---
+*Generated by AI Jira Planning Assistant*`;
+  }
+
+  // Enhanced Jira Integration Methods
+  private async createJiraTickets(chatHistory: ChatMessage[]): Promise<void> {
+    try {
+      const settings = vscode.workspace.getConfiguration('copilotTools');
+      const jiraUrl = settings.get<string>('jiraUrl');
+      const jiraUsername = settings.get<string>('jiraUsername');
+      const jiraApiToken = settings.get<string>('jiraApiToken');
+      const projectKey = settings.get<string>('defaultProjectKey');
+
+      if (!jiraUrl || !jiraUsername || !jiraApiToken || !projectKey) {
+        const configureJira = await vscode.window.showWarningMessage(
+          'Jira configuration incomplete. Configure now?',
+          'Configure',
+          'Skip'
+        );
+        
+        if (configureJira === 'Configure') {
+          vscode.commands.executeCommand('copilotTools.openSettings');
+        }
+        
+        vscode.window.showInformationMessage('Jira tickets would be created here (configuration needed).');
+        return;
+      }
+
+      // Mock Jira API call - replace with actual implementation
+      const epicData = this.extractEpicFromChat();
+      const storiesData = this.extractStoriesFromChat();
+
+      // Simulate API calls
+      await this.simulateJiraApiCall('epic', epicData);
+      
+      for (const story of storiesData) {
+        await this.simulateJiraApiCall('story', story);
+      }
+
+      vscode.window.showInformationMessage(`Successfully created Epic and ${storiesData.length} User Stories in Jira!`);
+      
+      // Track analytics
+      this.trackUsage('jira_tickets_created', {
+        epicCount: 1,
+        storyCount: storiesData.length,
+        projectKey
+      });
+
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to create Jira tickets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async createGitBranch(branchName: string): Promise<void> {
+    try {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders) {
+        vscode.window.showErrorMessage('No workspace folder found for Git operations.');
+        return;
+      }
+
+      const gitExtension = vscode.extensions.getExtension('vscode.git');
+      if (!gitExtension) {
+        vscode.window.showErrorMessage('Git extension not found.');
+        return;
+      }
+
+      // Mock Git branch creation - replace with actual Git API calls
+      const branchCreated = await vscode.window.showInformationMessage(
+        `Create Git branch "${branchName}"?`,
+        'Create',
+        'Skip'
+      );
+
+      if (branchCreated === 'Create') {
+        // In real implementation, use Git API:
+        // const git = gitExtension.exports.getAPI(1);
+        // const repo = git.repositories[0];
+        // await repo.createBranch(branchName, true);
+        
+        vscode.window.showInformationMessage(`Git branch "${branchName}" created successfully!`);
+        
+        // Track analytics
+        this.trackUsage('git_branch_created', { branchName });
+      }
+
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to create Git branch: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Analytics Integration
+  private trackUsage(event: string, properties: any = {}) {
+    try {
+      // Use your existing analytics system
+      const { trackUsage } = require('../../analytics');
+      trackUsage('jira_planning', {
+        event,
+        sessionId: this.sessionId,
+        workflowStep: this.workflowStep,
+        ...properties
+      });
+    } catch (error) {
+      // Analytics failure shouldn't break functionality
+      console.warn('Analytics tracking failed:', error);
+    }
+  }
+
+  // Helper methods for Jira integration
+  private extractEpicFromChat(): any {
+    const epicMessages = this.chatHistory.filter(m => 
+      m.sender === 'AI' && m.message.includes('Epic:')
+    );
+    
+    if (epicMessages.length > 0) {
+      const epicText = epicMessages[epicMessages.length - 1].message;
+      const epicMatch = epicText.match(/\*\*Epic:\*\*\s*(.+)/);
+      return {
+        summary: epicMatch ? epicMatch[1] : 'Feature Epic',
+        description: this.requirementData.summary || 'Epic created by AI Jira Planning Assistant',
+        projectKey: vscode.workspace.getConfiguration('copilotTools').get('defaultProjectKey'),
+        issueType: 'Epic'
+      };
+    }
+    
+    return {
+      summary: 'Feature Epic',
+      description: this.requirementData.description,
+      projectKey: vscode.workspace.getConfiguration('copilotTools').get('defaultProjectKey'),
+      issueType: 'Epic'
+    };
+  }
+
+  private extractStoriesFromChat(): any[] {
+    const storyMessages = this.chatHistory.filter(m => 
+      m.sender === 'AI' && m.message.includes('User Stories:')
+    );
+    
+    if (storyMessages.length > 0) {
+      const storyText = storyMessages[storyMessages.length - 1].message;
+      const storyMatches = storyText.match(/\d+\.\s*As a.+?so that.+/g);
+      
+      if (storyMatches) {
+        return storyMatches.map((story, index) => ({
+          summary: `User Story ${index + 1}`,
+          description: story.trim(),
+          projectKey: vscode.workspace.getConfiguration('copilotTools').get('defaultProjectKey'),
+          issueType: 'Story'
+        }));
+      }
+    }
+    
+    // Fallback to basic stories
+    return [
+      {
+        summary: 'Implement Core Feature',
+        description: this.requirementData.description,
+        projectKey: vscode.workspace.getConfiguration('copilotTools').get('defaultProjectKey'),
+        issueType: 'Story'
+      }
+    ];
+  }
+
+  private async simulateJiraApiCall(type: string, data: any): Promise<void> {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // In real implementation, make actual HTTP requests to Jira API
+    console.log(`Creating ${type} in Jira:`, data);
+    
+    // Example of real API call structure:
+    /*
+    const response = await fetch(`${jiraUrl}/rest/api/3/issue`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${Buffer.from(`${username}:${apiToken}`).toString('base64')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        fields: {
+          project: { key: data.projectKey },
+          summary: data.summary,
+          description: data.description,
+          issuetype: { name: data.issueType }
+        }
+      })
+    });
+    */
+  }
+}
