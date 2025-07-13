@@ -123,9 +123,28 @@ export class WebviewHtmlGenerator {
                     </button>
                 </div>
                 <div class="zoom-controls">
-                    <button class="zoom-btn" id="zoomInBtn" title="Zoom In">+</button>
-                    <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">−</button>
-                    <button class="zoom-btn" id="zoomResetBtn" title="Reset Zoom">⌂</button>
+                    <button class="zoom-btn zoom-in" id="zoomInBtn" title="Zoom In (Ctrl + +)" aria-label="Zoom In">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            <line x1="11" y1="8" x2="11" y2="14"/>
+                            <line x1="8" y1="11" x2="14" y2="11"/>
+                        </svg>
+                    </button>
+                    <button class="zoom-btn zoom-out" id="zoomOutBtn" title="Zoom Out (Ctrl + -)" aria-label="Zoom Out">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            <line x1="8" y1="11" x2="14" y2="11"/>
+                        </svg>
+                    </button>
+                    <button class="zoom-btn zoom-reset" id="zoomResetBtn" title="Reset Zoom (Ctrl + 0)" aria-label="Reset Zoom">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="9" x2="15" y2="15"/>
+                            <line x1="15" y1="9" x2="9" y2="15"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -739,82 +758,176 @@ export class WebviewHtmlGenerator {
                 pointer-events: auto;
             }
 
-            /* --- Custom Zoom Controls --- */
+            /* --- Refined Zoom Controls --- */
             .zoom-controls {
                 position: absolute !important;
-                bottom: 15px !important;
-                right: 15px !important;
+                bottom: 20px !important;
+                right: 20px !important;
                 display: flex !important;
                 flex-direction: column !important;
-                gap: 4px !important;
+                gap: 6px !important;
                 z-index: 1000 !important;
-                /* Windows-specific improvements */
                 pointer-events: auto !important;
                 user-select: none !important;
                 -webkit-user-select: none !important;
                 -moz-user-select: none !important;
                 -ms-user-select: none !important;
-                /* Ensure controls are always visible */
-                background: rgba(255, 255, 255, 0.1) !important;
-                border-radius: 6px !important;
-                padding: 4px !important;
-                backdrop-filter: blur(8px) !important;
-                box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
+                /* Modern glass-morphism container */
+                background: rgba(255, 255, 255, 0.08) !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                border-radius: 12px !important;
+                padding: 8px !important;
+                backdrop-filter: blur(16px) !important;
+                -webkit-backdrop-filter: blur(16px) !important;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 
+                           0 4px 16px rgba(0, 0, 0, 0.05),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+                /* Subtle animation on appearance */
+                animation: zoomControlsAppear 0.3s ease-out !important;
             }
+            
+            @keyframes zoomControlsAppear {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+            
             .zoom-btn {
-                background: rgba(255, 255, 255, 0.95) !important;
-                border: 1px solid #007acc !important;
-                border-radius: 4px !important;
-                padding: 3px !important;
+                background: rgba(255, 255, 255, 0.9) !important;
+                border: 1px solid rgba(59, 130, 246, 0.2) !important;
+                border-radius: 8px !important;
+                padding: 0 !important;
                 cursor: pointer !important;
-                font-size: 11px !important;
-                font-weight: bold !important;
-                color: #007acc !important;
-                box-shadow: 0 1px 3px rgba(0,123,255,0.3) !important;
-                transition: all 0.2s ease !important;
-                width: 24px !important;
-                height: 24px !important;
+                color: #3b82f6 !important;
+                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1),
+                           0 1px 4px rgba(0, 0, 0, 0.05) !important;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                width: 36px !important;
+                height: 36px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                backdrop-filter: blur(4px) !important;
-                /* Windows-specific improvements for better clickability */
+                backdrop-filter: blur(8px) !important;
+                -webkit-backdrop-filter: blur(8px) !important;
                 pointer-events: auto !important;
                 user-select: none !important;
                 -webkit-user-select: none !important;
                 -moz-user-select: none !important;
                 -ms-user-select: none !important;
-                /* Ensure buttons are clickable on Windows */
                 touch-action: manipulation !important;
                 -ms-touch-action: manipulation !important;
                 outline: none !important;
-                /* Force hardware acceleration for better performance */
                 transform: translateZ(0) !important;
                 -webkit-transform: translateZ(0) !important;
-                will-change: transform, background, border-color !important;
-                /* Ensure proper layering */
+                will-change: transform, background, border-color, box-shadow !important;
                 position: relative !important;
                 z-index: 101 !important;
+                /* Icon sizing */
+                font-size: 0 !important;
             }
+            
+            .zoom-btn svg {
+                width: 16px !important;
+                height: 16px !important;
+                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            }
+            
             .zoom-btn:hover {
-                background: rgba(0, 123, 255, 0.1) !important;
-                border-color: #0056b3 !important;
-                color: #0056b3 !important;
-                transform: translateY(-0.5px) translateZ(0) !important;
-                box-shadow: 0 2px 4px rgba(0,123,255,0.4) !important;
-                /* Enhanced Windows hover effects */
-                scale: 1.05 !important;
+                background: rgba(255, 255, 255, 0.95) !important;
+                border-color: rgba(59, 130, 246, 0.4) !important;
+                color: #2563eb !important;
+                transform: translateY(-1px) translateZ(0) !important;
+                box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2),
+                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
             }
+            
+            .zoom-btn:hover svg {
+                transform: scale(1.1) !important;
+            }
+            
             .zoom-btn:active {
                 transform: translateY(0) translateZ(0) !important;
-                box-shadow: 0 1px 2px rgba(0,123,255,0.3) !important;
-                background: rgba(0, 123, 255, 0.2) !important;
-                scale: 0.95 !important;
+                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15),
+                           0 1px 4px rgba(0, 0, 0, 0.1) !important;
+                background: rgba(59, 130, 246, 0.05) !important;
             }
+            
+            .zoom-btn:active svg {
+                transform: scale(0.95) !important;
+            }
+            
             .zoom-btn:focus {
-                outline: 3px solid #007acc !important;
+                outline: 2px solid #3b82f6 !important;
                 outline-offset: 2px !important;
-                background: rgba(0, 123, 255, 0.1) !important;
+                background: rgba(59, 130, 246, 0.05) !important;
+            }
+            
+            /* Individual button styling */
+            .zoom-btn.zoom-in {
+                background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)) !important;
+                border-color: rgba(34, 197, 94, 0.2) !important;
+                color: #22c55e !important;
+            }
+            
+            .zoom-btn.zoom-in:hover {
+                background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.08)) !important;
+                border-color: rgba(34, 197, 94, 0.4) !important;
+                color: #16a34a !important;
+                box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2),
+                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+            }
+            
+            .zoom-btn.zoom-out {
+                background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)) !important;
+                border-color: rgba(239, 68, 68, 0.2) !important;
+                color: #ef4444 !important;
+            }
+            
+            .zoom-btn.zoom-out:hover {
+                background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08)) !important;
+                border-color: rgba(239, 68, 68, 0.4) !important;
+                color: #dc2626 !important;
+                box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2),
+                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+            }
+            
+            .zoom-btn.zoom-reset {
+                background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(168, 85, 247, 0.05)) !important;
+                border-color: rgba(168, 85, 247, 0.2) !important;
+                color: #a855f7 !important;
+            }
+            
+            .zoom-btn.zoom-reset:hover {
+                background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.08)) !important;
+                border-color: rgba(168, 85, 247, 0.4) !important;
+                color: #9333ea !important;
+                box-shadow: 0 4px 16px rgba(168, 85, 247, 0.2),
+                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+            }
+            
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .zoom-controls {
+                    bottom: 15px !important;
+                    right: 15px !important;
+                    gap: 4px !important;
+                    padding: 6px !important;
+                }
+                
+                .zoom-btn {
+                    width: 32px !important;
+                    height: 32px !important;
+                }
+                
+                .zoom-btn svg {
+                    width: 14px !important;
+                    height: 14px !important;
+                }
             }
 
             /* --- Left Panel Content --- */
