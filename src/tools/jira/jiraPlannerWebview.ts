@@ -48,58 +48,37 @@ export class JiraPlannerWebviewGenerator {
                         </svg>
                         <h1>${translations.title}</h1>
                     </div>
-                    <div class="session-info">
-                        <span class="session-id">${translations.sessionId}: ${session.sessionId.slice(-8)}</span>
-                        <span class="session-duration">${this.formatDuration(session.startTime)}</span>
-                    </div>
                 </div>
                 <div class="header-right">
                     <button id="saveSessionBtn" class="header-btn" title="${translations.saveSession}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                            <polyline points="17,21 17,13 7,13 7,21"></polyline>
-                            <polyline points="7,3 7,8 15,8"></polyline>
-                        </svg>
+                        <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17,21 17,13 7,13 7,21"></polyline><polyline points="7,3 7,8 15,8"></polyline></svg>
                     </button>
                     <button id="loadSessionBtn" class="header-btn" title="${translations.loadSession}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14,2 14,8 20,8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                        </svg>
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </button>
                     <button id="restartBtn" class="header-btn restart-btn" title="${translations.restart}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="23 4 23 10 17 10"></polyline>
-                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                        </svg>
+                        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                     </button>
                     <div class="language-toggle">
                         <button id="languageBtn" class="header-btn">${language === 'en' ? '中文' : 'EN'}</button>
                     </div>
                 </div>
             </div>
+            <div class="progress-section">
+                ${this.generateProgressBar(session, translations)}
+            </div>
         </header>
-
-        <!-- Progress Section -->
-        <section class="progress-section">
-            ${this.generateProgressBar(session, translations)}
-        </section>
 
         <!-- Main Content -->
         <main class="main-content">
             <div class="content-container">
-                <!-- Left Panel: Conversation -->
+                <!-- Conversation Panel -->
                 <div class="conversation-panel">
                     <div class="conversation-header">
                         <h2>${translations.conversation}</h2>
                         <div class="conversation-controls">
                             <button id="clearConversationBtn" class="control-btn" title="${translations.clearConversation}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
-                                </svg>
+                                <svg viewBox="0 0 24 24"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><line x1="3" y1="6" x2="21" y2="6"></line></svg>
                             </button>
                         </div>
                     </div>
@@ -110,18 +89,8 @@ export class JiraPlannerWebviewGenerator {
                         ${this.generateCurrentStepInput(session, translations)}
                     </div>
                 </div>
-
-                <!-- Right Panel: Context & Actions -->
-                <div class="context-panel">
-                    ${this.generateContextPanel(session, translations)}
-                </div>
             </div>
         </main>
-
-        <!-- Floating Action Panel -->
-        <div class="floating-actions" id="floatingActions">
-            ${this.generateFloatingActions(session, translations)}
-        </div>
 
         <!-- Modals -->
         <div id="requirementModal" class="modal" style="display: none;">
@@ -149,42 +118,33 @@ export class JiraPlannerWebviewGenerator {
     }
 
     private static generateProgressBar(session: PlanningWorkflowState, translations: any): string {
-        const steps = [
-            { key: PlanningStep.INITIAL_UNDERSTANDING, label: translations.steps.initialUnderstanding },
-            { key: PlanningStep.REQUIREMENT_CONFIRMATION, label: translations.steps.requirementConfirmation },
-            { key: PlanningStep.SUGGESTION_REVIEW, label: translations.steps.suggestionReview },
-            { key: PlanningStep.STRUCTURE_PLANNING, label: translations.steps.structurePlanning },
-            { key: PlanningStep.TICKET_GENERATION, label: translations.steps.ticketGeneration },
-            { key: PlanningStep.FINAL_REVIEW, label: translations.steps.finalReview }
-        ];
-
-        const currentStepIndex = steps.findIndex(step => step.key === session.currentStep);
+        const steps = Object.values(PlanningStep).filter(step => step !== PlanningStep.COMPLETED);
+        const currentStepIndex = steps.findIndex(step => step === session.currentStep);
 
         return `
         <div class="progress-bar-container">
             <div class="progress-bar">
-                ${steps.map((step, index) => {
+                ${steps.map((stepKey, index) => {
                     const isCompleted = index < currentStepIndex || session.isCompleted;
                     const isCurrent = index === currentStepIndex && !session.isCompleted;
-                    const isConfirmed = session.userConfirmations[step.key];
+                    const isConfirmed = session.userConfirmations[stepKey];
+                    const stepLabel = translations.steps[stepKey] || stepKey;
                     
                     return `
                     <div class="progress-step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''} ${isConfirmed ? 'confirmed' : ''}" 
-                         data-step="${step.key}">
+                         data-step="${stepKey}">
                         <div class="step-circle">
-                            <span class="step-number">${index + 1}</span>
-                            ${isCompleted ? '<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+                            ${isCompleted ? '<svg class="check-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>' : `<span class="step-number">${index + 1}</span>`}
                         </div>
-                        <div class="step-label">${step.label}</div>
-                        ${isConfirmed ? '<div class="confirmation-badge">✓</div>' : ''}
+                        <div class="step-label">${stepLabel}</div>
                     </div>
                     ${index < steps.length - 1 ? '<div class="step-connector"></div>' : ''}
                     `;
                 }).join('')}
             </div>
             <div class="progress-info">
-                <span class="current-step-info">${translations.currentStep}: ${translations.steps[session.currentStep]}</span>
-                <span class="completion-info">${Math.round((currentStepIndex / (steps.length - 1)) * 100)}% ${translations.complete}</span>
+                <span class="current-step-info">${translations.currentStep}: ${translations.steps[session.currentStep] || session.currentStep}</span>
+                <span class="completion-info">${Math.round(((currentStepIndex + 1) / steps.length) * 100)}% ${translations.complete}</span>
             </div>
         </div>`;
     }
@@ -232,28 +192,41 @@ export class JiraPlannerWebviewGenerator {
     private static generateCurrentStepInput(session: PlanningWorkflowState, translations: any): string {
         const currentStep = session.currentStep;
         
+        // Always show the main input area at the bottom
+        const mainInputArea = `
+        <div id="inputArea" class="main-input-area">
+            <textarea 
+                id="mainRequirementInput" 
+                class="requirement-textarea"
+                placeholder="${translations.inputArea.placeholder}"
+                rows="3"
+            ></textarea>
+            <div class="input-actions">
+                <button id="sendRequirementBtn" class="primary-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
+                    </svg>
+                    <span>${translations.inputArea.send}</span>
+                </button>
+                <button id="clearInputBtn" class="secondary-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>${translations.inputArea.clear}</span>
+                </button>
+            </div>
+        </div>`;
+        
+        // Step-specific additional inputs
+        let stepSpecificInput = '';
+        
         switch (currentStep) {
-            case PlanningStep.INITIAL_UNDERSTANDING:
-                return `
-                <div class="step-input understanding-input">
-                    <div class="input-header">
-                        <h3>${translations.inputs.initialUnderstanding.title}</h3>
-                        <p>${translations.inputs.initialUnderstanding.description}</p>
-                    </div>
-                    <div class="input-controls">
-                        <button id="confirmUnderstandingBtn" class="primary-btn">
-                            ${translations.inputs.initialUnderstanding.confirm}
-                        </button>
-                        <button id="clarifyRequirementsBtn" class="secondary-btn">
-                            ${translations.inputs.initialUnderstanding.clarify}
-                        </button>
-                    </div>
-                </div>`;
-
             case PlanningStep.REQUIREMENT_CONFIRMATION:
-                return `
-                <div class="step-input confirmation-input">
-                    <div class="input-header">
+                stepSpecificInput = `
+                <div class="step-specific-input confirmation-input">
+                    <div class="step-header">
                         <h3>${translations.inputs.confirmation.title}</h3>
                         <p>${translations.inputs.confirmation.description}</p>
                     </div>
@@ -262,31 +235,53 @@ export class JiraPlannerWebviewGenerator {
                             <div class="requirement-item" data-req-id="${req.id}">
                                 <div class="req-header">
                                     <h4>${escapeHtml(req.title)}</h4>
-                                    <span class="req-category ${req.category}">${req.category}</span>
-                                    <span class="req-priority ${req.priority}">${req.priority}</span>
+                                    <div class="req-badges">
+                                        <span class="req-category ${req.category}">${req.category}</span>
+                                        <span class="req-priority ${req.priority}">${req.priority}</span>
+                                    </div>
                                 </div>
-                                <p>${escapeHtml(req.description)}</p>
+                                <p class="req-description">${escapeHtml(req.description)}</p>
                                 <div class="req-actions">
-                                    <button class="edit-req-btn" data-req-id="${req.id}">✏️ ${translations.edit}</button>
-                                    <button class="remove-req-btn" data-req-id="${req.id}">🗑️ ${translations.remove}</button>
+                                    <button class="edit-req-btn" data-req-id="${req.id}">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                        ${translations.edit}
+                                    </button>
+                                    <button class="remove-req-btn" data-req-id="${req.id}">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                        ${translations.remove}
+                                    </button>
                                 </div>
                             </div>
                         `).join('')}
                     </div>
-                    <div class="input-controls">
+                    <div class="step-controls">
                         <button id="confirmRequirementsBtn" class="primary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
                             ${translations.inputs.confirmation.confirm}
                         </button>
                         <button id="addRequirementBtn" class="secondary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
                             ${translations.inputs.confirmation.addMore}
                         </button>
                     </div>
                 </div>`;
+                break;
 
             case PlanningStep.SUGGESTION_REVIEW:
-                return `
-                <div class="step-input suggestion-input">
-                    <div class="input-header">
+                stepSpecificInput = `
+                <div class="step-specific-input suggestion-input">
+                    <div class="step-header">
                         <h3>${translations.inputs.suggestions.title}</h3>
                         <p>${translations.inputs.suggestions.description}</p>
                     </div>
@@ -295,8 +290,10 @@ export class JiraPlannerWebviewGenerator {
                             <div class="suggestion-item" data-suggestion-id="${suggestion.id}">
                                 <div class="suggestion-header">
                                     <h4>${escapeHtml(suggestion.title)}</h4>
-                                    <span class="suggestion-category ${suggestion.category}">${suggestion.category}</span>
-                                    <span class="suggestion-priority ${suggestion.priority}">${suggestion.priority}</span>
+                                    <div class="suggestion-badges">
+                                        <span class="suggestion-category ${suggestion.category}">${suggestion.category}</span>
+                                        <span class="suggestion-priority ${suggestion.priority}">${suggestion.priority}</span>
+                                    </div>
                                 </div>
                                 <p class="suggestion-description">${escapeHtml(suggestion.description)}</p>
                                 <div class="suggestion-impact">
@@ -313,73 +310,116 @@ export class JiraPlannerWebviewGenerator {
                                 </div>
                                 <div class="suggestion-actions">
                                     <button class="accept-suggestion-btn" data-suggestion-id="${suggestion.id}">
-                                        ✅ ${translations.accept}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                        ${translations.accept}
                                     </button>
                                     <button class="modify-suggestion-btn" data-suggestion-id="${suggestion.id}">
-                                        ✏️ ${translations.modify}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                        ${translations.modify}
                                     </button>
                                     <button class="reject-suggestion-btn" data-suggestion-id="${suggestion.id}">
-                                        ❌ ${translations.reject}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                        ${translations.reject}
                                     </button>
                                 </div>
                             </div>
                         `).join('')}
                     </div>
-                    <div class="input-controls">
+                    <div class="step-controls">
                         <button id="proceedWithSuggestionsBtn" class="primary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 11 12 14 22 4"></polyline>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                            </svg>
                             ${translations.inputs.suggestions.proceed}
                         </button>
                         <button id="requestMoreSuggestionsBtn" class="secondary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                <line x1="8" y1="9" x2="16" y2="9"></line>
+                                <line x1="8" y1="13" x2="14" y2="13"></line>
+                            </svg>
                             ${translations.inputs.suggestions.requestMore}
                         </button>
                     </div>
                 </div>`;
+                break;
 
             case PlanningStep.TICKET_GENERATION:
-                return `
-                <div class="step-input generation-input">
-                    <div class="input-header">
+                stepSpecificInput = `
+                <div class="step-specific-input generation-input">
+                    <div class="step-header">
                         <h3>${translations.inputs.generation.title}</h3>
                         <p>${translations.inputs.generation.description}</p>
                     </div>
                     <div class="ticket-preview">
                         ${this.generateTicketPreview(session.jiraOutput, translations)}
                     </div>
-                    <div class="input-controls">
+                    <div class="step-controls">
                         <button id="generateTicketsBtn" class="primary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
                             ${translations.inputs.generation.generate}
                         </button>
                         <button id="previewExportBtn" class="secondary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
                             ${translations.inputs.generation.preview}
                         </button>
                     </div>
                 </div>`;
+                break;
 
             case PlanningStep.FINAL_REVIEW:
-                return `
-                <div class="step-input review-input">
-                    <div class="input-header">
+                stepSpecificInput = `
+                <div class="step-specific-input review-input">
+                    <div class="step-header">
                         <h3>${translations.inputs.review.title}</h3>
                         <p>${translations.inputs.review.description}</p>
                     </div>
                     <div class="review-summary">
                         ${this.generateReviewSummary(session, translations)}
                     </div>
-                    <div class="input-controls">
+                    <div class="step-controls">
                         <button id="exportTicketsBtn" class="primary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
                             ${translations.inputs.review.export}
                         </button>
                         <button id="startNewSessionBtn" class="secondary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                            </svg>
                             ${translations.inputs.review.startNew}
                         </button>
                     </div>
                 </div>`;
+                break;
 
             default:
-                return `<div class="step-input">
-                    <p>${translations.selectAction}</p>
-                </div>`;
+                stepSpecificInput = '';
         }
+
+        return mainInputArea + stepSpecificInput;
     }
 
     private static generateContextPanel(session: PlanningWorkflowState, translations: any): string {
@@ -574,6 +614,118 @@ export class JiraPlannerWebviewGenerator {
         }
 
         function setupEventListeners() {
+            // Main input area
+            const mainInput = document.getElementById('mainRequirementInput');
+            const sendBtn = document.getElementById('sendRequirementBtn');
+            const clearBtn = document.getElementById('clearInputBtn');
+
+            console.log('Setting up event listeners...');
+            console.log('Main input:', mainInput);
+            console.log('Send button:', sendBtn);
+            console.log('Clear button:', clearBtn);
+
+            // Send requirement
+            sendBtn?.addEventListener('click', async () => {
+                console.log('Send button clicked!');
+                const text = mainInput?.value.trim();
+                console.log('Input text:', text);
+                
+                if (!text) {
+                    console.log('No text to send');
+                    // Show visual feedback for empty input
+                    if (mainInput) {
+                        mainInput.style.borderColor = '#ff6b6b';
+                        mainInput.placeholder = '请输入项目需求...';
+                        setTimeout(() => {
+                            mainInput.style.borderColor = '';
+                            mainInput.placeholder = '';
+                        }, 2000);
+                    }
+                    return;
+                }
+                
+                // Show loading state
+                if (sendBtn) {
+                    sendBtn.disabled = true;
+                    sendBtn.innerHTML = \`
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 11-6.219-8.56"/>
+                        </svg>
+                        发送中...
+                    \`;
+                }
+                
+                try {
+                    console.log('Sending message with text:', text);
+                    postMessage('send_requirement', { text: text });
+                    
+                    // Clear input and show success state
+                    if (mainInput) {
+                        mainInput.value = '';
+                        mainInput.style.borderColor = '#51cf66';
+                        setTimeout(() => {
+                            mainInput.style.borderColor = '';
+                        }, 1000);
+                    }
+                    
+                    console.log('Input cleared and message sent');
+                    
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    // Show error state
+                    if (mainInput) {
+                        mainInput.style.borderColor = '#ff6b6b';
+                        setTimeout(() => {
+                            mainInput.style.borderColor = '';
+                        }, 2000);
+                    }
+                } finally {
+                    // Restore button state
+                    setTimeout(() => {
+                        if (sendBtn) {
+                            sendBtn.disabled = false;
+                            sendBtn.innerHTML = \`
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
+                                </svg>
+                                发送
+                            \`;
+                        }
+                    }, 1000);
+                }
+            });
+
+            // Clear input
+            clearBtn?.addEventListener('click', () => {
+                console.log('Clear button clicked!');
+                if (mainInput) {
+                    mainInput.value = '';
+                    mainInput.focus();
+                }
+            });
+
+            // Enter key to send (Shift+Enter for new line)
+            mainInput?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    console.log('Enter key pressed, triggering send');
+                    sendBtn?.click();
+                }
+            });
+
+            // Suggestion chips
+            document.querySelectorAll('.suggestion-chip').forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    const suggestion = e.target.dataset.suggestion;
+                    console.log('Suggestion chip clicked:', suggestion);
+                    if (mainInput && suggestion) {
+                        mainInput.value = suggestion;
+                        mainInput.focus();
+                    }
+                });
+            });
+
             // Header actions
             document.getElementById('saveSessionBtn')?.addEventListener('click', () => {
                 postMessage('save_session');
@@ -621,15 +773,6 @@ export class JiraPlannerWebviewGenerator {
         }
 
         function setupStepActions() {
-            // Initial Understanding
-            document.getElementById('confirmUnderstandingBtn')?.addEventListener('click', () => {
-                postMessage('confirm_step');
-            });
-
-            document.getElementById('clarifyRequirementsBtn')?.addEventListener('click', () => {
-                showModal('requirementModal');
-            });
-
             // Requirement Confirmation
             document.getElementById('confirmRequirementsBtn')?.addEventListener('click', () => {
                 postMessage('confirm_requirements');
@@ -781,11 +924,15 @@ export class JiraPlannerWebviewGenerator {
         }
 
         function postMessage(command, data = {}) {
-            vscode.postMessage({
+            console.log('postMessage called with command:', command, 'data:', data);
+            const message = {
                 command: command,
                 data: data,
                 sessionId: sessionData.sessionId
-            });
+            };
+            console.log('Sending message to extension:', message);
+            vscode.postMessage(message);
+            console.log('Message sent successfully');
         }
 
         function showHelp() {
@@ -939,6 +1086,13 @@ export class JiraPlannerWebviewGenerator {
                     [PlanningStep.TICKET_GENERATION]: 'Ticket Generation',
                     [PlanningStep.FINAL_REVIEW]: 'Final Review'
                 },
+                inputArea: {
+                    title: 'Project Requirements',
+                    placeholder: 'Describe your project requirements here...\n\nExample:\n"Build a user authentication system with multi-factor authentication, password reset functionality, and user profile management"',
+                    send: 'Send',
+                    clear: 'Clear',
+                    quickStart: 'Quick Start'
+                },
                 inputs: {
                     initialUnderstanding: {
                         title: 'Understanding Your Requirements',
@@ -1050,7 +1204,56 @@ export class JiraPlannerWebviewGenerator {
                     [PlanningStep.TICKET_GENERATION]: '工单生成',
                     [PlanningStep.FINAL_REVIEW]: '最终评审'
                 },
-                // ... (Chinese translations continue)
+                inputArea: {
+                    title: '项目需求',
+                    placeholder: '请在此描述您的项目需求...\n\n示例：\n"构建一个用户认证系统，包含多因素认证、密码重置功能和用户资料管理"',
+                    send: '发送',
+                    clear: '清空',
+                    quickStart: '快速开始'
+                },
+                inputs: {
+                    initialUnderstanding: {
+                        title: '理解您的需求',
+                        description: '请审查AI对您需求的分析',
+                        confirm: '分析正确',
+                        clarify: '需要澄清'
+                    },
+                    confirmation: {
+                        title: '确认需求',
+                        description: '审查并确认处理后的需求',
+                        confirm: '确认所有需求',
+                        addMore: '添加更多需求'
+                    },
+                    suggestions: {
+                        title: '专业建议',
+                        description: '审查AI为您的项目生成的建议',
+                        proceed: '继续选定的建议',
+                        requestMore: '请求更多建议'
+                    },
+                    generation: {
+                        title: '生成Jira工单',
+                        description: '从您的需求生成结构化的Jira工单',
+                        generate: '生成工单',
+                        preview: '预览导出'
+                    },
+                    review: {
+                        title: '最终审查和导出',
+                        description: '审查完整的规划会话并导出工单',
+                        export: '导出工单',
+                        startNew: '开始新会话'
+                    }
+                },
+                context: {
+                    title: '规划上下文',
+                    overview: '概览',
+                    requirements: '需求',
+                    suggestions: '建议',
+                    tickets: '工单',
+                    overviewContextPlaceholder: '概览上下文将在此显示',
+                    requirementsContextPlaceholder: '需求上下文将在此显示',
+                    suggestionsContextPlaceholder: '建议上下文将在此显示',
+                    ticketsContextPlaceholder: '工单上下文将在此显示'
+                }
             }
         };
 
@@ -1078,16 +1281,405 @@ export class JiraPlannerWebviewGenerator {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            background-color: var(--vscode-sideBar-background, #f8f8f8);
         }
 
         /* Header Styles */
         .planner-header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            background-color: var(--vscode-sideBar-background, #f8f8f8);
+            border-bottom: 1px solid var(--vscode-sideBar-border, #ddd);
+            padding: 0.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--vscode-foreground, #333);
+            padding: 0.25rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-btn:hover {
+            background-color: var(--vscode-toolbar-hoverBackground, #f0f0f0);
+        }
+
+        .header-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+        }
+
+        .language-toggle .header-btn {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        /* Progress Bar Styles */
+        .progress-section {
+            padding: 0;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+        }
+
+        .progress-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .step-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            background-color: #fff;
+            transition: all 0.3s ease;
+            z-index: 2;
+        }
+
+        .step-label {
+            font-size: 0.7rem;
+            margin-top: 0.25rem;
+            color: #888;
+            max-width: 80px;
+        }
+
+        .step-connector {
+            height: 2px;
+            background-color: #ccc;
+            flex-grow: 1;
+            margin: 0 -1rem;
+            position: relative;
+            top: -12px;
+            z-index: 1;
+        }
+
+        .progress-step.current .step-circle {
+            border-color: #667eea;
+            background-color: #667eea;
+            color: white;
+        }
+
+        .progress-step.current .step-label {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .progress-step.completed .step-circle {
+            border-color: #38a169;
+            background-color: #38a169;
+            color: white;
+        }
+
+        .progress-step.completed .step-label {
+            color: #38a169;
+        }
+
+        .progress-step.completed .check-icon {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            stroke-width: 3;
+        }
+
+        .progress-step.completed + .step-connector {
+            background-color: #38a169;
+        }
+
+        .progress-info {
+            display: none; /* Hide for a more compact view */
+        }
+
+        /* Main Input Area Styles */
+        .main-input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #eee;
+            background: #f9f9f9;
+        }
+
+        .requirement-textarea {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 1em;
+            resize: vertical;
+            min-height: 50px;
+        }
+
+        .input-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 10px;
+        }
+        
+        .primary-btn, .secondary-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .primary-btn {
+            background: #007acc;
+            color: white;
+            border: 1px solid #007acc;
+        }
+
+        .primary-btn:hover {
+            background: #005fa3;
+        }
+
+        .secondary-btn {
+            background: #f5f5f5;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+        
+        .secondary-btn:hover {
+            background: #e0e0e0;
+        }
+
+        /* Step-specific Input Styles */
+        .step-specific-input {
+            background: #fff;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+        }
+
+        .step-header {
+            margin-bottom: 1rem;
+        }
+
+        .step-header h3 {
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+            font-size: 1.1rem;
+        }
+
+        .step-header p {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .step-controls {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        /* Button Styles */
+        .primary-btn, .secondary-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .primary-btn {
+            background: #3498db;
+            color: white;
+        }
+
+        .primary-btn:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .secondary-btn {
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #dee2e6;
+        }
+
+        .secondary-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .primary-btn svg, .secondary-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Requirement and Suggestion Items */
+        .requirement-item, .suggestion-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .req-header, .suggestion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .req-header h4, .suggestion-header h4 {
+            color: #2c3e50;
+            margin: 0;
+            flex: 1;
+        }
+
+        .req-badges, .suggestion-badges {
+            display: flex;
+            gap: 0.5rem;
+            margin-left: 1rem;
+        }
+
+        .req-category, .req-priority, .suggestion-category, .suggestion-priority {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .req-category, .suggestion-category {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .req-priority, .suggestion-priority {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .req-description, .suggestion-description {
+            color: #495057;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .req-actions, .suggestion-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .edit-req-btn, .remove-req-btn, .accept-suggestion-btn, .modify-suggestion-btn, .reject-suggestion-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: #fff;
+            color: #495057;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .edit-req-btn:hover, .modify-suggestion-btn:hover {
+            background: #e3f2fd;
+            border-color: #3498db;
+            color: #1976d2;
+        }
+
+        .remove-req-btn:hover, .reject-suggestion-btn:hover {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #d32f2f;
+        }
+
+        .accept-suggestion-btn:hover {
+            background: #e8f5e8;
+            border-color: #4caf50;
+            color: #2e7d32;
+        }
+
+        .suggestion-impact {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .impact-benefits ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .impact-benefits li {
+            margin-bottom: 0.25rem;
+        }
+
+        .impact-effort {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #6c757d;
         }
 
         .header-content {
@@ -1166,167 +1758,38 @@ export class JiraPlannerWebviewGenerator {
             border-color: rgba(255, 107, 107, 0.4);
         }
 
-        /* Progress Bar Styles */
-        .progress-section {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(5px);
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .progress-bar-container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .progress-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-        }
-
-        .progress-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            flex: 1;
-            padding: 0 1rem;
-        }
-
-        .step-circle {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 0.5rem;
-            transition: all 0.3s ease;
-            position: relative;
-            border: 2px solid transparent;
-        }
-
-        .progress-step.current .step-circle {
-            background: #667eea;
-            color: white;
-            border-color: #4c63d2;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3);
-            animation: pulse 2s infinite;
-        }
-
-        .progress-step.completed .step-circle {
-            background: #48bb78;
-            color: white;
-            border-color: #38a169;
-        }
-
-        .progress-step.confirmed .step-circle {
-            box-shadow: 0 0 0 2px #48bb78;
-        }
-
-        .step-number {
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-
-        .check-icon {
-            width: 20px;
-            height: 20px;
-            position: absolute;
-        }
-
-        .step-label {
-            font-size: 0.875rem;
-            text-align: center;
-            color: #4a5568;
-            max-width: 120px;
-        }
-
-        .progress-step.current .step-label {
-            color: #667eea;
-            font-weight: 600;
-        }
-
-        .progress-step.completed .step-label {
-            color: #48bb78;
-            font-weight: 500;
-        }
-
-        .step-connector {
-            flex: 1;
-            height: 2px;
-            background: #e2e8f0;
-            margin: 0 -1rem;
-            position: relative;
-            top: -24px;
-        }
-
-        .progress-step.completed + .step-connector {
-            background: #48bb78;
-        }
-
-        .confirmation-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #48bb78;
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
-        }
-
-        .progress-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.875rem;
-            color: #718096;
-        }
-
         /* Main Content Styles */
         .main-content {
-            flex: 1;
-            overflow: hidden;
-            padding: 0 2rem 2rem;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 0 1rem 1rem;
         }
 
         .content-container {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 2rem;
-            height: 100%;
-            max-width: 1400px;
+            width: 100%;
+            max-width: 1280px;
             margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         /* Conversation Panel */
         .conversation-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            width: 100%;
             display: flex;
             flex-direction: column;
+            flex-grow: 1;
+            background-color: var(--vscode-editor-background, #fff);
+            border: 1px solid var(--vscode-sideBar-border, #ddd);
+            border-radius: 8px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .conversation-header {
-            padding: 1.5rem 2rem 1rem;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(102, 126, 234, 0.05);
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--vscode-sideBar-border, #ddd);
+            flex-shrink: 0;
         }
 
         .conversation-header h2 {
@@ -1362,9 +1825,9 @@ export class JiraPlannerWebviewGenerator {
         }
 
         .conversation-content {
-            flex: 1;
+            flex-grow: 1;
             overflow-y: auto;
-            padding: 1rem 2rem;
+            padding: 1.5rem;
         }
 
         .conversation-empty {
@@ -1540,9 +2003,10 @@ export class JiraPlannerWebviewGenerator {
 
         /* Input Section */
         .conversation-input {
-            border-top: 1px solid rgba(0, 0, 0, 0.05);
-            padding: 1.5rem 2rem;
-            background: rgba(248, 250, 252, 0.8);
+            border-top: 1px solid var(--vscode-sideBar-border, #ddd);
+            padding: 1rem 1.5rem;
+            background-color: var(--vscode-editor-background, #fff);
+            flex-shrink: 0;
         }
 
         .step-input {
@@ -2245,6 +2709,63 @@ export class JiraPlannerWebviewGenerator {
 
         .mt-4 {
             margin-top: 1rem;
+        }
+
+        .message-content .requirement-list,
+        .message-content .suggestion-list,
+        .message-content .ticket-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .message-content .requirement-item,
+        .message-content .suggestion-item,
+        .message-content .ticket-item {
+            background-color: var(--vscode-editorWidget-background, #f3f3f3);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid var(--vscode-button-background, #0e639c);
+            transition: box-shadow 0.2s ease;
+        }
+        .message-content .requirement-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .message-content .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .message-content .item-header h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        .message-content .item-badges {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .message-content .item-badge {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+            background-color: var(--vscode-badge-background, #4d4d4d);
+            color: var(--vscode-badge-foreground, #fff);
+        }
+        .message-content .item-description {
+            font-size: 0.9rem;
+            color: var(--vscode-editor-foreground, #616161);
+        }
+        .message-content .item-actions {
+            margin-top: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .message-content .item-action-btn {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.75rem;
         }
         `;
     }

@@ -38,6 +38,7 @@ export interface ConversationMessage {
         suggestionsProvided?: number;
         userChoices?: string[];
         confirmationRequired?: boolean;
+        isTemporary?: boolean;
     };
 }
 
@@ -238,6 +239,9 @@ export enum JiraPlannerCommand {
     CONFIRM_STEP = 'confirm_step',
     GO_TO_STEP = 'go_to_step',
     RESTART_WORKFLOW = 'restart_workflow',
+    
+    // Input handling
+    SEND_REQUIREMENT = 'send_requirement',
     
     // Requirement management
     UPDATE_REQUIREMENTS = 'update_requirements',

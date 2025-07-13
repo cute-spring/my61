@@ -19,7 +19,7 @@ export interface ICopilotTool {
   command: string;
   title: string;
   isEnabled(settings: vscode.WorkspaceConfiguration): boolean;
-  handleInput(editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration): Promise<void>;
+  handleInput(editor: vscode.TextEditor | undefined, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration): Promise<void>;
   dispose?(): void;
   getSettingsSchema(): { [key: string]: any };
 }
@@ -31,17 +31,27 @@ export class ToolManager {
     this.tools.push(tool);
     this.context.subscriptions.push(
       vscode.commands.registerCommand(tool.command, async () => {
+        const settings = vscode.workspace.getConfiguration('copilotTools');
+        if (!tool.isEnabled(settings)) {
+          vscode.window.showErrorMessage(`${tool.title} is disabled in settings.`);
+          return;
+        }
+
+        // Special handling for Jira Planning Tool - it doesn't require an active editor
+        if (tool.command === 'copilotTools.jiraPlanningAssistant') {
+          const editor = vscode.window.activeTextEditor;
+          const selection = editor ? editor.selection : new vscode.Selection(0, 0, 0, 0);
+          await tool.handleInput(editor!, selection, settings);
+          return;
+        }
+
+        // For other tools, require an active editor
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
           vscode.window.showErrorMessage('No active editor.');
           return;
         }
         const selection = editor.selection;
-        const settings = vscode.workspace.getConfiguration('copilotTools');
-        if (!tool.isEnabled(settings)) {
-          vscode.window.showErrorMessage(`${tool.title} is disabled in settings.`);
-          return;
-        }
         await tool.handleInput(editor, selection, settings);
       })
     );

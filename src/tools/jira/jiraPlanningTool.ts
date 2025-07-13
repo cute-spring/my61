@@ -84,34 +84,23 @@ Format your response as a clear, structured analysis that can guide further plan
         };
     }
 
-    async handleInput(editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration) {
+    async handleInput(editor: vscode.TextEditor | undefined, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration) {
         // Track usage
         const featureName = this.getFeatureName();
         trackUsage(featureName, {
-            hasSelection: !selection.isEmpty,
-            selectionLength: editor.document.getText(selection).length,
-            fileExtension: editor.document.fileName.split('.').pop()
+            hasSelection: editor ? !selection.isEmpty : false,
+            selectionLength: editor ? editor.document.getText(selection).length : 0,
+            fileExtension: editor ? editor.document.fileName.split('.').pop() : 'none'
         });
 
-        const text = editor.document.getText(selection);
-        let initialInput = text.trim();
-
-        // If no text selected, prompt user for input
-        if (!initialInput) {
-            initialInput = await vscode.window.showInputBox({
-                prompt: 'Describe your project requirements for Jira planning',
-                placeHolder: 'e.g., "Build a user authentication system with multi-factor authentication..."',
-                ignoreFocusOut: true
-            }) || '';
-            
-            if (!initialInput) {
-                vscode.window.showErrorMessage('Please provide project requirements to start planning.');
-                return;
-            }
-        }
+        const text = editor ? editor.document.getText(selection) : '';
+        // Use any selected text as initial input, otherwise start with an empty string.
+        const initialInput = text.trim();
 
         // Initialize new planning session
+        console.log('Initializing new planning session with input:', initialInput);
         this.currentSession = await this.workflowEngine.initializeSession(initialInput, settings);
+        console.log('Session initialized:', this.currentSession.sessionId);
 
         // Create webview panel
         this.panel = vscode.window.createWebviewPanel(
@@ -124,24 +113,51 @@ Format your response as a clear, structured analysis that can guide further plan
             }
         );
 
-        // Generate initial webview content
-        this.panel.webview.html = this.getWebviewHtml(this.currentSession, settings);
-
         // Handle webview messages
         this.panel.webview.onDidReceiveMessage(async (message: JiraPlannerWebviewMessage) => {
+            console.log('Webview message received:', message);
             if (this.panel && this.currentSession) {
-                await this.handleWebviewMessage(this.panel, editor, selection, settings, message);
+                console.log('Panel and session exist, processing message');
+                // Create a dummy editor if none exists
+                const dummyEditor = editor || {
+                    document: { getText: () => '', fileName: 'untitled' },
+                    selection: new vscode.Selection(0, 0, 0, 0)
+                } as vscode.TextEditor;
+                await this.handleWebviewMessage(this.panel, dummyEditor, selection, settings, message);
+            } else {
+                console.log('Panel or session missing - Panel:', !!this.panel, 'Session:', !!this.currentSession);
+                // If session is missing, try to reinitialize
+                if (!this.currentSession && message.command === JiraPlannerCommand.SEND_REQUIREMENT) {
+                    console.log('Reinitializing session for SEND_REQUIREMENT');
+                    const inputText = message.data?.text || '';
+                    if (inputText) {
+                        this.currentSession = await this.workflowEngine.initializeSession(inputText, settings);
+                        console.log('Session reinitialized:', this.currentSession.sessionId);
+                        await this.handleRequirementInput(inputText);
+                    }
+                }
             }
         });
+        
+        console.log('Message handler registered successfully');
+
+        // Generate initial webview content
+        this.panel.webview.html = this.getWebviewHtml(this.currentSession, settings);
+        console.log('Initial webview content generated');
 
         // Clean up on dispose
         this.panel.onDidDispose(() => {
+            console.log('Panel disposed, cleaning up');
             this.panel = undefined;
             this.currentSession = null;
         });
 
         // Start the workflow
+        console.log('Starting workflow for step:', this.currentSession.currentStep);
         await this.processCurrentStep();
+
+        // Refresh the webview to display AI response or status after initial processing
+        this.refreshWebview(settings);
     }
 
     async handleWebviewMessage(
@@ -151,10 +167,26 @@ Format your response as a clear, structured analysis that can guide further plan
         settings: vscode.WorkspaceConfiguration,
         message: JiraPlannerWebviewMessage
     ) {
-        if (!this.currentSession) {return;}
+        console.log('handleWebviewMessage called with:', message);
+        
+        if (!this.currentSession) {
+            console.log('No current session, returning');
+            return;
+        }
 
         try {
+            console.log('Processing command:', message.command);
+            
             switch (message.command) {
+                case JiraPlannerCommand.SEND_REQUIREMENT:
+                    console.log('Handling SEND_REQUIREMENT with data:', message.data);
+                    if (this.currentSession.currentStep === PlanningStep.REQUIREMENT_CONFIRMATION) {
+                        await this.handleConfirmationResponse(message.data.text);
+                    } else {
+                        await this.handleRequirementInput(message.data.text);
+                    }
+                    break;
+                    
                 case JiraPlannerCommand.CONFIRM_STEP:
                     await this.confirmCurrentStep(message.data);
                     break;
@@ -195,6 +227,7 @@ Format your response as a clear, structured analysis that can guide further plan
                     console.warn(`Unhandled command: ${message.command}`);
             }
             
+            console.log('Command processed successfully, refreshing webview');
             // Refresh webview after processing
             this.refreshWebview(settings);
             
@@ -270,19 +303,14 @@ Format your response in clear sections with actionable insights. Be specific and
     }
 
     private async processRequirementConfirmation() {
-        if (!this.currentSession) {return;}
-        
+        if (!this.currentSession) { return; }
+
+        const requirementsHtml = this.formatRequirementsForConfirmation(this.currentSession.requirements);
         const confirmationPrompt = `Based on the analysis, I've identified the following key requirements:
-
-${this.formatRequirementsForConfirmation(this.currentSession.requirements)}
-
-Please review this understanding:
-1. Is this analysis complete and accurate?
-2. Are there any missing requirements or details?
-3. Should anything be modified or clarified?
-4. Do the priorities seem appropriate?
-
-Respond with your feedback or confirm if this understanding is correct to proceed to the next step.`;
+        <div class="requirement-list">
+            ${requirementsHtml}
+        </div>
+        Please review this understanding. Are there any missing requirements, or should anything be modified?`;
 
         this.addConversationMessage('assistant', confirmationPrompt, PlanningStep.REQUIREMENT_CONFIRMATION, {
             confirmationRequired: true
@@ -290,23 +318,17 @@ Respond with your feedback or confirm if this understanding is correct to procee
     }
 
     private async processSuggestionReview() {
-        if (!this.currentSession) {return;}
-
-        // Generate professional suggestions
+        if (!this.currentSession) { return; }
         this.currentSession.suggestions = await this.suggestionGenerator.generateSuggestions(
             this.currentSession.requirements.processedRequirements
         );
 
-        const suggestionPrompt = `Based on your requirements, I have ${this.currentSession.suggestions.suggestions.length} professional suggestions to enhance your project:
-
-${this.formatSuggestionsForReview(this.currentSession.suggestions.suggestions)}
-
-Please review each suggestion and let me know:
-- ✅ Accept (will be incorporated into the plan)
-- ❌ Reject (will be excluded)
-- ✏️ Modify (provide your changes)
-
-You can also request additional suggestions in specific areas.`;
+        const suggestionsHtml = this.formatSuggestionsForReview(this.currentSession.suggestions.suggestions);
+        const suggestionPrompt = `Based on your requirements, I have some professional suggestions to enhance your project:
+        <div class="suggestion-list">
+            ${suggestionsHtml}
+        </div>
+        Please review and decide whether to accept, reject, or modify each suggestion.`;
 
         this.addConversationMessage('assistant', suggestionPrompt, PlanningStep.SUGGESTION_REVIEW, {
             suggestionsProvided: this.currentSession.suggestions.suggestions.length,
@@ -335,29 +357,18 @@ Does this structure work for your team? Any adjustments needed before we generat
     }
 
     private async processTicketGeneration() {
-        if (!this.currentSession) {return;}
-
-        // Generate Jira tickets
+        if (!this.currentSession) { return; }
         this.currentSession.jiraOutput = await this.jiraGenerator.generateTickets(
             this.currentSession.requirements.processedRequirements,
             this.currentSession.suggestions.appliedSuggestions
         );
 
-        const ticketPrompt = `Perfect! I've generated ${this.getTotalTicketCount()} Jira tickets organized as follows:
-
-${this.formatGeneratedTickets()}
-
-Each ticket includes:
-- Detailed descriptions with acceptance criteria
-- Priority levels and effort estimates
-- Proper relationships and dependencies
-- Relevant labels and components
-
-Ready to export these tickets? I can provide them in multiple formats:
-- CSV for bulk import
-- JSON for API integration  
-- Jira-ready format for direct import
-- Confluence page for documentation`;
+        const ticketsHtml = this.formatGeneratedTickets();
+        const ticketPrompt = `Perfect! I've generated ${this.getTotalTicketCount()} Jira tickets, organized as follows:
+        <div class="ticket-list">
+            ${ticketsHtml}
+        </div>
+        Ready to export these tickets?`;
 
         this.addConversationMessage('assistant', ticketPrompt, PlanningStep.TICKET_GENERATION, {
             confirmationRequired: false
@@ -497,15 +508,32 @@ Would you like to:
 
     // Formatting helper methods
     private formatRequirementsForConfirmation(requirements: RequirementState): string {
-        return requirements.processedRequirements.map(req => 
-            `**${req.title}** (${req.category}, ${req.priority})\n${req.description}\n`
-        ).join('\n');
+        return requirements.processedRequirements.map(req => `
+            <div class="requirement-item">
+                <div class="item-header">
+                    <h4>${escapeHtml(req.title)}</h4>
+                    <div class="item-badges">
+                        <span class="item-badge">${escapeHtml(req.category)}</span>
+                        <span class="item-badge">${escapeHtml(req.priority)}</span>
+                    </div>
+                </div>
+                <p class="item-description">${escapeHtml(req.description)}</p>
+            </div>
+        `).join('');
     }
 
     private formatSuggestionsForReview(suggestions: ProfessionalSuggestion[]): string {
-        return suggestions.map((suggestion, index) => 
-            `${index + 1}. **${suggestion.title}** (${suggestion.category})\n   ${suggestion.description}\n   *Impact: ${suggestion.impact.benefits.join(', ')}*\n`
-        ).join('\n');
+        return suggestions.map(sug => `
+            <div class="suggestion-item">
+                <div class="item-header">
+                    <h4>${escapeHtml(sug.title)}</h4>
+                    <div class="item-badges">
+                        <span class="item-badge">${escapeHtml(sug.category)}</span>
+                    </div>
+                </div>
+                <p class="item-description">${escapeHtml(sug.description)}</p>
+            </div>
+        `).join('');
     }
 
     private formatStructurePlan(): string {
@@ -519,10 +547,22 @@ Would you like to:
     }
 
     private formatGeneratedTickets(): string {
-        if (!this.currentSession?.jiraOutput) {return '';}
-        
-        const { epics, stories, tasks, bugs } = this.currentSession.jiraOutput;
-        return `**${epics.length} Epics, ${stories.length} Stories, ${tasks.length} Tasks, ${bugs.length} Bugs**`;
+        if (!this.currentSession || !this.currentSession.jiraOutput) {
+            return '';
+        }
+        const { epics, stories, tasks } = this.currentSession.jiraOutput;
+        const allTickets = [...epics, ...stories, ...tasks];
+        return allTickets.map(ticket => `
+            <div class="ticket-item">
+                <div class="item-header">
+                    <h4>${escapeHtml(ticket.summary)}</h4>
+                    <div class="item-badges">
+                        <span class="item-badge">${escapeHtml(ticket.type)}</span>
+                        <span class="item-badge">${escapeHtml(ticket.priority)}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
     }
 
     private getTotalTicketCount(): number {
@@ -538,6 +578,104 @@ Would you like to:
         const duration = Date.now() - this.currentSession.startTime.getTime();
         const minutes = Math.floor(duration / 60000);
         return `${minutes} minutes`;
+    }
+
+    private async handleRequirementInput(text: string) {
+        if (!this.currentSession) { return; }
+
+        // Add user message to conversation if it's the first time
+        if (this.currentSession.currentStep === PlanningStep.INITIAL_UNDERSTANDING) {
+            this.addConversationMessage('user', text, this.currentSession.currentStep);
+        }
+
+        // Add a temporary "thinking" message
+        this.addConversationMessage('system', '⏳ AI is analyzing your request...', this.currentSession.currentStep, { isTemporary: true });
+        this.refreshWebview(vscode.workspace.getConfiguration('copilotTools'));
+        
+        try {
+            // 1. Get initial high-level analysis from LLM
+            const analysisPrompt = this.buildPrompt(text, vscode.workspace.getConfiguration('copilotTools'));
+            const analysisResponse = await getLLMResponse(analysisPrompt);
+
+            if (!analysisResponse) {
+                throw new Error('Failed to get analysis from AI.');
+            }
+
+            // 2. Process the analysis to get structured requirements
+            const updatedRequirements = await this.requirementProcessor.processAnalysis(
+                text,
+                analysisResponse
+            );
+
+            // 3. Update session state
+            this.currentSession.requirements = updatedRequirements;
+            
+            // 4. Move to the confirmation step
+            this.currentSession.currentStep = PlanningStep.REQUIREMENT_CONFIRMATION;
+            
+            // 5. Let the confirmation step handle the response message
+            await this.processCurrentStep();
+
+        } catch (error) {
+            console.error('Error processing requirement input:', error);
+            this.addConversationMessage('system', `Error: ${error instanceof Error ? error.message : String(error)}`, this.currentSession.currentStep);
+        } finally {
+            // Remove the "thinking" message
+            const thinkingMessageIndex = this.currentSession.conversationHistory.findIndex(m => m.metadata?.isTemporary);
+            if (thinkingMessageIndex > -1) {
+                this.currentSession.conversationHistory.splice(thinkingMessageIndex, 1);
+            }
+        }
+    }
+
+    private async handleConfirmationResponse(text: string) {
+        if (!this.currentSession) { return; }
+
+        this.addConversationMessage('user', text, this.currentSession.currentStep);
+        this.addConversationMessage('system', '⏳ Checking confirmation...', this.currentSession.currentStep, { isTemporary: true });
+        this.refreshWebview(vscode.workspace.getConfiguration('copilotTools'));
+
+        try {
+            const confirmationPrompt = `The user was asked to confirm if the AI's understanding of their requirements was correct.
+            User's response: "${text}"
+            
+            Analyze this response. Does it indicate confirmation, or does it ask for corrections?
+            Respond with JSON only.
+            - If confirmed, respond with: {"confirmed": true}
+            - If not confirmed, respond with: {"confirmed": false, "corrections": "A summary of the corrections the user wants to make."}`;
+            
+            const rawResponse = await getLLMResponse(confirmationPrompt);
+            if (!rawResponse) {
+                throw new Error('Failed to get confirmation response from AI.');
+            }
+            const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+            const confirmation = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+
+            if (confirmation.confirmed) {
+                this.currentSession.requirements.isConfirmed = true;
+                this.addConversationMessage('assistant', 'Great! I will now proceed to the next step.', this.currentSession.currentStep);
+                
+                const nextStep = this.workflowEngine.getNextStep(this.currentSession.currentStep);
+                if (nextStep) {
+                    this.currentSession.currentStep = nextStep;
+                    await this.processCurrentStep();
+                }
+            } else {
+                this.addConversationMessage('assistant', `Understood. I will revise the plan based on your feedback: "${confirmation.corrections || text}"`, this.currentSession.currentStep);
+                // Re-process the requirements with the corrections
+                const originalAndCorrections = `Original Request: ${this.currentSession.requirements.originalInput}\n\nCorrections: ${confirmation.corrections || text}`;
+                await this.handleRequirementInput(originalAndCorrections);
+            }
+
+        } catch (error) {
+            console.error('Error handling confirmation response:', error);
+            this.addConversationMessage('system', `Error processing your confirmation: ${error instanceof Error ? error.message : String(error)}`, this.currentSession.currentStep);
+        } finally {
+            const thinkingMessageIndex = this.currentSession.conversationHistory.findIndex(m => m.metadata?.isTemporary);
+            if (thinkingMessageIndex > -1) {
+                this.currentSession.conversationHistory.splice(thinkingMessageIndex, 1);
+            }
+        }
     }
 
     private async restartWorkflow() {

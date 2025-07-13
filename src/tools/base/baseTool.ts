@@ -26,7 +26,13 @@ export abstract class BaseTool implements ICopilotTool {
     return commandMap[this.command] || this.command;
   }
 
-  async handleInput(editor: vscode.TextEditor, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration) {
+  async handleInput(editor: vscode.TextEditor | undefined, selection: vscode.Selection, settings: vscode.WorkspaceConfiguration) {
+    // Most tools require an active editor, check if this tool needs one
+    if (!editor) {
+      vscode.window.showErrorMessage('This tool requires an active editor with text selection.');
+      return;
+    }
+
     // Track tool usage at the beginning of function execution
     const featureName = this.getFeatureName();
     trackUsage(featureName, {

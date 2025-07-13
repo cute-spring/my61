@@ -68,13 +68,13 @@ export class WorkflowEngine {
                 bugs: [],
                 exportFormats: []
             },
-            conversationHistory: [{
+            conversationHistory: input ? [{
                 id: this.generateId(),
                 timestamp: new Date(),
                 type: 'user',
                 content: input,
                 step: PlanningStep.INITIAL_UNDERSTANDING
-            }]
+            }] : []
         };
 
         this.sessionCache.set(sessionId, session);
