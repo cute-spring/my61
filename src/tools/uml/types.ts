@@ -25,7 +25,7 @@ export interface SessionData {
 export type DiagramType = '' | 'activity' | 'sequence' | 'usecase' | 'class' | 'component';
 
 export interface WebviewMessage {
-    command: 'sendRequirement' | 'renderSpecificUML' | 'exportSVG' | 'clearChat' | 'importChat' | 'exportChat' | 'editAndResendUserMsg';
+    command: 'sendRequirement' | 'renderSpecificUML' | 'exportSVG' | 'clearChat' | 'importChat' | 'exportChat' | 'editAndResendUserMsg' | 'onboardingComplete' | 'onboardingSkip' | 'generateExample';
     [key: string]: any;
 }
 
@@ -39,4 +39,10 @@ export interface UMLGenerationResponse {
     plantUML: string;
     diagramType: DiagramType;
     explanation?: string;
+}
+
+// User tutorial state type definition
+export interface UserOnboardingState {
+    hasSeenOnboarding: boolean;
+    onboardingCompletedAt?: number;
 }

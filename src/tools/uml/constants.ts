@@ -31,6 +31,8 @@ export const UI_CONFIG = {
     DEFAULT_PANEL_WIDTH: '20vw'
 } as const;
 
+
+
 export const UML_TEMPLATES = {
     DEFAULT_PLANTUML: '@startuml\n\n@enduml',
     ERROR_SVG: '<svg><!-- Error: {message} --></svg>',
@@ -54,3 +56,5 @@ To enable diagram rendering, you need:
 For now, you can still discuss UML concepts and get PlantUML code - you just won't see the visual diagrams until setup is complete.
 `
 } as const;
+
+

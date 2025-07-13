@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { promises as fsp } from 'fs';
 import { trackUsage } from '../analytics';
+import { UserOnboardingState } from './uml/types';
 
 // THIS IS THE CORRECTED LINE.
 // It assumes you have a `preview.ts` file in the same directory with a `localRender` export.
@@ -101,6 +102,8 @@ function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {
     } as T;
 }
 
+
+
 export function activateUMLChatPanel(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.umlChatPanel', async () => {
@@ -125,6 +128,21 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             let currentPlantUML = '@startuml\n\n@enduml';
             let lastDiagramType: string = '';
 
+            // User tutorial state management
+            let userOnboardingState: UserOnboardingState = {
+                hasSeenOnboarding: false
+            };
+
+            // 加载用户状态
+            try {
+                const savedState = context.globalState.get<UserOnboardingState>('umlChatOnboardingState');
+                if (savedState) {
+                    userOnboardingState = { ...userOnboardingState, ...savedState };
+                }
+            } catch (error) {
+                console.warn('Failed to load onboarding state:', error);
+            }
+
             // Helper to generate chat HTML only
             function getChatHtml(chatHistory: { role: 'user' | 'bot', message: string }[]): string {
                 const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
@@ -147,6 +165,14 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
 
             // Initial UI load
             panel.webview.html = getWebviewContent(chatHistory, currentPlantUML, false, svgPanZoomUri);
+
+            // Check if we should show onboarding
+            setTimeout(() => {
+                // Check for first-time onboarding
+                if (!userOnboardingState.hasSeenOnboarding) {
+                    panel.webview.postMessage({ command: 'showOnboarding' });
+                }
+            }, 1000); // Delay to ensure webview is fully loaded
 
             // Helper to update chat area only
             function updateChatInWebview() {
@@ -262,6 +288,10 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                                     setTimeout(() => {
                                         updateChatInWebview();
                                         debouncedRender(currentPlantUML);
+                                        // Re-show onboarding if it was active before
+                                        if (!userOnboardingState.hasSeenOnboarding) {
+                                            panel.webview.postMessage({ command: 'showOnboarding' });
+                                        }
                                     }, 300);
                                     vscode.window.showInformationMessage('Chat session loaded successfully!');
                                 } else {
@@ -333,10 +363,38 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                                 if (currentPlantUML.trim()) {
                                     debouncedRender(currentPlantUML);
                                 }
+                                // Re-show onboarding if it was active before
+                                if (!userOnboardingState.hasSeenOnboarding) {
+                                    panel.webview.postMessage({ command: 'showOnboarding' });
+                                }
                             }, 300);
                         });
                         break;
                     }
+                    case 'onboardingComplete': {
+                        userOnboardingState.hasSeenOnboarding = true;
+                        userOnboardingState.onboardingCompletedAt = Date.now();
+                        await context.globalState.update('umlChatOnboardingState', userOnboardingState);
+                        trackUsage('uml.chatPanel', 'onboardingComplete');
+                        break;
+                    }
+                    case 'onboardingSkip': {
+                        userOnboardingState.hasSeenOnboarding = true;
+                        await context.globalState.update('umlChatOnboardingState', userOnboardingState);
+                        trackUsage('uml.chatPanel', 'onboardingSkip');
+                        break;
+                    }
+                    case 'generateExample': {
+                        const example = message.example;
+                        if (example) {
+                            panel.webview.postMessage({ 
+                                command: 'fillExample', 
+                                example: example 
+                            });
+                        }
+                        break;
+                    }
+
                 }
             }, undefined, context.subscriptions);
         })

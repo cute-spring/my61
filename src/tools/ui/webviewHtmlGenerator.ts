@@ -35,21 +35,23 @@ export class WebviewHtmlGenerator {
         <div id="container">
             <div id="leftPanel">
                 <div id="chat">${chatHtml}</div>
-                <div id="inputArea" style="flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px; border-top: 1px solid #eee; background: #f9f9f9;">
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                        <label for="diagramType" style="margin-right: 8px; font-weight: 500;">Diagram Type:</label>
-                        <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
+                <div id="inputArea">
+                    <div class="input-controls">
+                        <label for="diagramType" class="diagram-type-label">Type:</label>
+                        <select id="diagramType" class="diagram-type-select" title="Select Diagram Type">${diagramTypeOptions}</select>
                     </div>
-                    <div style="position: relative;">
+                    <div class="textarea-container">
                         <textarea id="requirementInput" placeholder="Describe your UML requirement... (Press Enter to send, Shift+Enter for new line, Esc to clear)"></textarea>
-                        <div id="charCounter" style="position: absolute; bottom: 8px; right: 8px; font-size: 0.8em; color: #6c757d; background: rgba(255,255,255,0.8); padding: 2px 6px; border-radius: 3px; pointer-events: none;">0</div>
-                        <button id="clearInputBtn" style="position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.9); border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; display: none;" title="Clear input">✕</button>
+                        <div id="charCounter" class="char-counter">0</div>
+                        <button id="clearInputBtn" class="clear-input-btn" title="Clear input text">✕</button>
                     </div>
                     <div id="buttonRow">
                         <div class="primary-actions">
-                            <button id="sendBtn" class="primary" title="Send (Enter)" aria-label="Send Requirement">
+                            <button id="sendBtn" class="primary icon-only" title="Send (Enter)" aria-label="Send Requirement">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                                <span>Send</span>
+                            </button>
+                            <button id="clearChatBtn" class="secondary icon-only" title="Clear Chat History" aria-label="Clear Chat">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                         </div>
                         <div class="utility-actions">
@@ -73,19 +75,53 @@ export class WebviewHtmlGenerator {
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                         <span>Export SVG</span>
                                     </button>
-                                    <button id="clearChatBtn" class="danger" title="Clear Chat History" aria-label="Clear Chat">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
-                                        <span>Clear Chat</span>
+
+                                    <button id="onboardingBtn" class="tutorial-guide-btn" title="Start Interactive Tutorial" aria-label="Tutorial Guide">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>
+                                        <span>Tutorial Guide</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
             <div id="dragbar"></div>
             <div id="rightPanel">
-                <div id="svgPreview"></div>
+                <div id="svgPreview">
+                    <!-- Empty state display -->
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <div class="empty-state-content">
+                            <h2>Welcome to UML Chat Designer</h2>
+                            <p>Describe your system, process, or requirements in natural language, and AI will automatically generate professional UML diagrams for you.</p>
+                            <div class="empty-state-features">
+                                <div class="feature-item">
+                                    <span class="feature-icon">📊</span>
+                                    <span>Supports 5 diagram types</span>
+                                </div>
+                                <div class="feature-item">
+                                    <span class="feature-icon">⚡</span>
+                                    <span>AI rapid generation</span>
+                                </div>
+                                <div class="feature-item">
+                                    <span class="feature-icon">🔄</span>
+                                    <span>Iterative design optimization</span>
+                                </div>
+                            </div>
+                            <button id="startExampleBtn" class="start-example-btn">Start Experience</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Center Tutorial Button - Always visible -->
+                    <button id="onboardingBtnCenter" class="onboarding-btn-center" title="Start Tutorial Guide">
+                        <div class="btn-content">
+                            <div class="btn-icon">🎯</div>
+                            <div class="btn-text">Tutorial Guide</div>
+                            <div class="btn-subtitle">Click to learn UML Designer</div>
+                        </div>
+                    </button>
+                </div>
                 <div class="zoom-controls">
                     <button class="zoom-btn" id="zoomInBtn" title="Zoom In">+</button>
                     <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">−</button>
@@ -93,6 +129,434 @@ export class WebviewHtmlGenerator {
                 </div>
             </div>
         </div>
+        <!-- Onboarding full-screen display - in diagram display area -->
+        <div id="onboardingModal" class="onboarding-modal" style="display:none;">
+          <div class="onboarding-content">
+            <!-- Close button -->
+            <button id="onboardingCloseBtn" class="onboarding-close-btn" title="Close Tutorial">×</button>
+            
+            <!-- Step indicator -->
+            <div class="onboarding-progress">
+              <div class="progress-dots">
+                <span class="progress-dot active" data-step="1"></span>
+                <span class="progress-dot" data-step="2"></span>
+                <span class="progress-dot" data-step="3"></span>
+                <span class="progress-dot" data-step="4"></span>
+                <span class="progress-dot" data-step="5"></span>
+              </div>
+            </div>
+
+            <!-- Step 1: Welcome -->
+            <div class="onboarding-step" data-step="1">
+              <div class="step-header">
+                <div class="step-icon">🎯</div>
+                <h1>UML Chat Designer</h1>
+                <p class="step-subtitle">Enterprise-Grade AI-Powered UML Design Platform</p>
+              </div>
+              <div class="step-content">
+                <div class="hero-section">
+                  <div class="hero-text">
+                    <h2>Transform Complex Requirements into Professional UML Diagrams</h2>
+                    <p>Experience the future of software architecture design. Our advanced AI engine understands your business requirements and generates enterprise-grade UML diagrams with unprecedented speed and accuracy. From system architecture to business processes, every diagram is crafted with precision and professional standards.</p>
+                  </div>
+                  <div class="hero-visual">
+                    <div class="demo-card">
+                      <div class="demo-input">
+                        <span class="demo-label">Business Requirement</span>
+                        <p>"Design a comprehensive user authentication system with multi-factor authentication, role-based access control, and audit logging"</p>
+                      </div>
+                      <div class="demo-arrow">→</div>
+                      <div class="demo-output">
+                        <span class="demo-label">Professional Output</span>
+                        <div class="demo-diagram">
+                          <svg width="200" height="120" viewBox="0 0 200 120">
+                            <rect x="10" y="20" width="40" height="20" rx="10" fill="#007AFF" stroke="none"/>
+                            <text x="30" y="33" text-anchor="middle" fill="white" font-size="8">Login</text>
+                            <line x1="30" y1="40" x2="30" y2="60" stroke="#007AFF" stroke-width="2"/>
+                            <rect x="10" y="60" width="40" height="20" rx="3" fill="#34C759" stroke="none"/>
+                            <text x="30" y="73" text-anchor="middle" fill="white" font-size="6">MFA</text>
+                            <line x1="30" y1="80" x2="30" y2="100" stroke="#007AFF" stroke-width="2"/>
+                            <rect x="10" y="100" width="40" height="20" rx="3" fill="#FF9500" stroke="none"/>
+                            <text x="30" y="113" text-anchor="middle" fill="white" font-size="6">Access</text>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="feature-highlights">
+                  <div class="feature-item">
+                    <span class="feature-icon">⚡</span>
+                    <span>Enterprise Performance</span>
+                  </div>
+                  <div class="feature-item">
+                    <span class="feature-icon">🎯</span>
+                    <span>Intelligent Analysis</span>
+                  </div>
+                  <div class="feature-item">
+                    <span class="feature-icon">🔄</span>
+                    <span>Continuous Refinement</span>
+                  </div>
+                </div>
+              </div>
+              <div class="step-actions">
+                <button class="next-btn primary">Explore Platform <span class="arrow">→</span></button>
+              </div>
+            </div>
+
+            <!-- Step 2: Supported diagram types -->
+            <div class="onboarding-step" data-step="2" style="display:none;">
+              <div class="step-header">
+                <div class="step-icon">📊</div>
+                <h1>Enterprise UML Diagram Suite</h1>
+                <p class="step-subtitle">Comprehensive coverage for modern software architecture</p>
+              </div>
+              <div class="step-content">
+                <div class="diagram-types-grid">
+                  <div class="diagram-type-card">
+                    <div class="diagram-icon">🔄</div>
+                    <h3>Activity Diagrams</h3>
+                    <p>Business process modeling, workflow automation, and system behavior analysis</p>
+                    <div class="diagram-example">
+                      <svg width="120" height="80" viewBox="0 0 120 80">
+                        <rect x="10" y="10" width="30" height="20" rx="10" fill="#007AFF"/>
+                        <text x="25" y="23" text-anchor="middle" fill="white" font-size="8">Start</text>
+                        <line x1="25" y1="30" x2="25" y2="45" stroke="#007AFF" stroke-width="2"/>
+                        <rect x="10" y="45" width="30" height="20" rx="3" fill="#34C759"/>
+                        <text x="25" y="58" text-anchor="middle" fill="white" font-size="6">Process</text>
+                        <line x1="25" y1="65" x2="25" y2="80" stroke="#007AFF" stroke-width="2"/>
+                        <rect x="10" y="80" width="30" height="20" rx="10" fill="#FF3B30"/>
+                        <text x="25" y="93" text-anchor="middle" fill="white" font-size="8">End</text>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="diagram-type-card">
+                    <div class="diagram-icon">⏱️</div>
+                    <h3>Sequence Diagrams</h3>
+                    <p>System interaction modeling, API design, and message flow analysis</p>
+                    <div class="diagram-example">
+                      <svg width="120" height="80" viewBox="0 0 120 80">
+                        <line x1="20" y1="10" x2="20" y2="70" stroke="#007AFF" stroke-width="2"/>
+                        <line x1="100" y1="10" x2="100" y2="70" stroke="#34C759" stroke-width="2"/>
+                        <text x="20" y="80" text-anchor="middle" font-size="6">Client</text>
+                        <text x="100" y="80" text-anchor="middle" font-size="6">Server</text>
+                        <line x1="20" y1="20" x2="100" y2="20" stroke="#FF9500" stroke-width="1" stroke-dasharray="3,3"/>
+                        <line x1="100" y1="40" x2="20" y2="40" stroke="#FF9500" stroke-width="1" stroke-dasharray="3,3"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="diagram-type-card">
+                    <div class="diagram-icon">👥</div>
+                    <h3>Use Case Diagrams</h3>
+                    <p>Requirements analysis, stakeholder identification, and feature specification</p>
+                    <div class="diagram-example">
+                      <svg width="120" height="80" viewBox="0 0 120 80">
+                        <ellipse cx="30" cy="40" rx="20" ry="15" fill="#007AFF"/>
+                        <text x="30" y="45" text-anchor="middle" fill="white" font-size="6">User</text>
+                        <ellipse cx="90" cy="40" rx="25" ry="20" fill="none" stroke="#34C759" stroke-width="2"/>
+                        <text x="90" y="45" text-anchor="middle" font-size="6">System</text>
+                        <line x1="50" y1="40" x2="65" y2="40" stroke="#FF9500" stroke-width="2"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="diagram-type-card">
+                    <div class="diagram-icon">🏗️</div>
+                    <h3>Class Diagrams</h3>
+                    <p>Object-oriented design, data modeling, and system architecture</p>
+                    <div class="diagram-example">
+                      <svg width="120" height="80" viewBox="0 0 120 80">
+                        <rect x="20" y="20" width="30" height="40" fill="none" stroke="#007AFF" stroke-width="2"/>
+                        <text x="35" y="30" text-anchor="middle" font-size="6">Entity</text>
+                        <line x1="25" y1="35" x2="45" y2="35" stroke="#007AFF" stroke-width="1"/>
+                        <text x="35" y="45" text-anchor="middle" font-size="5">+id</text>
+                        <text x="35" y="55" text-anchor="middle" font-size="5">+name</text>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="diagram-type-card">
+                    <div class="diagram-icon">🧩</div>
+                    <h3>Component Diagrams</h3>
+                    <p>System architecture, module design, and integration planning</p>
+                    <div class="diagram-example">
+                      <svg width="120" height="80" viewBox="0 0 120 80">
+                        <rect x="15" y="20" width="25" height="40" fill="#007AFF" stroke="none" rx="3"/>
+                        <text x="27.5" y="42" text-anchor="middle" fill="white" font-size="6">Frontend</text>
+                        <rect x="50" y="20" width="25" height="40" fill="#34C759" stroke="none" rx="3"/>
+                        <text x="62.5" y="42" text-anchor="middle" fill="white" font-size="6">API</text>
+                        <rect x="85" y="20" width="25" height="40" fill="#FF9500" stroke="none" rx="3"/>
+                        <text x="97.5" y="42" text-anchor="middle" fill="white" font-size="6">Database</text>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="diagram-explanation">
+                  <h3>Why These Five Diagram Types?</h3>
+                  <p>Our comprehensive analysis of enterprise software development practices reveals that these five UML diagram types address 95% of architectural and design challenges. Each type is optimized for AI-driven generation, ensuring maximum accuracy and professional standards. For specialized diagrams requiring manual precision, we recommend traditional UML tools.</p>
+                </div>
+              </div>
+              <div class="step-actions">
+                <button class="prev-btn secondary">← Previous</button>
+                <button class="next-btn primary">Next →</button>
+              </div>
+            </div>
+
+            <!-- Step 3: Usage workflow -->
+            <div class="onboarding-step" data-step="3" style="display:none;">
+              <div class="step-header compact-header">
+                <div class="step-icon">🚀</div>
+                <h1>Streamlined Design Workflow</h1>
+                <p class="step-subtitle">Three-step process for rapid UML generation</p>
+              </div>
+              <div class="step-content">
+                <div class="workflow-grid">
+                  <div class="workflow-card">
+                    <div class="workflow-icon">📝</div>
+                    <h3>Describe Requirements</h3>
+                    <p>Explain your system needs in natural language, and our AI will understand your architectural vision.</p>
+                    <div class="workflow-visual">
+                      <div class="visual-element input-visual">
+                        <span class="visual-label">Natural Language</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="workflow-card">
+                    <div class="workflow-icon">🤖</div>
+                    <h3>AI Generation</h3>
+                    <p>Advanced AI analyzes requirements and generates professional UML diagrams with enterprise-grade precision.</p>
+                    <div class="workflow-visual">
+                      <div class="visual-element ai-visual">
+                        <div class="ai-dots">
+                          <span class="dot blue"></span>
+                          <span class="dot green"></span>
+                          <span class="dot orange"></span>
+                      </div>
+                    </div>
+                  </div>
+                      </div>
+                  <div class="workflow-card">
+                    <div class="workflow-icon">🔄</div>
+                    <h3>Refine & Iterate</h3>
+                    <p>Collaborate with AI to optimize and enhance your design through intelligent conversation and feedback.</p>
+                    <div class="workflow-visual">
+                      <div class="visual-element iterate-visual">
+                        <div class="iterate-circles">
+                          <span class="circle blue"></span>
+                          <span class="circle green"></span>
+                          <span class="circle orange"></span>
+                    </div>
+                  </div>
+                </div>
+                  </div>
+                </div>
+              </div>
+              <div class="step-actions">
+                <button class="prev-btn secondary">← Previous</button>
+                <button class="next-btn primary">Next →</button>
+              </div>
+            </div>
+
+            <!-- Step 4: AI advantages -->
+            <div class="onboarding-step" data-step="4" style="display:none;">
+              <div class="step-header">
+                <div class="step-icon">🤖</div>
+                <h1>AI-Powered Design Excellence</h1>
+                <p class="step-subtitle">Revolutionary approach to enterprise UML design</p>
+              </div>
+              <div class="step-content">
+                <div class="ai-advantages">
+                  <div class="advantage-card">
+                    <div class="advantage-icon">⚡</div>
+                    <h3>Enterprise Performance</h3>
+                    <p>Generate complex UML diagrams in seconds, not hours. Our AI engine handles intricate architectural patterns and enterprise-scale modeling with precision.</p>
+                    <div class="advantage-metric">
+                      <span class="metric-value">15x</span>
+                      <span class="metric-label">Productivity gain</span>
+                    </div>
+                  </div>
+                  <div class="advantage-card">
+                    <div class="advantage-icon">🎯</div>
+                    <h3>Intelligent Architecture Analysis</h3>
+                    <p>Advanced natural language processing understands complex business requirements and generates UML-compliant diagrams with enterprise-grade accuracy.</p>
+                    <div class="advantage-metric">
+                      <span class="metric-value">98%</span>
+                      <span class="metric-label">Accuracy rate</span>
+                    </div>
+                  </div>
+                  <div class="advantage-card">
+                    <div class="advantage-icon">🔄</div>
+                    <h3>Continuous Design Evolution</h3>
+                    <p>Iterate and refine designs through intelligent conversation, supporting complex enterprise scenarios and evolving requirements.</p>
+                    <div class="advantage-metric">
+                      <span class="metric-value">∞</span>
+                      <span class="metric-label">Iteration cycles</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="comparison-section">
+                  <h3>Enterprise Comparison Matrix</h3>
+                  <div class="comparison-table">
+                    <div class="comparison-header">
+                      <div class="comparison-cell">Capability</div>
+                      <div class="comparison-cell">Traditional Tools</div>
+                      <div class="comparison-cell">UML Chat Designer</div>
+                    </div>
+                    <div class="comparison-row">
+                      <div class="comparison-cell">Learning curve</div>
+                      <div class="comparison-cell">UML syntax mastery required</div>
+                      <div class="comparison-cell">Natural language proficiency</div>
+                    </div>
+                    <div class="comparison-row">
+                      <div class="comparison-cell">Generation efficiency</div>
+                      <div class="comparison-cell">Manual construction, hours</div>
+                      <div class="comparison-cell">AI automation, minutes</div>
+                    </div>
+                    <div class="comparison-row">
+                      <div class="comparison-cell">Modification workflow</div>
+                      <div class="comparison-cell">Manual rework required</div>
+                      <div class="comparison-cell">Conversational refinement</div>
+                    </div>
+                    <div class="comparison-row">
+                      <div class="comparison-cell">Enterprise collaboration</div>
+                      <div class="comparison-cell">File-based sharing, version conflicts</div>
+                      <div class="comparison-cell">Session management, seamless sharing</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="step-actions">
+                <button class="prev-btn secondary">← Previous</button>
+                <button class="next-btn primary">Next →</button>
+              </div>
+            </div>
+
+            <!-- Step 5: Export and collaboration -->
+            <div class="onboarding-step" data-step="5" style="display:none;">
+              <div class="step-header">
+                <div class="step-icon">📤</div>
+                <h1>Enterprise Export & Collaboration</h1>
+                <p class="step-subtitle">Seamless integration with enterprise workflows</p>
+              </div>
+              <div class="step-content">
+                <div class="export-features">
+                  <div class="export-card">
+                    <div class="export-icon">🖼️</div>
+                    <h3>Professional Export</h3>
+                    <p>Export diagrams in high-resolution SVG format, ensuring perfect clarity for enterprise documentation, presentations, and technical specifications.</p>
+                    <div class="export-preview">
+                      <svg width="100" height="60" viewBox="0 0 100 60">
+                        <rect x="5" y="5" width="90" height="50" fill="none" stroke="#007AFF" stroke-width="1" stroke-dasharray="2,2"/>
+                        <text x="50" y="30" text-anchor="middle" font-size="8">SVG Export</text>
+                        <text x="50" y="45" text-anchor="middle" font-size="6" fill="#666">Enterprise Ready</text>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="export-card">
+                    <div class="export-icon">💾</div>
+                    <h3>Session Management</h3>
+                    <p>Comprehensive session persistence with complete conversation history and iteration tracking. Perfect for enterprise project management and team collaboration.</p>
+                    <div class="export-preview">
+                      <svg width="100" height="60" viewBox="0 0 100 60">
+                        <rect x="10" y="10" width="20" height="15" fill="#34C759"/>
+                        <text x="20" y="20" text-anchor="middle" fill="white" font-size="6">v1</text>
+                        <rect x="35" y="10" width="20" height="15" fill="#FF9500"/>
+                        <text x="45" y="20" text-anchor="middle" fill="white" font-size="6">v2</text>
+                        <rect x="60" y="10" width="20" height="15" fill="#007AFF"/>
+                        <text x="70" y="20" text-anchor="middle" fill="white" font-size="6">v3</text>
+                        <line x1="20" y1="25" x2="45" y2="25" stroke="#666" stroke-width="1"/>
+                        <line x1="45" y1="25" x2="70" y2="25" stroke="#666" stroke-width="1"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="export-card">
+                    <div class="export-icon">👥</div>
+                    <h3>Team Collaboration</h3>
+                    <p>Advanced session sharing capabilities with import/export functionality, enabling seamless collaboration across development teams and stakeholders.</p>
+                    <div class="export-preview">
+                      <svg width="100" height="60" viewBox="0 0 100 60">
+                        <circle cx="25" cy="30" r="8" fill="#007AFF"/>
+                        <circle cx="50" cy="30" r="8" fill="#34C759"/>
+                        <circle cx="75" cy="30" r="8" fill="#FF9500"/>
+                        <line x1="33" y1="30" x2="42" y2="30" stroke="#666" stroke-width="1"/>
+                        <line x1="58" y1="30" x2="67" y2="30" stroke="#666" stroke-width="1"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="step-actions">
+                <button class="prev-btn secondary">← Previous</button>
+                <button class="next-btn primary">Start Experience →</button>
+              </div>
+            </div>
+
+            <!-- Step 6: Start experience -->
+            <div class="onboarding-step" data-step="6" style="display:none;">
+              <div class="step-header">
+                <div class="step-icon">🎉</div>
+                <h1>Begin Your Enterprise Design Journey</h1>
+                <p class="step-subtitle">Select from our curated enterprise scenarios or create your own</p>
+              </div>
+              <div class="step-content">
+                <div class="scenario-selection">
+                  <h3>Choose Your Enterprise Project</h3>
+                  <div class="scenario-grid">
+                    <div class="scenario-card" data-example="Design a comprehensive microservices architecture for an online education platform including user management, course management, payment processing, content delivery, and analytics services">
+                      <div class="scenario-icon">🎓</div>
+                      <h4>Education Platform</h4>
+                      <p>Microservices architecture for online learning ecosystem</p>
+                      <span class="scenario-type">Component Diagram</span>
+                    </div>
+                    <div class="scenario-card" data-example="Create a comprehensive class diagram for an enterprise e-commerce system including user management, product catalog, inventory management, order processing, payment gateway, and customer service modules">
+                      <div class="scenario-icon">🛒</div>
+                      <h4>E-commerce System</h4>
+                      <p>Enterprise-scale e-commerce platform architecture</p>
+                      <span class="scenario-type">Class Diagram</span>
+                    </div>
+                    <div class="scenario-card" data-example="Design a secure payment processing system sequence diagram including user authentication, payment gateway integration, fraud detection, bank communication, and transaction settlement">
+                      <div class="scenario-icon">💳</div>
+                      <h4>Payment System</h4>
+                      <p>Secure payment processing with fraud detection</p>
+                      <span class="scenario-type">Sequence Diagram</span>
+                    </div>
+                    <div class="scenario-card" data-example="Create a comprehensive use case diagram for a social media platform including user registration, content management, social networking, privacy controls, and analytics features">
+                      <div class="scenario-icon">📱</div>
+                      <h4>Social Media Platform</h4>
+                      <p>Modern social networking platform requirements</p>
+                      <span class="scenario-type">Use Case Diagram</span>
+                    </div>
+                    <div class="scenario-card" data-example="Design a microservices architecture component diagram for a financial services platform including user management, account management, transaction processing, risk assessment, and compliance monitoring">
+                      <div class="scenario-icon">🏗️</div>
+                      <h4>Financial Services</h4>
+                      <p>Enterprise financial platform with compliance</p>
+                      <span class="scenario-type">Component Diagram</span>
+                    </div>
+                    <div class="scenario-card" data-example="Create a custom enterprise scenario tailored to your specific business requirements and architectural needs">
+                      <div class="scenario-icon">✨</div>
+                      <h4>Custom Enterprise</h4>
+                      <p>Tailored solution for your specific requirements</p>
+                      <span class="scenario-type">Custom Design</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="final-encouragement">
+                  <h3>🎯 Enterprise Excellence, AI Innovation</h3>
+                  <p>Choose any enterprise scenario to begin your professional UML design journey, or describe your specific architectural requirements. Our AI engine is ready to transform your vision into enterprise-grade UML diagrams.</p>
+                </div>
+              </div>
+              <div class="step-actions">
+                <button class="prev-btn secondary">← Previous</button>
+                <button class="finish-btn primary">Complete Tutorial</button>
+              </div>
+            </div>
+
+            <!-- Skip button -->
+            <button class="skip-btn">
+              <span class="skip-text">Skip</span>
+            </button>
+          </div>
+        </div>
+
         ${svgPanZoomUriString ? `<script src="${svgPanZoomUriString}"></script>` : '<!-- SVG pan-zoom library not available -->'}
         <script>
             // Check if SVG pan-zoom library loaded
@@ -152,9 +616,9 @@ export class WebviewHtmlGenerator {
             }
             #container { display: flex; height: 100vh; }
             #leftPanel { 
-                width: 20vw; 
-                min-width: 320px; 
-                max-width: 900px; 
+                width: 18vw; 
+                min-width: 280px; 
+                max-width: 600px; 
                 display: flex; 
                 flex-direction: column; 
                 height: 100vh; 
@@ -352,15 +816,15 @@ export class WebviewHtmlGenerator {
                 flex: 1 1 0;
                 overflow-y: auto;
                 background: #f5f5f5;
-                padding: 10px;
+                padding: 6px;
                 border-bottom: 1px solid #eee;
-                min-height: 200px;
+                min-height: 150px;
             }
-            .user, .bot-message { padding: 8px; margin-bottom: 8px; border-radius: 6px; }
+            .user, .bot-message { padding: 6px; margin-bottom: 4px; border-radius: 4px; }
             .user { 
                 background-color: #e9e9e9; 
                 position: relative; 
-                padding-bottom: 12px; 
+                padding-bottom: 8px; 
             }
             .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
             .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
@@ -376,42 +840,55 @@ export class WebviewHtmlGenerator {
                 margin-bottom: 8px;
             }
 
-            /* --- Input Area & Actions --- */
+            /* --- Enhanced Input Area & Actions --- */
             #inputArea { 
                 flex: 0 0 auto; 
                 display: flex; 
                 flex-direction: column; 
-                padding: 10px 10px 4px 10px;
-                border-top: 1px solid #eee; 
-                background: #f9f9f9; 
+                padding: 12px 16px 12px 16px;
+                border-top: 1px solid #e0e6ed; 
+                background: linear-gradient(135deg, #f8f9fa, #ffffff);
+                box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+                position: relative;
             }
             #requirementInput { 
                 width: 100%; 
                 box-sizing: border-box; 
-                min-height: 80px; 
-                max-height: 300px; 
-                padding: 12px; 
-                font-size: 1.1em; 
+                min-height: 64px; 
+                max-height: 200px; 
+                padding: 12px 16px; 
+                font-size: 1em; 
                 font-family: inherit;
                 resize: vertical; 
-                margin-bottom: 10px; 
-                border: 2px solid #e1e5e9; 
-                border-radius: 8px; 
-                background: #fff;
-                transition: all 0.2s ease;
+                margin-bottom: 8px; 
+                border: 2px solid #e1e8ed; 
+                border-radius: 12px; 
+                background: #ffffff;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 line-height: 1.5;
                 overflow-y: auto;
-                /* Enhanced focus states */
                 outline: none;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+                font-weight: 400;
+                letter-spacing: 0.01em;
+                position: relative;
+                z-index: 1;
             }
             #requirementInput:focus {
                 border-color: #007acc;
-                box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+                box-shadow: 0 0 0 4px rgba(0, 122, 204, 0.12), 0 4px 12px rgba(0, 122, 204, 0.08);
                 background: #fafbfc;
+                transform: translateY(-1px);
+            }
+            #requirementInput:hover:not(:focus) {
+                border-color: #b0c4de;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
             }
             #requirementInput::placeholder {
-                color: #6c757d;
-                font-style: italic;
+                color: #8b9dc3;
+                font-style: normal;
+                font-weight: 400;
+                opacity: 0.8;
             }
             /* Auto-resize functionality */
             #requirementInput.auto-resize {
@@ -419,19 +896,293 @@ export class WebviewHtmlGenerator {
                 resize: none;
             }
             
-            /* --- Button Layout and Styling --- */
+            /* --- Enhanced Input Controls --- */
+            .input-controls {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+                gap: 12px;
+            }
+            
+            .diagram-type-label {
+                font-weight: 600;
+                font-size: 0.875rem;
+                color: #374151;
+                letter-spacing: -0.01em;
+                margin: 0;
+                flex-shrink: 0;
+            }
+            
+            .diagram-type-select {
+                background: linear-gradient(135deg, #ffffff, #f8f9fa);
+                border: 2px solid #e1e8ed;
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 0.875rem;
+                color: #374151;
+                min-width: 140px;
+                font-weight: 500;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                cursor: pointer;
+                outline: none;
+            }
+            
+            .diagram-type-select:focus {
+                border-color: #007acc;
+                box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12), 0 2px 6px rgba(0, 122, 204, 0.08);
+                background: #ffffff;
+            }
+            
+            .diagram-type-select:hover:not(:focus) {
+                border-color: #b0c4de;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+            }
+            
+            .textarea-container {
+                position: relative;
+            }
+            
+            .char-counter {
+                position: absolute;
+                bottom: 12px;
+                right: 16px;
+                font-size: 0.75rem;
+                color: #8b9dc3;
+                background: rgba(255, 255, 255, 0.9);
+                padding: 4px 8px;
+                border-radius: 6px;
+                pointer-events: none;
+                font-weight: 500;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                backdrop-filter: blur(4px);
+                border: 1px solid rgba(225, 232, 237, 0.5);
+                z-index: 2;
+            }
+            
+            .clear-input-btn {
+                position: absolute;
+                top: 12px;
+                right: 16px;
+                background: rgba(255, 255, 255, 0.95);
+                border: 1px solid #e1e8ed;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 0.75rem;
+                cursor: pointer;
+                color: #6c757d;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                z-index: 3;
+                display: none;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                backdrop-filter: blur(4px);
+                line-height: 1;
+                min-width: 24px;
+                min-height: 24px;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .clear-input-btn:hover {
+                background: rgba(220, 53, 69, 0.1);
+                border-color: #dc3545;
+                color: #dc3545;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 6px rgba(220, 53, 69, 0.2);
+            }
+            
+            .clear-input-btn:active {
+                transform: translateY(0);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
+            
+            .clear-input-btn.show {
+                display: flex;
+            }
+            
+            /* --- Enhanced Button Layout and Styling --- */
             #buttonRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
             .primary-actions { display: flex; align-items: center; gap: 8px; }
             .utility-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
             
-            button, select { border-radius: 4px; border: 1px solid #ccc; background: #f5f5f5; padding: 6px 12px; font-size: 1em; transition: background 0.2s, border 0.2s, color 0.2s; cursor: pointer; outline: none; display: flex; align-items: center; gap: 6px; }
-            button:hover, button:focus, select:hover, select:focus { background: #e0e0e0; border-color: #bdbdbd; }
-            button svg { width: 16px !important; height: 16px !important; display: block !important; flex-shrink: 0 !important; }
-            button.primary { background: #007acc; color: #fff; border-color: #007acc; font-weight: 600; }
-            button.primary:hover, button.primary:focus { background: #005fa3; border-color: #005fa3; }
-            button.danger { background: #fff0f0; color: #d32f2f; border: 1px solid #d32f2f; }
-            button.danger:hover, button.danger:focus { background: #d32f2f; color: #fff; }
-            button.icon-only { padding: 8px !important; min-width: 36px !important; min-height: 36px !important; justify-content: center !important; }
+            /* Base button and select styling */
+            button, select { 
+                border-radius: 8px; 
+                border: 2px solid #e1e8ed; 
+                background: linear-gradient(135deg, #ffffff, #f8f9fa); 
+                padding: 8px 12px; 
+                font-size: 0.875rem; 
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+                cursor: pointer; 
+                outline: none; 
+                display: flex; 
+                align-items: center; 
+                gap: 6px; 
+                font-weight: 500;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+                letter-spacing: -0.01em;
+            }
+            
+            button:hover, button:focus, select:hover, select:focus { 
+                background: linear-gradient(135deg, #f8f9fa, #e9ecef); 
+                border-color: #b0c4de; 
+                transform: translateY(-1px);
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            }
+            
+            button svg { 
+                width: 16px !important; 
+                height: 16px !important; 
+                display: block !important; 
+                flex-shrink: 0 !important; 
+                transition: transform 0.2s ease !important;
+            }
+            
+            button:hover svg {
+                transform: scale(1.05);
+            }
+            
+            /* Enhanced Primary Button */
+            button.primary { 
+                background: linear-gradient(135deg, #007acc, #005fa3); 
+                color: #ffffff; 
+                border: none; 
+                font-weight: 600; 
+                padding: 10px 16px; 
+                border-radius: 10px; 
+                font-size: 0.875rem;
+                box-shadow: 0 2px 6px rgba(0, 122, 204, 0.25), 0 1px 3px rgba(0, 122, 204, 0.1);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            button.primary::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                transition: left 0.5s;
+            }
+            
+            button.primary:hover::before {
+                left: 100%;
+            }
+            
+            button.primary:hover, button.primary:focus { 
+                background: linear-gradient(135deg, #005fa3, #004080); 
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3), 0 2px 6px rgba(0, 122, 204, 0.2);
+            }
+            
+            button.primary:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 6px rgba(0, 122, 204, 0.25);
+            }
+            
+            /* Enhanced Secondary Button */
+            button.secondary { 
+                background: linear-gradient(135deg, #f8f9fa, #e9ecef); 
+                color: #6c757d; 
+                border: 2px solid #dee2e6; 
+                font-weight: 600; 
+                padding: 10px 16px; 
+                border-radius: 10px; 
+                font-size: 0.875rem;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            button.secondary::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(108, 117, 125, 0.1), transparent);
+                transition: left 0.5s;
+            }
+            
+            button.secondary:hover::before {
+                left: 100%;
+            }
+            
+            button.secondary:hover, button.secondary:focus { 
+                background: linear-gradient(135deg, #e9ecef, #dee2e6); 
+                color: #495057;
+                transform: translateY(-2px);
+                box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+                border-color: #adb5bd;
+            }
+            
+            button.secondary:active {
+                transform: translateY(0);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            }
+            
+            /* Enhanced Danger Button */
+            button.danger { 
+                background: linear-gradient(135deg, #fff0f0, #ffe6e6); 
+                color: #d32f2f; 
+                border: 2px solid #d32f2f; 
+                font-weight: 600;
+                padding: 10px 16px;
+                border-radius: 10px;
+                box-shadow: 0 1px 3px rgba(211, 47, 47, 0.2);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            button.danger:hover, button.danger:focus { 
+                background: linear-gradient(135deg, #d32f2f, #b71c1c); 
+                color: #fff; 
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+            }
+            
+            /* Enhanced Icon-Only Buttons */
+            button.icon-only { 
+                padding: 10px !important; 
+                min-width: 36px !important; 
+                min-height: 36px !important; 
+                justify-content: center !important; 
+                position: relative;
+                overflow: hidden;
+            }
+            
+            /* Icon-only buttons that aren't primary/secondary get circular shape */
+            button.icon-only:not(.primary):not(.secondary) {
+                border-radius: 50% !important;
+            }
+            
+            /* Primary and secondary icon-only buttons keep their rounded rectangle shape */
+            button.primary.icon-only,
+            button.secondary.icon-only {
+                border-radius: 10px !important;
+                min-width: 42px !important;
+                min-height: 42px !important;
+            }
+            
+            button.icon-only::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+                transition: left 0.5s;
+            }
+            
+            button.icon-only:hover::before {
+                left: 100%;
+            }
 
             /* --- Edit Message Button Styling --- */
             .edit-user-msg-btn {
@@ -616,6 +1367,60 @@ export class WebviewHtmlGenerator {
             }
             .dropdown-content button:hover { background-color: #f1f1f1; }
             .dropdown-content button.danger:hover { background-color: #d32f2f; color: #fff; }
+            
+            /* --- Enhanced Tutorial Guide Button --- */
+            .tutorial-guide-btn {
+                background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+                color: #ffffff !important;
+                border: none !important;
+                font-weight: 600 !important;
+                position: relative !important;
+                overflow: hidden !important;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3) !important;
+                border-radius: 6px !important;
+            }
+            
+            .tutorial-guide-btn::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                transition: left 0.5s;
+            }
+            
+            .tutorial-guide-btn:hover::before {
+                left: 100%;
+            }
+            
+            .tutorial-guide-btn:hover {
+                background: linear-gradient(135deg, #3730a3, #6d28d9) !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4) !important;
+            }
+            
+            .tutorial-guide-btn:active {
+                transform: translateY(0) !important;
+                box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3) !important;
+            }
+            
+            .tutorial-guide-btn svg {
+                color: #ffffff !important;
+                transition: transform 0.2s ease !important;
+            }
+            
+            .tutorial-guide-btn:hover svg {
+                transform: scale(1.1) rotate(5deg) !important;
+            }
+            
+            .tutorial-guide-btn span {
+                font-weight: 600 !important;
+                letter-spacing: 0.025em !important;
+            }
+            
             .show { display: block; }
 
             /* --- Fullscreen & Responsive --- */
@@ -624,6 +1429,1300 @@ export class WebviewHtmlGenerator {
 
             /* --- Loading Message Style --- */
             .loading-message { font-style: italic; color: #888; background: #f5f5f5 !important; border-style: dashed !important; }
+
+            /* --- Onboarding Styling --- */
+
+            /* --- Enterprise-grade tutorial guide styles --- */
+            .onboarding-modal {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.6));
+                backdrop-filter: blur(20px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                display: none;
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+            }
+            
+            .onboarding-content {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+                backdrop-filter: blur(30px);
+                border-radius: 24px;
+                box-shadow: 
+                    0 32px 64px rgba(0, 0, 0, 0.2),
+                    0 16px 32px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+                position: relative;
+                z-index: 1001;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                border: 1px solid rgba(0, 122, 204, 0.15);
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .onboarding-close-btn {
+                position: absolute;
+                top: 24px;
+                right: 24px;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                border: none;
+                background: linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.05));
+                color: #666;
+                font-size: 24px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 1002;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .onboarding-close-btn:hover {
+                background: linear-gradient(135deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.15));
+                color: #333;
+                transform: scale(1.1) rotate(90deg);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+            
+            /* 进度指示器 */
+            .onboarding-progress {
+                position: absolute;
+                top: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 1002;
+            }
+            
+            .progress-dots {
+                display: flex;
+                gap: 10px;
+                padding: 8px 16px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 20px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .progress-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: rgba(0, 122, 204, 0.3);
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+            }
+            
+            .progress-dot.active {
+                background: linear-gradient(135deg, #007AFF, #0056CC);
+                transform: scale(1.3);
+                box-shadow: 0 2px 8px rgba(0, 122, 204, 0.4);
+            }
+            
+            .progress-dot.active::after {
+                content: '';
+                position: absolute;
+                top: -2px;
+                left: -2px;
+                right: -2px;
+                bottom: -2px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.2), transparent);
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.2); opacity: 0.5; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            
+            /* Step styles */
+            .onboarding-step {
+                display: none;
+                padding: 20px 30px 20px;
+                text-align: center;
+                height: 100%;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                min-height: 0;
+            }
+            
+            .step-header {
+                margin-bottom: 20px;
+                flex-shrink: 0;
+            }
+            
+            .step-header.compact-header {
+                margin-bottom: 15px;
+            }
+            
+            .step-icon {
+                font-size: 3em;
+                margin-bottom: 16px;
+                display: block;
+                filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+            }
+            
+            .compact-header .step-icon {
+                font-size: 2.5em;
+                margin-bottom: 12px;
+            }
+            
+            .step-header h1 {
+                font-size: 3em;
+                font-weight: 800;
+                background: linear-gradient(135deg, #1d1d1f, #2d2d2f);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin: 0 0 16px 0;
+                letter-spacing: -0.03em;
+                line-height: 1.1;
+            }
+            
+            .compact-header h1 {
+                font-size: 2.4em;
+                margin: 0 0 12px 0;
+            }
+            
+            .step-subtitle {
+                font-size: 1.3em;
+                color: #6b7280;
+                margin: 0;
+                font-weight: 500;
+                letter-spacing: -0.01em;
+            }
+            
+            .compact-header .step-subtitle {
+                font-size: 1.1em;
+            }
+            
+            .step-content {
+                margin-bottom: 40px;
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .step-content.compact-content {
+                margin-bottom: 30px;
+            }
+            
+            /* 英雄区域 */
+            .hero-section {
+                display: flex;
+                align-items: center;
+                gap: 40px;
+                margin-bottom: 40px;
+                text-align: left;
+                flex: 1;
+                min-height: 0;
+            }
+            
+            .hero-text {
+                flex: 1;
+            }
+            
+            .hero-text h2 {
+                font-size: 1.8em;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0 0 20px 0;
+            }
+            
+            .hero-text p {
+                font-size: 1.1em;
+                line-height: 1.6;
+                color: #515154;
+                margin: 0;
+            }
+            
+            .hero-visual {
+                flex: 1;
+                display: flex;
+                justify-content: center;
+            }
+            
+            .demo-card {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+                border-radius: 20px;
+                padding: 24px;
+                box-shadow: 
+                    0 12px 40px rgba(0, 0, 0, 0.15),
+                    0 4px 16px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .demo-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 
+                    0 16px 48px rgba(0, 0, 0, 0.2),
+                    0 6px 20px rgba(0, 0, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            }
+            
+            .demo-input, .demo-output {
+                flex: 1;
+                text-align: center;
+            }
+            
+            .demo-label {
+                display: block;
+                font-size: 0.8em;
+                color: #86868b;
+                margin-bottom: 8px;
+                font-weight: 500;
+            }
+            
+            .demo-input p {
+                background: linear-gradient(135deg, #007AFF, #0056CC);
+                color: white;
+                padding: 12px 16px;
+                border-radius: 12px;
+                font-size: 0.9em;
+                margin: 0;
+                box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .demo-arrow {
+                font-size: 1.5em;
+                color: #007AFF;
+                font-weight: 600;
+            }
+            
+            .demo-diagram {
+                background: linear-gradient(135deg, #ffffff, #f8fafc);
+                border-radius: 12px;
+                padding: 12px;
+                box-shadow: 
+                    0 4px 16px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+                border: 1px solid rgba(0, 0, 0, 0.05);
+            }
+            
+            /* 特性亮点 */
+            .feature-highlights {
+                display: flex;
+                justify-content: center;
+                gap: 30px;
+                margin-top: 30px;
+            }
+            
+            .feature-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .feature-icon {
+                font-size: 2em;
+            }
+            
+            .feature-item span:last-child {
+                font-size: 0.9em;
+                color: #515154;
+                font-weight: 500;
+            }
+            
+            /* 图表类型网格 */
+            .diagram-types-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+                flex: 1;
+                min-height: 0;
+            }
+            
+            .diagram-type-card {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+                border-radius: 20px;
+                padding: 24px;
+                text-align: center;
+                box-shadow: 
+                    0 8px 24px rgba(0, 0, 0, 0.1),
+                    0 2px 8px rgba(0, 0, 0, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                backdrop-filter: blur(10px);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .diagram-type-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+                transition: left 0.6s ease;
+            }
+            
+            .diagram-type-card:hover {
+                transform: translateY(-6px) scale(1.02);
+                box-shadow: 
+                    0 16px 40px rgba(0, 0, 0, 0.15),
+                    0 6px 20px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            }
+            
+            .diagram-type-card:hover::before {
+                left: 100%;
+            }
+            
+            .diagram-icon {
+                font-size: 2.5em;
+                margin-bottom: 15px;
+                display: block;
+            }
+            
+            .diagram-type-card h3 {
+                font-size: 1.2em;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0 0 10px 0;
+            }
+            
+            .diagram-type-card p {
+                font-size: 0.9em;
+                color: #86868b;
+                margin: 0 0 15px 0;
+                line-height: 1.4;
+            }
+            
+            .diagram-example {
+                background: linear-gradient(135deg, #ffffff, #f8fafc);
+                border-radius: 12px;
+                padding: 12px;
+                box-shadow: 
+                    0 4px 16px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+                border: 1px solid rgba(0, 0, 0, 0.05);
+                transition: all 0.3s ease;
+            }
+            
+            .diagram-type-card:hover .diagram-example {
+                transform: scale(1.05);
+                box-shadow: 
+                    0 6px 20px rgba(0, 0, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            }
+            
+            /* Workflow grid */
+            .workflow-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 30px;
+                margin-bottom: 20px;
+                max-width: 1200px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            
+            .workflow-card {
+                background: #ffffff;
+                border-radius: 16px;
+                padding: 25px 15px;
+                text-align: center;
+                box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+                border: 1px solid rgba(0, 0, 0, 0.04);
+                transition: all 0.3s ease;
+                position: relative;
+            }
+            
+            .workflow-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+            
+            .workflow-icon {
+                font-size: 2.5em;
+                margin-bottom: 15px;
+                display: block;
+            }
+            
+            .workflow-card h3 {
+                font-size: 1.2em;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0 0 10px 0;
+            }
+            
+            .workflow-card p {
+                font-size: 0.9em;
+                color: #515154;
+                margin: 0 0 15px 0;
+                line-height: 1.4;
+            }
+            
+            .workflow-visual {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 45px;
+            }
+            
+            .visual-element {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+            }
+            
+            .input-visual {
+                background: linear-gradient(135deg, #f5f5f7, #e8e8ed);
+                border-radius: 8px;
+                border: 2px dashed #007AFF;
+                position: relative;
+            }
+            
+            .visual-label {
+                font-size: 0.8em;
+                color: #007AFF;
+                font-weight: 500;
+            }
+            
+            .ai-visual {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .ai-dots {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            
+            .dot {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                display: inline-block;
+            }
+            
+            .dot.blue { background: #007AFF; }
+            .dot.green { background: #34C759; }
+            .dot.orange { background: #FF9500; }
+            
+            .iterate-visual {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .iterate-circles {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+            }
+            
+            .circle {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                display: inline-block;
+                border: 2px solid;
+            }
+            
+            .circle.blue { border-color: #007AFF; }
+            .circle.green { border-color: #34C759; }
+            .circle.orange { border-color: #FF9500; }
+            
+            /* Responsive design for workflow grid */
+            @media (max-width: 768px) {
+                .workflow-grid {
+                    grid-template-columns: 1fr;
+                    gap: 15px;
+                    margin-bottom: 15px;
+                }
+                
+                .workflow-card {
+                    padding: 20px 12px;
+                }
+                
+                .workflow-icon {
+                    font-size: 2.2em;
+                    margin-bottom: 12px;
+                }
+                
+                .workflow-card h3 {
+                font-size: 1.1em;
+                margin: 0 0 8px 0;
+            }
+            
+                .workflow-card p {
+                    font-size: 0.85em;
+                margin: 0 0 12px 0;
+                }
+                
+                .workflow-visual {
+                    height: 40px;
+                }
+                
+                .onboarding-step {
+                    padding: 15px 20px 15px;
+                }
+                
+                .step-actions {
+                    margin-top: 10px;
+                    padding-top: 10px;
+                }
+            }
+            
+
+            
+            .example-box {
+                background: rgba(0, 122, 204, 0.1);
+                border-radius: 8px;
+                padding: 10px;
+                border-left: 3px solid #007AFF;
+            }
+            
+            .example-box.compact-example {
+                padding: 10px;
+                border-radius: 6px;
+                border-left-width: 3px;
+            }
+            
+            .example-label {
+                display: block;
+                font-size: 0.8em;
+                color: #007AFF;
+                font-weight: 600;
+                margin-bottom: 5px;
+            }
+            
+            .compact-example .example-label {
+                font-size: 0.75em;
+                margin-bottom: 4px;
+            }
+            
+            .example-box p {
+                font-size: 0.85em;
+                color: #1d1d1f;
+                margin: 0;
+                font-style: italic;
+            }
+            
+            .compact-example p {
+                font-size: 0.8em;
+                line-height: 1.2;
+            }
+            
+
+            
+            /* AI优势卡片 */
+            .ai-advantages {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+                flex: 1;
+                min-height: 0;
+            }
+            
+            .advantage-card {
+                background: linear-gradient(135deg, #f5f5f7, #ffffff);
+                border-radius: 16px;
+                padding: 25px;
+                text-align: center;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                transition: all 0.3s ease;
+            }
+            
+            .advantage-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            }
+            
+            .advantage-icon {
+                font-size: 2.5em;
+                margin-bottom: 15px;
+                display: block;
+            }
+            
+            .advantage-card h3 {
+                font-size: 1.2em;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0 0 12px 0;
+            }
+            
+            .advantage-card p {
+                font-size: 0.9em;
+                color: #515154;
+                margin: 0 0 20px 0;
+                line-height: 1.5;
+            }
+            
+            .advantage-metric {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 5px;
+            }
+            
+            .metric-value {
+                font-size: 1.8em;
+                font-weight: 700;
+                color: #007AFF;
+            }
+            
+            .metric-label {
+                font-size: 0.8em;
+                color: #86868b;
+                font-weight: 500;
+            }
+            
+            /* 对比表格 */
+            .comparison-section {
+                background: linear-gradient(135deg, #f5f5f7, #ffffff);
+                border-radius: 16px;
+                padding: 25px;
+            }
+            
+            .comparison-section h3 {
+                font-size: 1.3em;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0 0 20px 0;
+                text-align: center;
+            }
+            
+            .comparison-table {
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            }
+            
+            .comparison-header {
+                background: linear-gradient(135deg, #007AFF, #0056CC);
+                color: white;
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+            
+            .comparison-row {
+                background: white;
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            
+            .comparison-row:nth-child(even) {
+                background: #fafafa;
+            }
+            
+            .comparison-cell {
+                padding: 15px;
+                font-size: 0.9em;
+                display: flex;
+                align-items: center;
+            }
+            
+            .comparison-header .comparison-cell {
+                font-weight: 600;
+                justify-content: center;
+            }
+            
+            /* 导出功能 */
+            .export-features {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+            }
+            
+            .export-card {
+                background: linear-gradient(135deg, #f5f5f7, #ffffff);
+                border-radius: 16px;
+                padding: 25px;
+                text-align: center;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                transition: all 0.3s ease;
+            }
+            
+            .export-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            }
+            
+            .export-icon {
+                font-size: 2.5em;
+                margin-bottom: 15px;
+                display: block;
+            }
+            
+            .export-card h3 {
+                font-size: 1.2em;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0 0 12px 0;
+            }
+            
+            .export-card p {
+                font-size: 0.9em;
+                color: #515154;
+                margin: 0 0 20px 0;
+                line-height: 1.5;
+            }
+            
+            .export-preview {
+                background: white;
+                border-radius: 8px;
+                padding: 10px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+            
+
+            
+            /* 场景选择 */
+            .scenario-selection {
+                margin-bottom: 40px;
+            }
+            
+            .scenario-selection h3 {
+                font-size: 1.3em;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0 0 20px 0;
+                text-align: center;
+            }
+            
+            .scenario-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+            }
+            
+            .scenario-card {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+                border-radius: 20px;
+                padding: 28px;
+                text-align: center;
+                box-shadow: 
+                    0 8px 24px rgba(0, 0, 0, 0.1),
+                    0 2px 8px rgba(0, 0, 0, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                cursor: pointer;
+                backdrop-filter: blur(10px);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .scenario-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(0, 122, 204, 0.1), transparent);
+                transition: left 0.6s ease;
+            }
+            
+            .scenario-card:hover {
+                transform: translateY(-6px) scale(1.02);
+                box-shadow: 
+                    0 16px 40px rgba(0, 0, 0, 0.15),
+                    0 6px 20px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            }
+            
+            .scenario-card:hover::before {
+                left: 100%;
+            }
+            
+            .scenario-icon {
+                font-size: 2.5em;
+                margin-bottom: 15px;
+                display: block;
+            }
+            
+            .scenario-card h4 {
+                font-size: 1.1em;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0 0 10px 0;
+            }
+            
+            .scenario-card p {
+                font-size: 0.9em;
+                color: #515154;
+                margin: 0 0 15px 0;
+                line-height: 1.4;
+            }
+            
+            .scenario-type {
+                display: inline-block;
+                background: #007AFF;
+                color: white;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 0.8em;
+                font-weight: 500;
+            }
+            
+            /* 最终鼓励 */
+            .final-encouragement {
+                background: linear-gradient(135deg, #007AFF, #0056CC);
+                color: white;
+                border-radius: 20px;
+                padding: 36px;
+                text-align: center;
+                box-shadow: 
+                    0 12px 32px rgba(0, 122, 204, 0.3),
+                    0 6px 16px rgba(0, 122, 204, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .final-encouragement::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+                animation: rotate 20s linear infinite;
+            }
+            
+            @keyframes rotate {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            
+            .final-encouragement h3 {
+                font-size: 1.6em;
+                font-weight: 700;
+                margin: 0 0 18px 0;
+                position: relative;
+                z-index: 1;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            
+            .final-encouragement p {
+                font-size: 1.1em;
+                margin: 0;
+                opacity: 0.95;
+                line-height: 1.6;
+                position: relative;
+                z-index: 1;
+                font-weight: 500;
+            }
+            
+            /* 按钮样式 */
+            .step-actions {
+                display: flex;
+                justify-content: center;
+                gap: 15px;
+                flex-wrap: wrap;
+                margin-top: 15px;
+                padding-top: 15px;
+                flex-shrink: 0;
+            }
+            
+            .primary {
+                background: linear-gradient(135deg, #007AFF, #0056CC);
+                color: white;
+                border: none;
+                padding: 16px 32px;
+                border-radius: 16px;
+                font-size: 1.1em;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 
+                    0 8px 24px rgba(0, 122, 204, 0.3),
+                    0 4px 12px rgba(0, 122, 204, 0.2);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                position: relative;
+                overflow: hidden;
+                letter-spacing: 0.02em;
+            }
+            
+            .primary::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                transition: left 0.6s ease;
+            }
+            
+            .primary:hover {
+                transform: translateY(-3px) scale(1.02);
+                box-shadow: 
+                    0 12px 32px rgba(0, 122, 204, 0.4),
+                    0 6px 16px rgba(0, 122, 204, 0.3);
+                background: linear-gradient(135deg, #0056CC, #004499);
+            }
+            
+            .primary:hover::before {
+                left: 100%;
+            }
+            
+            .secondary {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+                color: #007AFF;
+                border: 2px solid rgba(0, 122, 204, 0.2);
+                padding: 16px 32px;
+                border-radius: 16px;
+                font-size: 1.1em;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                backdrop-filter: blur(10px);
+                box-shadow: 
+                    0 4px 16px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            }
+            
+            .secondary:hover {
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.1), rgba(0, 122, 204, 0.05));
+                transform: translateY(-2px) scale(1.02);
+                border-color: rgba(0, 122, 204, 0.4);
+                box-shadow: 
+                    0 8px 24px rgba(0, 122, 204, 0.2),
+                    0 4px 12px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            }
+            
+            .arrow {
+                font-size: 1.1em;
+            }
+            
+            /* 跳过按钮 */
+            .skip-btn {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                background: rgba(255, 255, 255, 0.95);
+                border: none;
+                color: #64748b;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                padding: 8px 16px;
+                border-radius: 8px;
+                transition: all 0.15s ease;
+                z-index: 1002;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 60px;
+                height: 32px;
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                box-shadow: 
+                    0 1px 3px rgba(0, 0, 0, 0.1),
+                    0 1px 2px rgba(0, 0, 0, 0.06),
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            }
+            
+            .skip-btn:hover {
+                background: rgba(255, 255, 255, 0.98);
+                color: #475569;
+                transform: translateY(-1px);
+                box-shadow: 
+                    0 4px 12px rgba(0, 0, 0, 0.15),
+                    0 2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            }
+            
+            .skip-btn:active {
+                transform: translateY(0);
+                background: rgba(255, 255, 255, 0.9);
+                box-shadow: 
+                    0 1px 2px rgba(0, 0, 0, 0.1),
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            }
+            
+            .skip-text {
+                font-size: 14px;
+                font-weight: 500;
+                white-space: nowrap;
+                line-height: 1;
+                letter-spacing: -0.01em;
+            }
+            
+            /* 响应式设计 */
+            @media (max-width: 768px) {
+                .onboarding-content {
+                    width: 100%;
+                    height: 100%;
+                    border-radius: 0;
+                }
+                
+                .onboarding-step {
+                    padding: 20px 15px 15px;
+                }
+                
+                .skip-btn {
+                    top: 16px;
+                    right: 16px;
+                    padding: 6px 12px;
+                    font-size: 13px;
+                    min-width: 50px;
+                    height: 28px;
+                    border-radius: 6px;
+                }
+                
+                .skip-text {
+                    font-size: 13px;
+                }
+                
+                .step-header h1 {
+                    font-size: 2em;
+                }
+                
+                .hero-section {
+                    flex-direction: column;
+                    gap: 20px;
+                }
+                
+                .diagram-types-grid,
+                .ai-advantages,
+                .export-features,
+                .scenario-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                
+                
+
+                
+                .demo-buttons {
+                    flex-direction: column;
+                }
+                
+                .step-actions {
+                    flex-direction: column;
+                }
+            }
+            
+            /* 大屏幕优化 */
+            @media (min-width: 1200px) {
+                .onboarding-step {
+                    padding: 100px 60px 60px;
+                }
+                
+                .step-header h1 {
+                    font-size: 3em;
+                }
+                
+                .diagram-types-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                }
+            }
+
+
+
+            /* --- Empty State Styling --- */
+            .empty-state {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            }
+            .empty-state-content {
+                text-align: center;
+                max-width: 500px;
+                padding: 40px;
+                background: rgba(255, 255, 255, 0.9);
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            }
+            .empty-state-content h2 {
+                color: #007acc;
+                margin-bottom: 15px;
+                font-size: 1.8em;
+            }
+            .empty-state-content p {
+                color: #666;
+                margin-bottom: 30px;
+                line-height: 1.6;
+                font-size: 1.1em;
+            }
+            .empty-state-features {
+                display: flex;
+                justify-content: space-around;
+                margin-bottom: 30px;
+                flex-wrap: wrap;
+            }
+            .feature-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin: 10px;
+                padding: 15px;
+                background: rgba(0, 122, 204, 0.1);
+                border-radius: 10px;
+                min-width: 120px;
+            }
+            .feature-icon {
+                font-size: 2em;
+                margin-bottom: 8px;
+            }
+            .feature-item span:last-child {
+                font-size: 0.9em;
+                color: #333;
+                font-weight: 500;
+            }
+            .start-example-btn {
+                background: linear-gradient(135deg, #007acc, #005fa3);
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                font-size: 1.1em;
+                border-radius: 25px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(0, 122, 204, 0.3);
+            }
+            .start-example-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0, 122, 204, 0.4);
+            }
+
+            /* --- Tutorial Center Button Styling --- */
+            .tutorial-center-btn {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 100;
+                background: linear-gradient(135deg, #007AFF, #0056CC);
+                color: white;
+                border: none;
+                border-radius: 50px;
+                padding: 16px 32px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 
+                    0 8px 32px rgba(0, 122, 204, 0.3),
+                    0 4px 16px rgba(0, 122, 204, 0.2);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .tutorial-center-btn:hover {
+                background: linear-gradient(135deg, #0056CC, #004499);
+                transform: translate(-50%, -50%) scale(1.05);
+                box-shadow: 
+                    0 12px 40px rgba(0, 122, 204, 0.4),
+                    0 6px 20px rgba(0, 122, 204, 0.3);
+            }
+            .tutorial-center-btn.hidden {
+                display: none;
+            }
+            
+            /* Center Tutorial Button - Always visible, appears above all content */
+            .onboarding-btn-center {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(135deg, #007ACC, #005A99);
+                color: white;
+                border: none;
+                border-radius: 16px;
+                padding: 20px 24px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                cursor: pointer;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 
+                    0 8px 32px rgba(0, 122, 204, 0.3),
+                    0 4px 16px rgba(0, 122, 204, 0.2);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                z-index: 9999;
+                min-width: 200px;
+                pointer-events: auto;
+            }
+            
+            .onboarding-btn-center:hover {
+                background: linear-gradient(135deg, #0056CC, #004499);
+                transform: translate(-50%, -50%) scale(1.05);
+                box-shadow: 
+                    0 12px 40px rgba(0, 122, 204, 0.4),
+                    0 6px 20px rgba(0, 122, 204, 0.3);
+            }
+            
+            .onboarding-btn-center .btn-content {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+            }
+            
+            .onboarding-btn-center .btn-icon {
+                font-size: 24px;
+                line-height: 1;
+            }
+            
+            .onboarding-btn-center .btn-text {
+                font-size: 16px;
+                font-weight: 600;
+                line-height: 1.2;
+            }
+            
+            .onboarding-btn-center .btn-subtitle {
+                font-size: 12px;
+                opacity: 0.9;
+                line-height: 1.2;
+            }
+            
+            .onboarding-btn-center.hidden {
+                display: none;
+            }
         `;
     }
 
@@ -650,6 +2749,8 @@ export class WebviewHtmlGenerator {
             const zoomOutBtn = document.getElementById('zoomOutBtn');
             const zoomResetBtn = document.getElementById('zoomResetBtn');
             const chat = document.getElementById('chat');
+            const onboardingBtn = document.getElementById('onboardingBtn');
+            const onboardingModal = document.getElementById('onboardingModal');
 
             // --- Click handler for historical bot messages ---
             function handleBotMessageClick(element) {
@@ -692,14 +2793,18 @@ export class WebviewHtmlGenerator {
                 const count = requirementInput.value.length;
                 charCounter.textContent = count;
                 // Show/hide clear button based on content
-                clearInputBtn.style.display = count > 0 ? 'block' : 'none';
+                if (count > 0) {
+                    clearInputBtn.classList.add('show');
+                } else {
+                    clearInputBtn.classList.remove('show');
+                }
                 // Change color based on length
                 if (count > 1000) {
                     charCounter.style.color = '#dc3545';
                 } else if (count > 500) {
                     charCounter.style.color = '#ffc107';
                 } else {
-                    charCounter.style.color = '#6c757d';
+                    charCounter.style.color = '#8b9dc3';
                 }
             }
             
@@ -782,7 +2887,9 @@ export class WebviewHtmlGenerator {
 
             exportSVGBtn.onclick = () => vscode.postMessage({ command: 'exportSVG', svgContent: document.getElementById('svgPreview').innerHTML });
             clearChatBtn.onclick = () => vscode.postMessage({ command: 'clearChat' });
-            importBtn.onclick = () => vscode.postMessage({ command: 'importChat' });
+            importBtn.onclick = () => {
+                vscode.postMessage({ command: 'importChat' });
+            };
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });
             
             expandBtn.onclick = () => {
@@ -1438,27 +3545,57 @@ export class WebviewHtmlGenerator {
                 if (message.command === 'updatePreview') {
                     const svgContainer = document.getElementById('svgPreview');
                     if (svgContainer) {
+                        // PRESERVE the center button before clearing content
+                        const centerBtn = document.getElementById('onboardingBtnCenter');
+                        let centerBtnHTML = '';
+                        if (centerBtn) {
+                            centerBtnHTML = centerBtn.outerHTML;
+                            console.log('[PRESERVE] Saving center button HTML');
+                        }
+                        
                         svgContainer.innerHTML = '';
                         if (window.gc) {
                             setTimeout(() => window.gc(), 100);
-                        }
                     }
                     
                     // Validate SVG content before inserting
                     if (!message.svgContent || message.svgContent.trim().length === 0) {
                         console.warn('Empty or invalid SVG content received');
-                        svgContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-family: Arial, sans-serif;">No diagram content available</div>';
+                            svgContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-family: Arial, sans-serif;">No diagram content available</div>' + centerBtnHTML;
+                            // Reactive state will automatically detect no SVG content
                         return;
                     }
                     
                     // Check if the SVG content looks valid
                     if (!message.svgContent.includes('<svg')) {
                         console.warn('SVG content does not contain <svg> tag');
-                        svgContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-family: Arial, sans-serif;">Invalid diagram format</div>';
+                            svgContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-family: Arial, sans-serif;">Invalid diagram format</div>' + centerBtnHTML;
+                            // Reactive state will automatically detect no valid SVG
                         return;
                     }
                     
-                    svgContainer.innerHTML = message.svgContent;
+                        // Insert SVG content AND restore the center button
+                        svgContainer.innerHTML = message.svgContent + centerBtnHTML;
+                        console.log('[PRESERVE] Center button restored after SVG update');
+                        
+                        // Re-add event listener to the restored button
+                        setTimeout(() => {
+                            const restoredBtn = document.getElementById('onboardingBtnCenter');
+                            if (restoredBtn) {
+                                console.log('[PRESERVE] Re-adding click handler to restored button');
+                                restoredBtn.addEventListener('click', (e) => {
+                                    console.log('[PRESERVE] Restored button clicked!', e);
+                                    onboardingModal.style.display = 'block';
+                                    currentOnboardingStep = 1;
+                                    showOnboardingStep(currentOnboardingStep);
+                                    isOnboardingActive = true;
+                                    tutorialButtonState.setOnboardingActive(true);
+                                });
+                            } else {
+                                console.warn('[PRESERVE] Restored button not found!');
+                            }
+                        }, 100);
+                    }
                     
                     const newSvgEl = svgContainer.querySelector('svg');
                     if (newSvgEl) {
@@ -1514,12 +3651,14 @@ export class WebviewHtmlGenerator {
                     } else {
                         console.warn('No SVG element found in the inserted content');
                         svgContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-family: Arial, sans-serif;">Failed to load diagram</div>';
+                        // Reactive state will automatically detect SVG loading failure
                         return;
                     }
                     
                     setTimeout(() => {
                         enablePanZoom();
                         setupZoomControls();
+                        // Reactive state will automatically detect SVG changes via DOM observer
                     }, 100);
                 } else if (message.command === 'updateChat') {
                     document.getElementById('chat').innerHTML = message.chatHtml;
@@ -1741,6 +3880,428 @@ export class WebviewHtmlGenerator {
                     });
                 }
             });
+
+            // --- Onboarding and Whats New functionality ---
+            
+            // Initialize onboarding modal
+            let currentOnboardingStep = 1;
+            const totalOnboardingSteps = 6;
+            let isOnboardingActive = false;
+            
+            function showOnboardingStep(step) {
+                // Hide all steps
+                document.querySelectorAll('.onboarding-step').forEach(s => s.style.display = 'none');
+                // Show current step
+                const currentStepEl = document.querySelector('.onboarding-step[data-step="' + step + '"]');
+                if (currentStepEl) {
+                    currentStepEl.style.display = 'block';
+                }
+                
+                // Update progress dots
+                document.querySelectorAll('.progress-dot').forEach(dot => dot.classList.remove('active'));
+                const activeDot = document.querySelector('.progress-dot[data-step="' + step + '"]');
+                if (activeDot) {
+                    activeDot.classList.add('active');
+                }
+            }
+            
+            // Onboarding button functionality
+            onboardingBtn.addEventListener('click', () => {
+                onboardingModal.style.display = 'block';
+                currentOnboardingStep = 1;
+                showOnboardingStep(currentOnboardingStep);
+                isOnboardingActive = true;
+                tutorialButtonState.setOnboardingActive(true);
+            });
+            
+
+            
+            // Center onboarding button functionality
+            const onboardingBtnCenter = document.getElementById('onboardingBtnCenter');
+            if (onboardingBtnCenter) {
+                console.log('[DEBUG] Center button found, adding click handler');
+                onboardingBtnCenter.addEventListener('click', (e) => {
+                    console.log('[DEBUG] Center button clicked!', e);
+                    onboardingModal.style.display = 'block';
+                    currentOnboardingStep = 1;
+                    showOnboardingStep(currentOnboardingStep);
+                    isOnboardingActive = true;
+                    tutorialButtonState.setOnboardingActive(true);
+                    // Hide the center button when onboarding is active
+                    onboardingBtnCenter.classList.add('hidden');
+                    console.log('[DEBUG] Center button hidden during onboarding');
+                });
+                
+                // Add debugging for button state
+                console.log('[DEBUG] Center button details:', {
+                    id: onboardingBtnCenter.id,
+                    className: onboardingBtnCenter.className,
+                    style: onboardingBtnCenter.style.cssText,
+                    visible: onboardingBtnCenter.offsetParent !== null,
+                    clickable: onboardingBtnCenter.style.pointerEvents !== 'none'
+                });
+            } else {
+                console.warn('[DEBUG] Center button not found!');
+            }
+            
+            // Next button functionality
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('next-btn')) {
+                    if (currentOnboardingStep < totalOnboardingSteps) {
+                        currentOnboardingStep++;
+                        showOnboardingStep(currentOnboardingStep);
+                    }
+                }
+            });
+            
+            // Previous button functionality
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('prev-btn')) {
+                    if (currentOnboardingStep > 1) {
+                        currentOnboardingStep--;
+                        showOnboardingStep(currentOnboardingStep);
+                    }
+                }
+            });
+            
+
+            
+            // Scenario card functionality
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.scenario-card')) {
+                    const card = e.target.closest('.scenario-card');
+                    const example = card.getAttribute('data-example');
+                    if (example) {
+                        const input = document.getElementById('requirementInput');
+                        if (input) {
+                            input.value = example;
+                            input.focus();
+                            input.dispatchEvent(new Event('input'));
+                        }
+                        onboardingModal.style.display = 'none';
+                        isOnboardingActive = false;
+                        tutorialButtonState.setOnboardingActive(false);
+                        // Show the center button again when onboarding is closed
+                        const centerBtn = document.getElementById('onboardingBtnCenter');
+                        if (centerBtn) {
+                            centerBtn.classList.remove('hidden');
+                            console.log('[DEBUG] Center button shown after onboarding closed');
+                        }
+                    }
+                }
+            });
+            
+            // Finish button functionality
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('finish-btn')) {
+                    onboardingModal.style.display = 'none';
+                    isOnboardingActive = false;
+                    tutorialButtonState.setOnboardingActive(false);
+                    // Show the center button again when onboarding is closed
+                    const centerBtn = document.getElementById('onboardingBtnCenter');
+                    if (centerBtn) {
+                        centerBtn.classList.remove('hidden');
+                        console.log('[DEBUG] Center button shown after onboarding finished');
+                    }
+                    vscode.postMessage({ command: 'onboardingComplete' });
+                }
+            });
+            
+            // Skip button functionality
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('skip-btn')) {
+                    onboardingModal.style.display = 'none';
+                    isOnboardingActive = false;
+                    tutorialButtonState.setOnboardingActive(false);
+                    // Show the center button again when onboarding is closed
+                    const centerBtn = document.getElementById('onboardingBtnCenter');
+                    if (centerBtn) {
+                        centerBtn.classList.remove('hidden');
+                        console.log('[DEBUG] Center button shown after onboarding skipped');
+                    }
+                    vscode.postMessage({ command: 'onboardingSkip' });
+                }
+            });
+            
+            // Close button functionality
+            document.addEventListener('click', (e) => {
+                if (e.target.id === 'onboardingCloseBtn') {
+                    onboardingModal.style.display = 'none';
+                    isOnboardingActive = false;
+                    tutorialButtonState.setOnboardingActive(false);
+                    // Show the center button again when onboarding is closed
+                    const centerBtn = document.getElementById('onboardingBtnCenter');
+                    if (centerBtn) {
+                        centerBtn.classList.remove('hidden');
+                        console.log('[DEBUG] Center button shown after onboarding closed');
+                    }
+                }
+            });
+            
+
+            
+
+            
+            // Empty state functionality
+            const emptyState = document.getElementById('emptyState');
+            const startExampleBtn = document.getElementById('startExampleBtn');
+            
+            // === REACTIVE STATE MANAGEMENT ===
+            // Lightweight reactive state for tutorial button visibility
+            
+            class TutorialButtonStateManager {
+                constructor() {
+                    this.state = {
+                        hasSvg: false,
+                        isOnboardingActive: false
+                    };
+                    this.listeners = [];
+                }
+                
+                // Subscribe to state changes
+                subscribe(listener) {
+                    this.listeners.push(listener);
+                    return () => {
+                        const index = this.listeners.indexOf(listener);
+                        if (index > -1) this.listeners.splice(index, 1);
+                    };
+                }
+                
+                // Update state and notify listeners
+                updateState(updates) {
+                    const oldState = { ...this.state };
+                    this.state = { ...this.state, ...updates };
+                    
+                    // Only notify if state actually changed
+                    if (JSON.stringify(oldState) !== JSON.stringify(this.state)) {
+                        console.log('[REACTIVE] State changed:', {
+                            from: oldState,
+                            to: this.state,
+                            buttonVisible: this.shouldShowButton()
+                        });
+                        
+                        this.listeners.forEach(listener => listener(this.state, oldState));
+                    }
+                }
+                
+                // Computed property: should button be visible?
+                shouldShowButton() {
+                    return !this.state.hasSvg && !this.state.isOnboardingActive;
+                }
+                
+                // Public methods
+                setSvgContent(hasSvg) {
+                    this.updateState({ hasSvg });
+                }
+                
+                setOnboardingActive(isActive) {
+                    this.updateState({ isOnboardingActive: isActive });
+                }
+                
+                // Initialize with current DOM state
+                initialize() {
+                const svgPreview = document.getElementById('svgPreview');
+                    const hasRealDiagram = svgPreview ? this.hasRealDiagram(svgPreview) : false;
+                    
+                    this.updateState({ 
+                        hasSvg: hasRealDiagram, 
+                        isOnboardingActive: false 
+                    });
+                    
+                    // Set up DOM observer
+                    this.observeDOM();
+                }
+                
+                // Observe DOM changes and update state
+                observeDOM() {
+                    const svgPreview = document.getElementById('svgPreview');
+                    if (svgPreview) {
+                        const observer = new MutationObserver(() => {
+                            const hasRealDiagram = this.hasRealDiagram(svgPreview);
+                            this.setSvgContent(hasRealDiagram);
+                        });
+                        
+                        observer.observe(svgPreview, {
+                            childList: true,
+                            subtree: true
+                        });
+                    }
+                }
+                
+                // Advanced detection: Check if there's a real PlantUML diagram
+                hasRealDiagram(svgPreview) {
+                    const svgElement = svgPreview.querySelector('svg');
+                    if (!svgElement) {
+                        console.log('[REACTIVE] No SVG element found');
+                        return false;
+                    }
+                    
+                    const svgContent = svgElement.outerHTML;
+                    
+                    // Check for error/setup SVGs (these are NOT real diagrams)
+                    const errorIndicators = [
+                        'PlantUML Setup Required',
+                        'Java Required',
+                        'Error:',
+                        'No content',
+                        'Failed to load diagram',
+                        'No diagram content available',
+                        'Invalid diagram format'
+                    ];
+                    
+                    for (const indicator of errorIndicators) {
+                        if (svgContent.includes(indicator)) {
+                            console.log('[REACTIVE] Found error/setup SVG, not a real diagram:', indicator);
+                            return false;
+                        }
+                    }
+                    
+                    // Check for empty or minimal SVGs
+                    const isEmpty = svgContent.includes('<!-- No content -->') || 
+                                  svgContent.includes('<!-- Error:') ||
+                                  svgContent.length < 200; // Very small SVGs are likely empty
+                    
+                    if (isEmpty) {
+                        console.log('[REACTIVE] Found empty/minimal SVG, not a real diagram');
+                        return false;
+                    }
+                    
+                    // Check for real PlantUML diagram indicators
+                    const realDiagramIndicators = [
+                        '<rect',     // PlantUML generates rectangles for classes, activities, etc.
+                        '<path',     // PlantUML generates paths for arrows, connections
+                        '<line',     // PlantUML generates lines for connections
+                        '<ellipse',  // PlantUML generates ellipses for use cases, states
+                        '<polygon',  // PlantUML generates polygons for various shapes
+                        'class=',    // PlantUML adds CSS classes to elements
+                        'stroke=',   // PlantUML adds stroke attributes
+                        'fill='      // PlantUML adds fill attributes
+                    ];
+                    
+                    let indicatorCount = 0;
+                    for (const indicator of realDiagramIndicators) {
+                        if (svgContent.includes(indicator)) {
+                            indicatorCount++;
+                        }
+                    }
+                    
+                    // Need at least 3 indicators to be considered a real diagram
+                    const isRealDiagram = indicatorCount >= 3;
+                    
+                    console.log('[REACTIVE] Diagram analysis:', {
+                        hasBasicSvg: !!svgElement,
+                        svgLength: svgContent.length,
+                        indicatorCount: indicatorCount,
+                        isRealDiagram: isRealDiagram,
+                        svgPreview: svgContent.substring(0, 300) + '...'
+                    });
+                    
+                    return isRealDiagram;
+                }
+                
+                // Update button visibility in DOM
+                updateButtonVisibility() {
+                    const tutorialBtn = document.getElementById('onboardingBtn');
+                    const tutorialBtnCenter = document.getElementById('onboardingBtnCenter');
+                    const shouldShow = this.shouldShowButton();
+                    
+                    // Always show chat area tutorial button
+                    if (tutorialBtn) {
+                        tutorialBtn.classList.remove('hidden');
+                    }
+                    
+                    // Show/hide center button based on state
+                    if (tutorialBtnCenter) {
+                        if (shouldShow) {
+                            tutorialBtnCenter.classList.remove('hidden');
+                            console.log('[REACTIVE] ✅ Showing center tutorial button');
+                } else {
+                            tutorialBtnCenter.classList.add('hidden');
+                            console.log('[REACTIVE] ❌ Hiding center tutorial button');
+                        }
+                    } else {
+                        console.warn('[REACTIVE] ⚠️ Center button not found in DOM');
+                    }
+                    
+                    // Hide empty state display
+                    if (emptyState) {
+                    emptyState.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Initialize reactive state manager
+            const tutorialButtonState = new TutorialButtonStateManager();
+            
+            // Subscribe to state changes and update DOM
+            tutorialButtonState.subscribe(() => {
+                tutorialButtonState.updateButtonVisibility();
+            });
+            
+            // Start example button
+            if (startExampleBtn) {
+                startExampleBtn.addEventListener('click', () => {
+                    const example = '请画一个用户注册流程的活动图';
+                    const input = document.getElementById('requirementInput');
+                    if (input) {
+                        input.value = example;
+                        input.focus();
+                        input.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+            
+            // Initialize reactive state management
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('[REACTIVE] DOM fully loaded, initializing state manager');
+                const centerBtn = document.getElementById('onboardingBtnCenter');
+                console.log('[REACTIVE] Center button found on DOMContentLoaded:', !!centerBtn);
+                if (centerBtn) {
+                    console.log('[REACTIVE] Center button classes:', centerBtn.className);
+                }
+                tutorialButtonState.initialize();
+            });
+            
+            // Also initialize after short delays to ensure everything is ready
+            setTimeout(() => {
+                console.log('[REACTIVE] 100ms timeout initialization');
+                tutorialButtonState.initialize();
+            }, 100);
+            setTimeout(() => {
+                console.log('[REACTIVE] 500ms timeout initialization');
+                tutorialButtonState.initialize();
+            }, 500);
+            setTimeout(() => {
+                console.log('[REACTIVE] 1000ms timeout initialization');
+                tutorialButtonState.initialize();
+            }, 1000);
+
+            // Listen for messages from extension
+            window.addEventListener('message', event => {
+                const message = event.data;
+                switch (message.command) {
+                    case 'showOnboarding':
+                        onboardingModal.style.display = 'block';
+                        currentOnboardingStep = 1;
+                        showOnboardingStep(currentOnboardingStep);
+                        isOnboardingActive = true;
+                        tutorialButtonState.setOnboardingActive(true);
+                        break;
+
+                    case 'fillExample':
+                        if (message.example) {
+                            const input = document.getElementById('requirementInput');
+                            if (input) {
+                                input.value = message.example;
+                                input.focus();
+                                input.dispatchEvent(new Event('input'));
+                            }
+                        }
+                        break;
+                }
+            });
+
+
         `;
     }
 }
