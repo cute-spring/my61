@@ -550,10 +550,16 @@ export class WebviewHtmlGenerator {
               </div>
             </div>
 
-            <!-- Skip button -->
-            <button class="skip-btn">
-              <span class="skip-text">Skip</span>
-            </button>
+            <!-- Language toggle and Skip button -->
+            <div class="onboarding-controls">
+              <button class="language-toggle-btn" id="languageToggle" title="Switch Language">
+                <span class="language-icon">🌐</span>
+                <span class="language-text" id="languageText">中文</span>
+              </button>
+              <button class="skip-btn">
+                <span class="skip-text" id="skipText">Skip</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2430,11 +2436,73 @@ export class WebviewHtmlGenerator {
                 font-size: 1.1em;
             }
             
-            /* 跳过按钮 */
-            .skip-btn {
+            /* Onboarding Controls Container */
+            .onboarding-controls {
                 position: absolute;
                 top: 20px;
                 right: 20px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                z-index: 1002;
+            }
+            
+            /* Language Toggle Button */
+            .language-toggle-btn {
+                background: rgba(255, 255, 255, 0.95);
+                border: none;
+                color: #64748b;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                padding: 6px 12px;
+                border-radius: 8px;
+                transition: all 0.15s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                min-width: 50px;
+                height: 32px;
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                box-shadow: 
+                    0 1px 3px rgba(0, 0, 0, 0.1),
+                    0 1px 2px rgba(0, 0, 0, 0.06),
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            }
+            
+            .language-toggle-btn:hover {
+                background: rgba(255, 255, 255, 0.98);
+                color: #475569;
+                transform: translateY(-1px);
+                box-shadow: 
+                    0 4px 12px rgba(0, 0, 0, 0.15),
+                    0 2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            }
+            
+            .language-toggle-btn:active {
+                transform: translateY(0);
+                background: rgba(255, 255, 255, 0.9);
+                box-shadow: 
+                    0 1px 2px rgba(0, 0, 0, 0.1),
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            }
+            
+            .language-icon {
+                font-size: 12px;
+                line-height: 1;
+            }
+            
+            .language-text {
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: -0.02em;
+            }
+            
+            /* Skip Button */
+            .skip-btn {
                 background: rgba(255, 255, 255, 0.95);
                 border: none;
                 color: #64748b;
@@ -2444,7 +2512,6 @@ export class WebviewHtmlGenerator {
                 padding: 8px 16px;
                 border-radius: 8px;
                 transition: all 0.15s ease;
-                z-index: 1002;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -2751,6 +2818,310 @@ export class WebviewHtmlGenerator {
             const chat = document.getElementById('chat');
             const onboardingBtn = document.getElementById('onboardingBtn');
             const onboardingModal = document.getElementById('onboardingModal');
+            const languageToggle = document.getElementById('languageToggle');
+
+            // --- Language System ---
+            let currentLanguage = 'en'; // Default to English
+            
+            const translations = {
+                en: {
+                    skip: 'Skip',
+                    languageToggle: '中文',
+                    welcome: {
+                        title: 'UML Chat Designer',
+                        subtitle: 'Enterprise-Grade AI-Powered UML Design Platform',
+                        description: 'Experience the future of software architecture design. Our advanced AI engine understands your business requirements and generates enterprise-grade UML diagrams with unprecedented speed and accuracy.',
+                        nextBtn: 'Explore Platform →'
+                    },
+                    diagrams: {
+                        title: 'Enterprise UML Diagram Suite',
+                        subtitle: 'Comprehensive coverage for modern software architecture',
+                        explanationTitle: 'Why These Five Diagram Types?',
+                        explanationText: 'Our comprehensive analysis of enterprise software development practices reveals that these five UML diagram types address 95% of architectural and design challenges. Each type is optimized for AI-driven generation, ensuring maximum accuracy and professional standards. For specialized diagrams requiring manual precision, we recommend traditional UML tools.'
+                    },
+                    workflow: {
+                        title: 'Streamlined Design Workflow',
+                        subtitle: 'Three-step process for rapid UML generation',
+                        step1: {
+                            title: 'Describe Requirements',
+                            description: 'Explain your system needs in natural language, and our AI will understand your architectural vision.'
+                        },
+                        step2: {
+                            title: 'AI Generation',
+                            description: 'Advanced AI analyzes requirements and generates professional UML diagrams with enterprise-grade precision.'
+                        },
+                        step3: {
+                            title: 'Refine & Iterate',
+                            description: 'Collaborate with AI to optimize and enhance your design through intelligent conversation and feedback.'
+                        }
+                    },
+                    aiAdvantages: {
+                        title: 'AI-Powered Design Excellence',
+                        subtitle: 'Revolutionary approach to enterprise UML design',
+                        card1: {
+                            title: 'Enterprise Performance',
+                            description: 'Generate complex UML diagrams in seconds, not hours. Our AI engine handles intricate architectural patterns and enterprise-scale modeling with precision.'
+                        },
+                        card2: {
+                            title: 'Intelligent Architecture Analysis',
+                            description: 'Advanced natural language processing understands complex business requirements and generates UML-compliant diagrams with enterprise-grade accuracy.'
+                        },
+                        card3: {
+                            title: 'Continuous Design Evolution',
+                            description: 'Iterate and refine designs through intelligent conversation, supporting complex enterprise scenarios and evolving requirements.'
+                        },
+                        comparisonTitle: 'Enterprise Comparison Matrix',
+                        comparisonData: {
+                            capability: 'Capability',
+                            traditionalTools: 'Traditional Tools',
+                            umlChatDesigner: 'UML Chat Designer',
+                            learningCurve: 'Learning curve',
+                            learningTraditional: 'UML syntax mastery required',
+                            learningAI: 'Natural language proficiency',
+                            efficiency: 'Generation efficiency',
+                            efficiencyTraditional: 'Manual construction, hours',
+                            efficiencyAI: 'AI automation, minutes',
+                            modification: 'Modification workflow',
+                            modificationTraditional: 'Manual rework required',
+                            modificationAI: 'Conversational refinement',
+                            collaboration: 'Enterprise collaboration',
+                            collaborationTraditional: 'File-based sharing, version conflicts',
+                            collaborationAI: 'Session management, seamless sharing'
+                        }
+                    },
+                    getStarted: {
+                        title: 'Ready to Transform Your Design Process?',
+                        subtitle: 'Join thousands of developers and architects who trust our platform',
+                        startBtn: 'Start Designing →'
+                    }
+                },
+                'zh-CN': {
+                    skip: '跳过',
+                    languageToggle: 'EN',
+                    welcome: {
+                        title: 'UML Chat Designer',
+                        subtitle: '企业级 AI 驱动的 UML 设计平台',
+                        description: '体验软件架构设计的未来。我们先进的 AI 引擎理解您的业务需求，以前所未有的速度和准确性生成企业级 UML 图表。',
+                        nextBtn: '探索平台 →'
+                    },
+                    diagrams: {
+                        title: '企业 UML 图表套件',
+                        subtitle: '现代软件架构的全面覆盖',
+                        explanationTitle: '为什么选择这五种图表类型？',
+                        explanationText: '我们对企业软件开发实践的全面分析表明，这五种 UML 图表类型能够解决 95% 的架构和设计挑战。每种类型都针对 AI 驱动的生成进行了优化，确保最大的准确性和专业标准。对于需要手动精确控制的专业图表，我们建议使用传统的 UML 工具。'
+                    },
+                    workflow: {
+                        title: '流线型设计工作流程',
+                        subtitle: '快速 UML 生成的三步骤流程',
+                        step1: {
+                            title: '描述需求',
+                            description: '用自然语言解释您的系统需求，我们的 AI 将理解您的架构愿景。'
+                        },
+                        step2: {
+                            title: 'AI 生成',
+                            description: '先进的 AI 分析需求并以企业级精度生成专业的 UML 图表。'
+                        },
+                        step3: {
+                            title: '精炼与迭代',
+                            description: '通过智能对话和反馈与 AI 协作，优化和增强您的设计。'
+                        }
+                    },
+                    aiAdvantages: {
+                        title: 'AI 驱动的设计卓越',
+                        subtitle: '企业 UML 设计的革命性方法',
+                        card1: {
+                            title: '企业级性能',
+                            description: '在几秒钟内生成复杂的 UML 图表，而不是几小时。我们的 AI 引擎精确处理复杂的架构模式和企业级建模。'
+                        },
+                        card2: {
+                            title: '智能架构分析',
+                            description: '先进的自然语言处理理解复杂的业务需求，生成符合 UML 标准的图表，具有企业级准确性。'
+                        },
+                        card3: {
+                            title: '持续设计演进',
+                            description: '通过智能对话迭代和完善设计，支持复杂的企业场景和不断发展的需求。'
+                        },
+                        comparisonTitle: '企业对比矩阵',
+                        comparisonData: {
+                            capability: '能力',
+                            traditionalTools: '传统工具',
+                            umlChatDesigner: 'UML Chat Designer',
+                            learningCurve: '学习曲线',
+                            learningTraditional: '需要掌握 UML 语法',
+                            learningAI: '自然语言熟练度',
+                            efficiency: '生成效率',
+                            efficiencyTraditional: '手动构建，数小时',
+                            efficiencyAI: 'AI 自动化，数分钟',
+                            modification: '修改工作流程',
+                            modificationTraditional: '需要手动重做',
+                            modificationAI: '对话式完善',
+                            collaboration: '企业协作',
+                            collaborationTraditional: '基于文件的共享，版本冲突',
+                            collaborationAI: '会话管理，无缝共享'
+                        }
+                    },
+                    getStarted: {
+                        title: '准备好转变您的设计流程了吗？',
+                        subtitle: '加入数千名信任我们平台的开发人员和架构师',
+                        startBtn: '开始设计 →'
+                    }
+                }
+            };
+            
+            function updateLanguage(lang) {
+                currentLanguage = lang;
+                const t = translations[lang];
+                
+                // Update language toggle button
+                const languageText = document.getElementById('languageText');
+                if (languageText) {
+                    languageText.textContent = t.languageToggle;
+                }
+                
+                // Update skip button
+                const skipText = document.getElementById('skipText');
+                if (skipText) {
+                    skipText.textContent = t.skip;
+                }
+                
+                // Update onboarding content based on current step
+                updateOnboardingContent(lang);
+            }
+            
+            function updateOnboardingContent(lang) {
+                const t = translations[lang];
+                
+                // Update step 1 content
+                const step1 = document.querySelector('.onboarding-step[data-step="1"]');
+                if (step1) {
+                    const title = step1.querySelector('h1');
+                    const subtitle = step1.querySelector('.step-subtitle');
+                    const description = step1.querySelector('.hero-text p');
+                    const nextBtn = step1.querySelector('.next-btn');
+                    
+                    if (title) title.textContent = t.welcome.title;
+                    if (subtitle) subtitle.textContent = t.welcome.subtitle;
+                    if (description) description.textContent = t.welcome.description;
+                    if (nextBtn) nextBtn.innerHTML = t.welcome.nextBtn;
+                }
+                
+                // Update step 2 content
+                const step2 = document.querySelector('.onboarding-step[data-step="2"]');
+                if (step2) {
+                    const title = step2.querySelector('h1');
+                    const subtitle = step2.querySelector('.step-subtitle');
+                    const explanationTitle = step2.querySelector('.diagram-explanation h3');
+                    const explanationText = step2.querySelector('.diagram-explanation p');
+                    
+                    if (title) title.textContent = t.diagrams.title;
+                    if (subtitle) subtitle.textContent = t.diagrams.subtitle;
+                    if (explanationTitle) explanationTitle.textContent = t.diagrams.explanationTitle;
+                    if (explanationText) explanationText.textContent = t.diagrams.explanationText;
+                }
+                
+                // Update step 3 content (workflow)
+                const step3 = document.querySelector('.onboarding-step[data-step="3"]');
+                if (step3) {
+                    const title = step3.querySelector('h1');
+                    const subtitle = step3.querySelector('.step-subtitle');
+                    
+                    if (title) title.textContent = t.workflow.title;
+                    if (subtitle) subtitle.textContent = t.workflow.subtitle;
+                    
+                    // Update workflow cards
+                    const workflowCards = step3.querySelectorAll('.workflow-card');
+                    if (workflowCards.length >= 3) {
+                        const card1Title = workflowCards[0].querySelector('h3');
+                        const card1Desc = workflowCards[0].querySelector('p');
+                        const card2Title = workflowCards[1].querySelector('h3');
+                        const card2Desc = workflowCards[1].querySelector('p');
+                        const card3Title = workflowCards[2].querySelector('h3');
+                        const card3Desc = workflowCards[2].querySelector('p');
+                        
+                        if (card1Title) card1Title.textContent = t.workflow.step1.title;
+                        if (card1Desc) card1Desc.textContent = t.workflow.step1.description;
+                        if (card2Title) card2Title.textContent = t.workflow.step2.title;
+                        if (card2Desc) card2Desc.textContent = t.workflow.step2.description;
+                        if (card3Title) card3Title.textContent = t.workflow.step3.title;
+                        if (card3Desc) card3Desc.textContent = t.workflow.step3.description;
+                    }
+                }
+                
+                // Update step 4 content
+                const step4 = document.querySelector('.onboarding-step[data-step="4"]');
+                if (step4) {
+                    const title = step4.querySelector('h1');
+                    const subtitle = step4.querySelector('.step-subtitle');
+                    
+                    if (title) title.textContent = t.aiAdvantages.title;
+                    if (subtitle) subtitle.textContent = t.aiAdvantages.subtitle;
+                    
+                    // Update advantage cards
+                    const advantageCards = step4.querySelectorAll('.advantage-card');
+                    if (advantageCards.length >= 3) {
+                        const card1Title = advantageCards[0].querySelector('h3');
+                        const card1Desc = advantageCards[0].querySelector('p');
+                        const card2Title = advantageCards[1].querySelector('h3');
+                        const card2Desc = advantageCards[1].querySelector('p');
+                        const card3Title = advantageCards[2].querySelector('h3');
+                        const card3Desc = advantageCards[2].querySelector('p');
+                        
+                        if (card1Title) card1Title.textContent = t.aiAdvantages.card1.title;
+                        if (card1Desc) card1Desc.textContent = t.aiAdvantages.card1.description;
+                        if (card2Title) card2Title.textContent = t.aiAdvantages.card2.title;
+                        if (card2Desc) card2Desc.textContent = t.aiAdvantages.card2.description;
+                        if (card3Title) card3Title.textContent = t.aiAdvantages.card3.title;
+                        if (card3Desc) card3Desc.textContent = t.aiAdvantages.card3.description;
+                    }
+                    
+                    // Update comparison table
+                    const comparisonTitle = step4.querySelector('.comparison-section h3');
+                    if (comparisonTitle) comparisonTitle.textContent = t.aiAdvantages.comparisonTitle;
+                    
+                    const comparisonCells = step4.querySelectorAll('.comparison-cell');
+                    if (comparisonCells.length >= 12) {
+                        const cd = t.aiAdvantages.comparisonData;
+                        comparisonCells[0].textContent = cd.capability;
+                        comparisonCells[1].textContent = cd.traditionalTools;
+                        comparisonCells[2].textContent = cd.umlChatDesigner;
+                        comparisonCells[3].textContent = cd.learningCurve;
+                        comparisonCells[4].textContent = cd.learningTraditional;
+                        comparisonCells[5].textContent = cd.learningAI;
+                        comparisonCells[6].textContent = cd.efficiency;
+                        comparisonCells[7].textContent = cd.efficiencyTraditional;
+                        comparisonCells[8].textContent = cd.efficiencyAI;
+                        comparisonCells[9].textContent = cd.modification;
+                        comparisonCells[10].textContent = cd.modificationTraditional;
+                        comparisonCells[11].textContent = cd.modificationAI;
+                        if (comparisonCells[12]) comparisonCells[12].textContent = cd.collaboration;
+                        if (comparisonCells[13]) comparisonCells[13].textContent = cd.collaborationTraditional;
+                        if (comparisonCells[14]) comparisonCells[14].textContent = cd.collaborationAI;
+                    }
+                }
+                
+                // Update step 5 content
+                const step5 = document.querySelector('.onboarding-step[data-step="5"]');
+                if (step5) {
+                    const title = step5.querySelector('h1');
+                    const subtitle = step5.querySelector('.step-subtitle');
+                    const startBtn = step5.querySelector('.next-btn');
+                    
+                    if (title) title.textContent = t.getStarted.title;
+                    if (subtitle) subtitle.textContent = t.getStarted.subtitle;
+                    if (startBtn) startBtn.innerHTML = t.getStarted.startBtn;
+                }
+            }
+            
+            // Language toggle functionality
+            if (languageToggle) {
+                languageToggle.addEventListener('click', () => {
+                    const newLang = currentLanguage === 'en' ? 'zh-CN' : 'en';
+                    updateLanguage(newLang);
+                });
+            }
+            
+            // Initialize with default language
+            updateLanguage('en');
 
             // --- Click handler for historical bot messages ---
             function handleBotMessageClick(element) {
