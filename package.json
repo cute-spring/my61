@@ -37,6 +37,10 @@
         "title": "Refine Jira Issue Description"
       },
       {
+        "command": "copilotTools.jiraPlanningAssistant",
+        "title": "AI Jira Planning Assistant"
+      },
+      {
         "command": "copilotTools.openSettings",
         "title": "Copilot Tools: Open Settings"
       },
