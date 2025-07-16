@@ -1592,6 +1592,29 @@ export class WebviewHtmlGenerator {
             }
             
             .show { display: block; }
+            
+            /* Navigation buttons with responsive design */
+            .next-btn, .prev-btn, .finish-btn, .skip-btn {
+                padding: 12px 24px;
+                font-size: 1em;
+                border-radius: 8px;
+                transition: all 0.3s ease;
+            }
+            
+            /* Responsive navigation buttons */
+            @media (max-width: 768px) {
+                .next-btn, .prev-btn, .finish-btn, .skip-btn {
+                    padding: 10px 20px;
+                    font-size: 0.9em;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .next-btn, .prev-btn, .finish-btn, .skip-btn {
+                    padding: 8px 16px;
+                    font-size: 0.85em;
+                }
+            }
 
             /* --- Fullscreen & Responsive --- */
             #leftPanel.fullscreen { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; background: #fafbfc; box-shadow: 0 0 10px #888; }
@@ -1599,10 +1622,104 @@ export class WebviewHtmlGenerator {
 
             /* --- Loading Message Style --- */
             .loading-message { font-style: italic; color: #888; background: #f5f5f5 !important; border-style: dashed !important; }
+            
+            /* Scenario cards with responsive design */
+            .scenario-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+                margin-top: 30px;
+            }
+            
+            .scenario-card {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+                border-radius: 16px;
+                padding: 20px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                backdrop-filter: blur(10px);
+            }
+            
+            .scenario-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            }
+            
+            /* Responsive scenario cards */
+            @media (max-width: 768px) {
+                .scenario-cards {
+                    grid-template-columns: 1fr;
+                    gap: 15px;
+                    margin-top: 25px;
+                }
+                
+                .scenario-card {
+                    padding: 16px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .scenario-cards {
+                    gap: 12px;
+                    margin-top: 20px;
+                }
+                
+                .scenario-card {
+                    padding: 14px;
+                }
+            }
+            
+            /* Comparison table with responsive design */
+            .comparison-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: 12px;
+                overflow: hidden;
+                backdrop-filter: blur(10px);
+            }
+            
+            .comparison-table th,
+            .comparison-table td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            }
+            
+            .comparison-table th {
+                background: rgba(0, 122, 204, 0.1);
+                font-weight: 600;
+                color: #1d1d1f;
+            }
+            
+            /* Responsive comparison table */
+            @media (max-width: 768px) {
+                .comparison-table {
+                    font-size: 0.9em;
+                }
+                
+                .comparison-table th,
+                .comparison-table td {
+                    padding: 8px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .comparison-table {
+                    font-size: 0.8em;
+                }
+                
+                .comparison-table th,
+                .comparison-table td {
+                    padding: 6px;
+                }
+            }
 
             /* --- Onboarding Styling --- */
 
-            /* --- Enterprise-grade tutorial guide styles --- */
+            /* --- Enterprise-grade tutorial guide styles with responsive design --- */
             .onboarding-modal {
                 position: absolute;
                 top: 0;
@@ -1617,6 +1734,27 @@ export class WebviewHtmlGenerator {
                 z-index: 1000;
                 display: none;
                 font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+                padding: 20px;
+                box-sizing: border-box;
+            }
+            
+            /* Responsive breakpoints */
+            @media (max-width: 1200px) {
+                .onboarding-modal {
+                    padding: 15px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .onboarding-modal {
+                    padding: 10px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-modal {
+                    padding: 5px;
+                }
             }
             
             .onboarding-content {
@@ -1631,10 +1769,38 @@ export class WebviewHtmlGenerator {
                 z-index: 1001;
                 width: 100%;
                 height: 100%;
+                max-width: 1400px;
+                max-height: 90vh;
                 overflow: hidden;
                 border: 1px solid rgba(0, 122, 204, 0.15);
                 display: flex;
                 flex-direction: column;
+                margin: 0 auto;
+            }
+            
+            /* Responsive content sizing */
+            @media (max-width: 1200px) {
+                .onboarding-content {
+                    max-width: 95vw;
+                    max-height: 95vh;
+                    border-radius: 20px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .onboarding-content {
+                    max-width: 98vw;
+                    max-height: 98vh;
+                    border-radius: 16px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-content {
+                    max-width: 100vw;
+                    max-height: 100vh;
+                    border-radius: 12px;
+                }
             }
             
             .onboarding-close-btn {
@@ -1658,6 +1824,27 @@ export class WebviewHtmlGenerator {
                 border: 1px solid rgba(255, 255, 255, 0.1);
             }
             
+            /* Responsive close button */
+            @media (max-width: 768px) {
+                .onboarding-close-btn {
+                    top: 16px;
+                    right: 16px;
+                    width: 40px;
+                    height: 40px;
+                    font-size: 20px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-close-btn {
+                    top: 12px;
+                    right: 12px;
+                    width: 36px;
+                    height: 36px;
+                    font-size: 18px;
+                }
+            }
+            
             .onboarding-close-btn:hover {
                 background: linear-gradient(135deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.15));
                 color: #333;
@@ -1665,13 +1852,26 @@ export class WebviewHtmlGenerator {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
             
-            /* 进度指示器 */
+            /* 进度指示器 with responsive design */
             .onboarding-progress {
                 position: absolute;
                 top: 24px;
                 left: 50%;
                 transform: translateX(-50%);
                 z-index: 1002;
+            }
+            
+            /* Responsive progress indicator */
+            @media (max-width: 768px) {
+                .onboarding-progress {
+                    top: 16px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-progress {
+                    top: 12px;
+                }
             }
             
             .progress-dots {
@@ -1717,7 +1917,7 @@ export class WebviewHtmlGenerator {
                 100% { transform: scale(1); opacity: 1; }
             }
             
-            /* Step styles */
+            /* Step styles with responsive design */
             .onboarding-step {
                 display: none;
                 padding: 20px 30px 20px;
@@ -1728,6 +1928,26 @@ export class WebviewHtmlGenerator {
                 flex-direction: column;
                 justify-content: space-between;
                 min-height: 0;
+                box-sizing: border-box;
+            }
+            
+            /* Responsive step padding */
+            @media (max-width: 1200px) {
+                .onboarding-step {
+                    padding: 18px 25px 18px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .onboarding-step {
+                    padding: 15px 20px 15px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-step {
+                    padding: 12px 15px 12px;
+                }
             }
             
             .step-header {
@@ -1780,6 +2000,46 @@ export class WebviewHtmlGenerator {
                 font-size: 1.1em;
             }
             
+            /* Responsive typography */
+            @media (max-width: 1200px) {
+                .step-header h1 {
+                    font-size: 2.6em;
+                }
+                .step-subtitle {
+                    font-size: 1.2em;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .step-header h1 {
+                    font-size: 2.2em;
+                }
+                .step-subtitle {
+                    font-size: 1.1em;
+                }
+                .compact-header h1 {
+                    font-size: 2em;
+                }
+                .compact-header .step-subtitle {
+                    font-size: 1em;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .step-header h1 {
+                    font-size: 1.8em;
+                }
+                .step-subtitle {
+                    font-size: 1em;
+                }
+                .compact-header h1 {
+                    font-size: 1.6em;
+                }
+                .compact-header .step-subtitle {
+                    font-size: 0.9em;
+                }
+            }
+            
             .step-content {
                 margin-bottom: 40px;
                 flex: 1;
@@ -1792,7 +2052,7 @@ export class WebviewHtmlGenerator {
                 margin-bottom: 30px;
             }
             
-            /* 英雄区域 */
+            /* 英雄区域 with responsive design */
             .hero-section {
                 display: flex;
                 align-items: center;
@@ -1801,6 +2061,30 @@ export class WebviewHtmlGenerator {
                 text-align: left;
                 flex: 1;
                 min-height: 0;
+            }
+            
+            /* Responsive hero section */
+            @media (max-width: 1200px) {
+                .hero-section {
+                    gap: 30px;
+                    margin-bottom: 35px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .hero-section {
+                    flex-direction: column;
+                    gap: 25px;
+                    margin-bottom: 30px;
+                    text-align: center;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .hero-section {
+                    gap: 20px;
+                    margin-bottom: 25px;
+                }
             }
             
             .hero-text {
@@ -1916,7 +2200,7 @@ export class WebviewHtmlGenerator {
                 font-weight: 500;
             }
             
-            /* 图表类型网格 */
+            /* 图表类型网格 with responsive design */
             .diagram-types-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1924,6 +2208,31 @@ export class WebviewHtmlGenerator {
                 margin-bottom: 40px;
                 flex: 1;
                 min-height: 0;
+            }
+            
+            /* Responsive diagram grid */
+            @media (max-width: 1200px) {
+                .diagram-types-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                    gap: 18px;
+                    margin-bottom: 35px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .diagram-types-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                    gap: 15px;
+                    margin-bottom: 30px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .diagram-types-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                    gap: 12px;
+                    margin-bottom: 25px;
+                }
             }
             
             .diagram-type-card {
@@ -2003,7 +2312,7 @@ export class WebviewHtmlGenerator {
                     inset 0 1px 0 rgba(255, 255, 255, 0.9);
             }
             
-            /* Workflow grid */
+            /* Workflow grid with responsive design */
             .workflow-grid {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
@@ -2012,6 +2321,30 @@ export class WebviewHtmlGenerator {
                 max-width: 1200px;
                 margin-left: auto;
                 margin-right: auto;
+            }
+            
+            /* Responsive workflow grid */
+            @media (max-width: 1200px) {
+                .workflow-grid {
+                    gap: 25px;
+                    margin-bottom: 18px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .workflow-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 20px;
+                    margin-bottom: 15px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .workflow-grid {
+                    grid-template-columns: 1fr;
+                    gap: 15px;
+                    margin-bottom: 12px;
+                }
             }
             
             .workflow-card {
