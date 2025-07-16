@@ -764,32 +764,43 @@ export class WebviewHtmlGenerator {
                 pointer-events: auto;
             }
 
-            /* --- Refined Zoom Controls --- */
+            /* --- Enterprise-Grade Zoom Controls --- */
             .zoom-controls {
                 position: absolute !important;
-                bottom: 20px !important;
-                right: 20px !important;
+                bottom: 24px !important;
+                right: 24px !important;
                 display: flex !important;
                 flex-direction: column !important;
-                gap: 6px !important;
+                gap: 8px !important;
                 z-index: 1000 !important;
                 pointer-events: auto !important;
                 user-select: none !important;
                 -webkit-user-select: none !important;
                 -moz-user-select: none !important;
                 -ms-user-select: none !important;
-                /* Modern glass-morphism container */
-                background: rgba(255, 255, 255, 0.08) !important;
-                border: 1px solid rgba(255, 255, 255, 0.15) !important;
-                border-radius: 12px !important;
-                padding: 8px !important;
-                backdrop-filter: blur(16px) !important;
-                -webkit-backdrop-filter: blur(16px) !important;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 
-                           0 4px 16px rgba(0, 0, 0, 0.05),
-                           inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-                /* Subtle animation on appearance */
-                animation: zoomControlsAppear 0.3s ease-out !important;
+                /* Transparent container - no background */
+                background: transparent !important;
+                border: none !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                box-shadow: none !important;
+                /* Professional entrance animation */
+                animation: enterpriseZoomControlsAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                /* No enterprise branding border */
+                border-left: none !important;
+            }
+            
+            @keyframes enterpriseZoomControlsAppear {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
             }
             
             @keyframes zoomControlsAppear {
@@ -804,22 +815,24 @@ export class WebviewHtmlGenerator {
             }
             
             .zoom-btn {
-                background: rgba(255, 255, 255, 0.9) !important;
-                border: 1px solid rgba(59, 130, 246, 0.2) !important;
-                border-radius: 8px !important;
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8)) !important;
+                border: 1px solid rgba(0, 122, 204, 0.2) !important;
+                border-radius: 10px !important;
                 padding: 0 !important;
                 cursor: pointer !important;
-                color: #3b82f6 !important;
-                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1),
-                           0 1px 4px rgba(0, 0, 0, 0.05) !important;
-                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-                width: 36px !important;
-                height: 36px !important;
+                color: #007acc !important;
+                box-shadow: 
+                    0 2px 8px rgba(0, 122, 204, 0.08),
+                    0 1px 4px rgba(0, 0, 0, 0.04),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                width: 40px !important;
+                height: 40px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                backdrop-filter: blur(8px) !important;
-                -webkit-backdrop-filter: blur(8px) !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
                 pointer-events: auto !important;
                 user-select: none !important;
                 -webkit-user-select: none !important;
@@ -833,8 +846,11 @@ export class WebviewHtmlGenerator {
                 will-change: transform, background, border-color, box-shadow !important;
                 position: relative !important;
                 z-index: 101 !important;
-                /* Icon sizing */
+                /* Professional icon sizing */
                 font-size: 0 !important;
+                /* Enterprise button styling */
+                font-weight: 500 !important;
+                letter-spacing: -0.01em !important;
             }
             
             .zoom-btn svg {
@@ -844,90 +860,125 @@ export class WebviewHtmlGenerator {
             }
             
             .zoom-btn:hover {
-                background: rgba(255, 255, 255, 0.95) !important;
-                border-color: rgba(59, 130, 246, 0.4) !important;
-                color: #2563eb !important;
-                transform: translateY(-1px) translateZ(0) !important;
-                box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2),
-                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)) !important;
+                border-color: rgba(0, 122, 204, 0.4) !important;
+                color: #005fa3 !important;
+                transform: translateY(-2px) translateZ(0) !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.15),
+                    0 3px 10px rgba(0, 0, 0, 0.08),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
             }
             
             .zoom-btn:hover svg {
-                transform: scale(1.1) !important;
+                transform: scale(1.15) !important;
+                filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1)) !important;
             }
             
             .zoom-btn:active {
-                transform: translateY(0) translateZ(0) !important;
-                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15),
-                           0 1px 4px rgba(0, 0, 0, 0.1) !important;
-                background: rgba(59, 130, 246, 0.05) !important;
+                transform: translateY(-1px) translateZ(0) !important;
+                box-shadow: 
+                    0 3px 12px rgba(0, 122, 204, 0.12),
+                    0 2px 6px rgba(0, 0, 0, 0.06),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.08), rgba(0, 122, 204, 0.04)) !important;
             }
             
             .zoom-btn:active svg {
-                transform: scale(0.95) !important;
+                transform: scale(0.9) !important;
             }
             
             .zoom-btn:focus {
-                outline: 2px solid #3b82f6 !important;
-                outline-offset: 2px !important;
-                background: rgba(59, 130, 246, 0.05) !important;
+                outline: 2px solid #007acc !important;
+                outline-offset: 3px !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.1), rgba(0, 122, 204, 0.05)) !important;
+                box-shadow: 
+                    0 0 0 3px rgba(0, 122, 204, 0.2),
+                    0 2px 8px rgba(0, 122, 204, 0.08),
+                    0 1px 4px rgba(0, 0, 0, 0.04) !important;
             }
             
-            /* Individual button styling */
+            /* Enterprise individual button styling */
             .zoom-btn.zoom-in {
-                background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)) !important;
-                border-color: rgba(34, 197, 94, 0.2) !important;
-                color: #22c55e !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.12), rgba(0, 122, 204, 0.06)) !important;
+                border-color: rgba(0, 122, 204, 0.25) !important;
+                color: #007acc !important;
             }
             
             .zoom-btn.zoom-in:hover {
-                background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.08)) !important;
-                border-color: rgba(34, 197, 94, 0.4) !important;
-                color: #16a34a !important;
-                box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2),
-                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.18), rgba(0, 122, 204, 0.1)) !important;
+                border-color: rgba(0, 122, 204, 0.45) !important;
+                color: #005fa3 !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.18),
+                    0 3px 10px rgba(0, 0, 0, 0.08) !important;
             }
             
             .zoom-btn.zoom-out {
-                background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)) !important;
-                border-color: rgba(239, 68, 68, 0.2) !important;
-                color: #ef4444 !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.12), rgba(0, 122, 204, 0.06)) !important;
+                border-color: rgba(0, 122, 204, 0.25) !important;
+                color: #007acc !important;
             }
             
             .zoom-btn.zoom-out:hover {
-                background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08)) !important;
-                border-color: rgba(239, 68, 68, 0.4) !important;
-                color: #dc2626 !important;
-                box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2),
-                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.18), rgba(0, 122, 204, 0.1)) !important;
+                border-color: rgba(0, 122, 204, 0.45) !important;
+                color: #005fa3 !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.18),
+                    0 3px 10px rgba(0, 0, 0, 0.08) !important;
             }
             
             .zoom-btn.zoom-reset {
-                background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(168, 85, 247, 0.05)) !important;
-                border-color: rgba(168, 85, 247, 0.2) !important;
-                color: #a855f7 !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.12), rgba(0, 122, 204, 0.06)) !important;
+                border-color: rgba(0, 122, 204, 0.25) !important;
+                color: #007acc !important;
             }
             
             .zoom-btn.zoom-reset:hover {
-                background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.08)) !important;
-                border-color: rgba(168, 85, 247, 0.4) !important;
-                color: #9333ea !important;
-                box-shadow: 0 4px 16px rgba(168, 85, 247, 0.2),
-                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.18), rgba(0, 122, 204, 0.1)) !important;
+                border-color: rgba(0, 122, 204, 0.45) !important;
+                color: #005fa3 !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.18),
+                    0 3px 10px rgba(0, 0, 0, 0.08) !important;
             }
             
-            /* Responsive adjustments */
+            /* Enterprise responsive adjustments */
             @media (max-width: 768px) {
+                .zoom-controls {
+                    bottom: 18px !important;
+                    right: 18px !important;
+                    gap: 6px !important;
+                    padding: 0 !important;
+                    border-radius: 0 !important;
+                }
+                
+                .zoom-btn {
+                    width: 36px !important;
+                    height: 36px !important;
+                    border-radius: 8px !important;
+                }
+                
+                .zoom-btn svg {
+                    width: 16px !important;
+                    height: 16px !important;
+                }
+            }
+            
+            @media (max-width: 480px) {
                 .zoom-controls {
                     bottom: 15px !important;
                     right: 15px !important;
-                    gap: 4px !important;
-                    padding: 6px !important;
+                    gap: 5px !important;
+                    padding: 0 !important;
+                    border-radius: 0 !important;
                 }
                 
                 .zoom-btn {
                     width: 32px !important;
                     height: 32px !important;
+                    border-radius: 6px !important;
                 }
                 
                 .zoom-btn svg {
@@ -3287,6 +3338,86 @@ export class WebviewHtmlGenerator {
             .onboarding-btn-center.hidden {
                 display: none;
             }
+
+            /* --- Windows-Specific Enhancements --- */
+            body.windows {
+                font-family: 'Segoe UI', 'Arial', 'Noto Sans', sans-serif;
+            }
+            body.windows .onboarding-content, body.windows .chat-panel, body.windows .user-message-content, body.windows .bot-message {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.08);
+            }
+            body.windows ::-webkit-scrollbar {
+                width: 10px;
+                background: #f1f1f1;
+            }
+            body.windows ::-webkit-scrollbar-thumb {
+                background: #b0b0b0;
+                border-radius: 6px;
+            }
+            body.windows ::-webkit-scrollbar-thumb:hover {
+                background: #888;
+            }
+            body.windows .onboarding-content {
+                backdrop-filter: none !important;
+                background: #fff !important;
+            }
+            body.windows .onboarding-modal {
+                backdrop-filter: none !important;
+                background: #f5f5f7 !important;
+            }
+            body.windows .onboarding-content, body.windows .onboarding-modal {
+                border: 1px solid #d1d5db !important;
+            }
+            body.windows .onboarding-content svg, body.windows #svgPreview svg {
+                shape-rendering: geometricPrecision;
+                text-rendering: geometricPrecision;
+                image-rendering: -webkit-optimize-contrast;
+                image-rendering: crisp-edges;
+                transform: translateZ(0);
+                -webkit-transform: translateZ(0);
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
+            }
+            body.windows .onboarding-content, body.windows .onboarding-modal {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.08);
+            }
+            body.windows .edit-mode-textarea, body.windows #requirementInput {
+                font-family: 'Segoe UI', 'Arial', 'Noto Sans', sans-serif !important;
+            }
+            body.windows .onboarding-content, body.windows .onboarding-modal {
+                /* Fallback for no backdrop-filter */
+                background: #fff !important;
+            }
+            /* Focus outline for keyboard navigation */
+            body.windows button:focus, body.windows .edit-user-msg-btn:focus, body.windows .delete-user-msg-btn:focus {
+                outline: 2px solid #0078d4 !important;
+                outline-offset: 2px !important;
+            }
+            
+            /* Windows-specific zoom controls */
+            body.windows .zoom-controls {
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            
+            body.windows .zoom-btn {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9)) !important;
+                border: 1px solid rgba(0, 122, 204, 0.25) !important;
+                box-shadow: 
+                    0 2px 6px rgba(0, 122, 204, 0.1),
+                    0 1px 3px rgba(0, 0, 0, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+            }
+            
+            body.windows .zoom-btn:hover {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.98)) !important;
+                border-color: rgba(0, 122, 204, 0.4) !important;
+                box-shadow: 
+                    0 4px 12px rgba(0, 122, 204, 0.15),
+                    0 2px 6px rgba(0, 0, 0, 0.08),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+            }
         `;
     }
 
@@ -5183,6 +5314,12 @@ export class WebviewHtmlGenerator {
                             }
                         }
                         break;
+                }
+            });
+
+            window.addEventListener('DOMContentLoaded', function() {
+                if (navigator.userAgent.indexOf('Windows') !== -1) {
+                    document.body.classList.add('windows');
                 }
             });
 
