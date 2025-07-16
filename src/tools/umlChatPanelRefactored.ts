@@ -295,8 +295,30 @@ function handleClearChat(
 async function handleExportChat(chatManager: ChatManager) {
     const sessionData = chatManager.exportSession();
     
+    // Generate smart filename
+    let suggestedFilename = 'chat-session.umlchat';
+    
+    try {
+        // Try AI-generated filename first
+        const generator = new UMLGenerator();
+        const userMessages = chatManager.getUserMessages();
+        const diagramType = chatManager.getLastDiagramType();
+        
+        const aiFilename = await generator.generateSmartFilename(userMessages, diagramType);
+        if (aiFilename && aiFilename.length > 0) {
+            suggestedFilename = `${aiFilename}.umlchat`;
+        } else {
+            // Fallback to local filename generation
+            suggestedFilename = `${chatManager.generateSmartFilename()}.umlchat`;
+        }
+    } catch (error) {
+        console.warn('Smart filename generation failed, using default:', error);
+        // Fallback to local filename generation
+        suggestedFilename = `${chatManager.generateSmartFilename()}.umlchat`;
+    }
+    
     const saveUri = await vscode.window.showSaveDialog({
-        defaultUri: vscode.Uri.file('chat-session.umlchat'),
+        defaultUri: vscode.Uri.file(suggestedFilename),
         filters: { 'UML Chat files': ['umlchat'] }
     });
 

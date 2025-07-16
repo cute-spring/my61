@@ -211,6 +211,76 @@ export class ChatManager {
     }
 
     /**
+     * Generate a smart filename based on chat content
+     */
+    generateSmartFilename(): string {
+        const userMessages = this.getUserMessages();
+        if (userMessages.length === 0) {
+            return 'uml-chat-session';
+        }
+
+        // Get the first user message as the primary context
+        const primaryMessage = userMessages[0];
+        
+        // Extract key terms for filename
+        const keyTerms = this.extractKeyTerms(primaryMessage);
+        
+        // Get diagram type for context
+        const diagramType = this.lastDiagramType || 'diagram';
+        
+        // Combine terms to create filename
+        const filename = this.buildFilename(keyTerms, diagramType);
+        
+        return filename;
+    }
+
+    /**
+     * Extract key terms from user message for filename generation
+     */
+    private extractKeyTerms(message: string): string[] {
+        // Remove common words and extract meaningful terms
+        const commonWords = new Set([
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+            'will', 'would', 'could', 'should', 'can', 'may', 'might', 'must', 'shall',
+            'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they',
+            'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'her', 'its', 'our', 'their',
+            'system', 'process', 'design', 'create', 'show', 'generate', 'make', 'build', 'develop'
+        ]);
+
+        // Split message into words and filter
+        const words = message.toLowerCase()
+            .replace(/[^\w\s]/g, ' ')
+            .split(/\s+/)
+            .filter(word => 
+                word.length > 2 && 
+                !commonWords.has(word) &&
+                !/^\d+$/.test(word)
+            );
+
+        // Return unique words, limited to 3-4 most relevant
+        return [...new Set(words)].slice(0, 4);
+    }
+
+    /**
+     * Build filename from key terms and diagram type
+     */
+    private buildFilename(keyTerms: string[], diagramType: string): string {
+        if (keyTerms.length === 0) {
+            return `uml-${diagramType}-session`;
+        }
+
+        // Create a descriptive filename
+        const baseName = keyTerms.join('-');
+        const cleanName = baseName
+            .replace(/[^a-zA-Z0-9-]/g, '')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+
+        return `${cleanName}-${diagramType}`;
+    }
+
+    /**
      * Import session data and restore state
      */
     importSession(data: SessionData): void {
