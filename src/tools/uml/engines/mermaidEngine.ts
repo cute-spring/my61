@@ -1,5 +1,6 @@
 import { EngineStrategy, RenderOptions, RenderResult, EngineCapabilities, EnginePerformanceMetrics } from '../strategy/engineStrategy';
 import { FeatureFlagManager } from '../../config/featureFlags';
+// import mermaid from 'mermaid'; // Remove static import
 
 export interface MermaidConfig {
   theme: string;
@@ -58,9 +59,17 @@ export class MermaidEngine implements EngineStrategy {
     }
 
     try {
-      // Phase 1: Basic initialization - will be enhanced in later phases
+      // Phase 2: Real Mermaid.js initialization (dynamic import)
+      const mermaid = (await import('mermaid')).default;
+      mermaid.initialize({
+        theme: this.config.theme,
+        fontFamily: this.config.fontFamily,
+        fontSize: this.config.fontSize,
+        securityLevel: this.config.securityLevel,
+        startOnLoad: false
+      });
       this.isInitialized = true;
-      console.log('Mermaid engine initialized successfully (Phase 1)');
+      console.log('Mermaid engine initialized successfully (Phase 2)');
     } catch (error) {
       console.error('Failed to initialize Mermaid engine:', error);
       throw error;
@@ -85,27 +94,30 @@ export class MermaidEngine implements EngineStrategy {
       await this.initialize();
     }
 
+    const start = Date.now();
     try {
-      // Phase 1: Return placeholder with feature flag info
-      const placeholderSvg = this.getPlaceholderSvg(diagramCode, options);
-      
+      // Phase 2: Real Mermaid rendering (dynamic import)
+      const mermaid = (await import('mermaid')).default;
+      const { svg } = await mermaid.render('mermaid-diagram', diagramCode, undefined);
+      const renderTime = Date.now() - start;
       return {
         success: true,
-        output: placeholderSvg,
+        output: svg,
         format: options.format || 'svg',
         metadata: {
-          renderTime: 0,
+          renderTime,
           engineUsed: 'mermaid',
-          warnings: ['This is a Phase 1 placeholder. Full Mermaid rendering will be available in Phase 2.']
+          warnings: []
         }
       };
     } catch (error) {
+      const renderTime = Date.now() - start;
       return {
         success: false,
         output: this.getFallbackSvg(),
         format: options.format || 'svg',
         metadata: {
-          renderTime: 0,
+          renderTime,
           engineUsed: 'mermaid',
           errors: [error instanceof Error ? error.message : String(error)]
         }
