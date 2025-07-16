@@ -223,7 +223,9 @@
     "url": "https://github.com/cute-spring/my61.git"
   },
   "dependencies": {
+    "@types/uuid": "^10.0.0",
     "axios": "^1.10.0",
-    "marked": "^15.0.12"
+    "marked": "^15.0.12",
+    "uuid": "^11.1.0"
   }
 }
