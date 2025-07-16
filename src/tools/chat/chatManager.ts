@@ -67,6 +67,74 @@ export class ChatManager {
             this.chatHistory[index].message = newText;
             // Remove all messages after this user message
             this.chatHistory = this.chatHistory.slice(0, index + 1);
+            
+            // Update the current PlantUML to match the last remaining bot message
+            this.updatePlantUMLFromLastBotMessage();
+        }
+    }
+
+    /**
+     * Delete a user message and all subsequent messages
+     */
+    deleteUserMessage(index: number): void {
+        if (index >= 0 && index < this.chatHistory.length && this.chatHistory[index].role === 'user') {
+            // Remove all messages from this user message onwards
+            this.chatHistory = this.chatHistory.slice(0, index);
+            
+            // Update the current PlantUML to match the last remaining bot message
+            this.updatePlantUMLFromLastBotMessage();
+        }
+    }
+
+    /**
+     * Update the current PlantUML based on the last remaining bot message
+     */
+    private updatePlantUMLFromLastBotMessage(): void {
+        // Find the last bot message in the remaining history
+        const lastBotMessage = this.chatHistory
+            .slice()
+            .reverse()
+            .find(msg => msg.role === 'bot' && msg.message !== 'Generating diagram, please wait...');
+        
+        if (lastBotMessage) {
+            // Extract PlantUML from the bot message using the proper format
+            // The message format is: Explanation + Diagram Type + @startuml...@enduml
+            const plantUMLMatch = lastBotMessage.message.match(/@startuml\s*\n([\s\S]*?)\n@enduml/);
+            if (plantUMLMatch) {
+                this.currentPlantUML = plantUMLMatch[1].trim();
+                console.log('Updated PlantUML from last bot message');
+            } else {
+                // If no PlantUML found in the message, keep the current one
+                // This handles cases where the message might be in a different format
+                console.log('No PlantUML found in last bot message, keeping current PlantUML');
+            }
+            
+            // Extract diagram type from the bot message
+            const diagramTypeMatch = lastBotMessage.message.match(/Diagram Type:\s*([^\n\r]+)/i);
+            if (diagramTypeMatch) {
+                const type = diagramTypeMatch[1].trim().toLowerCase();
+                const typeMap: Record<string, DiagramType> = {
+                    'activity': 'activity',
+                    'sequence': 'sequence', 
+                    'usecase': 'usecase',
+                    'use case': 'usecase',
+                    'class': 'class',
+                    'component': 'component'
+                };
+                
+                for (const [key, value] of Object.entries(typeMap)) {
+                    if (type === key || type.includes(key)) {
+                        this.lastDiagramType = value;
+                        console.log('Updated diagram type from last bot message:', value);
+                        break;
+                    }
+                }
+            }
+        } else {
+            // No bot messages remaining, reset to default
+            this.currentPlantUML = UML_TEMPLATES.DEFAULT_PLANTUML;
+            this.lastDiagramType = '';
+            console.log('No bot messages remaining, reset to default PlantUML and diagram type');
         }
     }
 
@@ -84,6 +152,13 @@ export class ChatManager {
      */
     updatePlantUML(plantUML: string): void {
         this.currentPlantUML = plantUML;
+    }
+
+    /**
+     * Clear the current PlantUML diagram (reset to default)
+     */
+    clearPlantUML(): void {
+        this.currentPlantUML = UML_TEMPLATES.DEFAULT_PLANTUML;
     }
 
     /**

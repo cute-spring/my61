@@ -152,8 +152,14 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         const isActive = index === lastBotMessageIndex;
                         return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
                     }
-                    // Add edit button for user messages
-                    return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button></div>`;
+                    // Add edit and delete buttons for user messages (flex layout)
+                    return `<div class="user" data-index="${index}">
+                    <div class="user-message-content"><b>You:</b> ${messageContent}</div>
+                    <div class="user-message-actions">
+                        <button class='edit-user-msg-btn' title='Edit and resend'>✏️ Edit</button>
+                        <button class='delete-user-msg-btn' title='Delete this request and all following history'>🗑️ Delete</button>
+                    </div>
+                </div>`;
                 }).join('');
             }
 
@@ -394,6 +400,17 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         }
                         break;
                     }
+                    case 'deleteUserMsgAndFollowing': {
+                        const { index } = message;
+                        if (typeof index === 'number') {
+                            // Remove the selected user request and all following history
+                            chatHistory = chatHistory.slice(0, index);
+                            updateChatInWebview();
+                            currentPlantUML = '@startuml\n\n@enduml';
+                            debouncedRender(currentPlantUML);
+                        }
+                        break;
+                    }
 
                 }
             }, undefined, context.subscriptions);
@@ -448,14 +465,20 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
     const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
 
     const chatHtml = chatHistory.map((h, index) => {
-        const messageContent = `<pre style="white-space: pre-wrap; word-break: break-all;">${h.message}</pre>`;
+        const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;">${h.message}</pre>`;
         if (h.role === 'bot') {
             const isActive = index === lastBotMessageIndex;
             const isLoading = h.message === 'Generating diagram, please wait...';
             return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
         }
-        // Add edit button for user messages
-        return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button></div>`;
+        // Add edit and delete buttons for user messages (flex layout)
+        return `<div class="user" data-index="${index}">
+                    <div class="user-message-content"><b>You:</b> ${messageContent}</div>
+                    <div class="user-message-actions">
+                        <button class='edit-user-msg-btn' title='Edit and resend'>✏️ Edit</button>
+                        <button class='delete-user-msg-btn' title='Delete this request and all following history'>🗑️ Delete</button>
+                    </div>
+                </div>`;
     }).join('');
     
     const diagramTypes = [
@@ -655,7 +678,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             }
 
             /* --- Left Panel Content --- */
-            /* --- Left Panel Content --- */
             #chat {
                 flex: 1 1 0;
                 overflow-y: auto;
@@ -668,9 +690,21 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             .user, .bot-message { padding: 8px; margin-bottom: 8px; border-radius: 6px; }
             .user { 
                 background-color: #e9e9e9; 
-                position: relative; 
-                padding-bottom: 12px; 
+                display: flex;
+                flex-direction: column;
             }
+            .user-message-content {
+                flex-grow: 1;
+            }
+            .user-message-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+                margin-top: 8px;
+                border-top: 1px solid #ddd;
+                padding-top: 8px;
+            }
+
             .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
             .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
             .bot-message.active-message { border-color: #007acc; background-color: #cde0f0; }
@@ -687,7 +721,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             
             #uml { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #eee; min-height: 120px; max-height: 200px; overflow-y: auto; padding: 8px; }
 
-            /* --- Input Area & Actions --- */
             /* --- Input Area & Actions --- */
             #inputArea { 
                 flex: 0 0 auto; 
@@ -715,6 +748,10 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 overflow-y: auto;
                 /* Enhanced focus states */
                 outline: none;
+                word-wrap: break-word;
+                word-break: break-word;
+                overflow-wrap: break-word;
+                white-space: pre-wrap;
             }
             #requirementInput:focus {
                 border-color: #007acc;
@@ -751,22 +788,36 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 color: #0066cc !important;
                 border: 1px solid #0066cc !important;
                 padding: 4px 8px !important;
-                font-size: 0.8em !important;
-                border-radius: 3px !important;
+                font-size: 0.9em !important;
+                border-radius: 4px !important;
                 cursor: pointer !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                position: absolute !important;
-                bottom: 4px !important;
-                right: 8px !important;
-                z-index: 10 !important;
+                gap: 4px !important;
             }
             .edit-user-msg-btn:hover {
                 background: #0066cc !important;
                 color: #fff !important;
-                transform: translateY(-1px) !important;
-                box-shadow: 0 2px 4px rgba(0,102,204,0.3) !important;
+            }
+
+            /* --- Delete Message Button Styling --- */
+            .delete-user-msg-btn {
+                background: #fff0f0 !important;
+                color: #d32f2f !important;
+                border: 1px solid #d32f2f !important;
+                padding: 4px 8px !important;
+                font-size: 0.9em !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+            }
+            .delete-user-msg-btn:hover {
+                background: #d32f2f !important;
+                color: #fff !important;
             }
 
             /* --- Enhanced Edit Mode Buttons --- */
@@ -866,6 +917,10 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 box-sizing: border-box !important;
                 line-height: 1.5 !important;
                 outline: none !important;
+                word-wrap: break-word !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                white-space: pre-wrap !important;
             }
             .edit-mode-textarea:focus {
                 background: #fff !important;
@@ -969,7 +1024,27 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                             </button>
                                 <div id="moreActionsDropdown" class="dropdown-content">
                                     <button id="saveChatBtn" title="Save current session to a .umlchat file" aria-label="Save Chat Session">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10V3h10v7"/><path d="M9 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3"/></svg>
+                                        <span>Save Session</span>
+                                    </button>
+                                    <button id="importBtn" title="Load a previous session from a .umlchat file" aria-label="Load Chat Session">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10V3h10v7"/><path d="M9 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3"/></svg>
+                                        <span>Load Session</span>
+                                    </button>
+                                    <button id="exportSVGBtn" title="Export the current diagram as SVG" aria-label="Export SVG">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10V3h10v7"/><path d="M9 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3"/></svg>
+                                        <span>Export SVG</span>
+                                    </button>
+                                    <button id="clearChatBtn" class="danger" title="Clear the chat history" aria-label="Clear Chat">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z" fill="none"/><path d="M9 9h6v6H9z" fill="none"/><path d="M9 9h6v6H9z"/><path d="M9 15h6v6H9z" fill="none"/><path d="M9 15h6v6H9z"/></svg>
+                                        <span>Clear Chat</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="dragbar"></div>
             <div id="rightPanel">
                 <div id="svgPreview"></div>
@@ -1454,7 +1529,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         
                         // Calculate optimal size for container
                         const containerWidth = svgContainer.clientWidth;
-                        const containerHeight = svgContainer.clientHeight;
+                        const containerHeight = svgContainer.clientHeight = svgContainer.clientHeight;
                         
                         if (originalWidth && originalHeight) {
                             const aspectRatio = parseFloat(originalWidth) / parseFloat(originalHeight);
@@ -1710,6 +1785,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         saveBtn.style.opacity = hasChanges ? '1' : '0.7';
                         saveBtn.disabled = !hasChanges;
                     });
+                } else if (target && target.classList.contains('delete-user-msg-btn')) {
+                    const userDiv = target.closest('.user');
+                    if (!userDiv) return;
+                    const idx = parseInt(userDiv.getAttribute('data-index'));
+                    vscode.postMessage({ command: 'deleteUserMsgAndFollowing', index: idx });
                 }
             });
         </script>

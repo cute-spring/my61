@@ -36,7 +36,7 @@ export class InputValidator {
     }
 
     static validateDiagramType(type: string): boolean {
-        const validTypes = ['', 'class', 'sequence', 'activity', 'usecase', 'state', 'component', 'deployment'];
+        const validTypes = ['', 'activity', 'sequence', 'usecase', 'class', 'component'];
         return validTypes.includes(type);
     }
 

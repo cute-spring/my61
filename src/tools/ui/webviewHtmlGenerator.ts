@@ -603,7 +603,7 @@ export class WebviewHtmlGenerator {
         const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
 
         return chatHistory.map((h, index) => {
-            const messageContent = `<pre style="white-space: pre-wrap; word-break: break-all;">${h.message}</pre>`;
+            const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;">${h.message}</pre>`;
             
             if (h.role === 'bot') {
                 const isActive = index === lastBotMessageIndex;
@@ -612,7 +612,13 @@ export class WebviewHtmlGenerator {
             }
             
             // User message with edit button
-            return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button></div>`;
+            return `<div class="user" data-index="${index}">
+                        <div class="user-message-content"><b>You:</b> ${messageContent}</div>
+                        <div class="user-message-actions">
+                            <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button>
+                            <button class='delete-user-msg-btn' title='Delete this request and all following history'>🗑️</button>
+                        </div>
+                    </div>`;
         }).join('');
     }
 
@@ -641,15 +647,15 @@ export class WebviewHtmlGenerator {
             }
             #container { display: flex; height: 100vh; }
             #leftPanel { 
-                width: 18vw; 
-                min-width: 280px; 
-                max-width: 600px; 
+                width: 25vw; 
+                min-width: 320px; 
+                max-width: 800px; 
                 display: flex; 
                 flex-direction: column; 
                 height: 100vh; 
                 border-right: 1px solid #ccc; 
                 background: #fafbfc; 
-                resize: none; 
+                resize: horizontal; 
                 overflow: auto; 
                 position: relative; 
                 transition: width 0.1s;
@@ -939,11 +945,16 @@ export class WebviewHtmlGenerator {
                 border-bottom: 1px solid #eee;
                 min-height: 150px;
             }
-            .user, .bot-message { padding: 6px; margin-bottom: 4px; border-radius: 4px; }
+            .user, .bot-message { padding: 4px; margin-bottom: 2px; border-radius: 3px; }
             .user { 
                 background-color: #e9e9e9; 
                 position: relative; 
                 padding-bottom: 8px; 
+                display: flex;
+                flex-direction: column;
+            }
+            .user-message-content {
+                flex-grow: 1;
             }
             .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
             .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
@@ -964,7 +975,7 @@ export class WebviewHtmlGenerator {
                 flex: 0 0 auto; 
                 display: flex; 
                 flex-direction: column; 
-                padding: 12px 16px 12px 16px;
+                padding: 8px 12px 8px 12px;
                 border-top: 1px solid #e0e6ed; 
                 background: linear-gradient(135deg, #f8f9fa, #ffffff);
                 box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
@@ -973,18 +984,18 @@ export class WebviewHtmlGenerator {
             #requirementInput { 
                 width: 100%; 
                 box-sizing: border-box; 
-                min-height: 64px; 
-                max-height: 200px; 
-                padding: 12px 16px; 
-                font-size: 1em; 
+                min-height: 48px; 
+                max-height: 150px; 
+                padding: 8px 12px; 
+                font-size: 0.95em; 
                 font-family: inherit;
                 resize: vertical; 
-                margin-bottom: 8px; 
+                margin-bottom: 6px; 
                 border: 2px solid #e1e8ed; 
-                border-radius: 12px; 
+                border-radius: 8px; 
                 background: #ffffff;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                line-height: 1.5;
+                line-height: 1.4;
                 overflow-y: auto;
                 outline: none;
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
@@ -992,6 +1003,10 @@ export class WebviewHtmlGenerator {
                 letter-spacing: 0.01em;
                 position: relative;
                 z-index: 1;
+                word-wrap: break-word;
+                word-break: break-word;
+                overflow-wrap: break-word;
+                white-space: pre-wrap;
             }
             #requirementInput:focus {
                 border-color: #007acc;
@@ -1308,17 +1323,16 @@ export class WebviewHtmlGenerator {
                 background: #f0f8ff !important;
                 color: #0066cc !important;
                 border: 1px solid #0066cc !important;
-                padding: 4px 8px !important;
-                font-size: 0.8em !important;
-                border-radius: 3px !important;
+                padding: 6px !important;
+                font-size: 0.9em !important;
+                border-radius: 4px !important;
                 cursor: pointer !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                position: absolute !important;
-                bottom: 4px !important;
-                right: 8px !important;
-                z-index: 10 !important;
+                justify-content: center !important;
+                min-width: 28px !important;
+                min-height: 28px !important;
             }
             .edit-user-msg-btn:hover {
                 background: #0066cc !important;
@@ -1327,11 +1341,44 @@ export class WebviewHtmlGenerator {
                 box-shadow: 0 2px 4px rgba(0,102,204,0.3) !important;
             }
 
+            /* --- User Message Actions Container --- */
+            .user-message-actions {
+                display: flex !important;
+                justify-content: flex-end !important;
+                gap: 6px !important;
+                margin-top: 4px !important;
+                border-top: 1px solid #ddd !important;
+                padding-top: 4px !important;
+            }
+
+            /* --- Delete Message Button Styling --- */
+            .delete-user-msg-btn {
+                background: #fff5f5 !important;
+                color: #dc3545 !important;
+                border: 1px solid #dc3545 !important;
+                padding: 6px !important;
+                font-size: 0.9em !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                min-width: 28px !important;
+                min-height: 28px !important;
+            }
+            .delete-user-msg-btn:hover {
+                background: #dc3545 !important;
+                color: #fff !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 2px 4px rgba(220,53,69,0.3) !important;
+            }
+
             /* --- Enhanced Edit Mode Buttons --- */
             .edit-mode-buttons {
                 display: flex !important;
-                gap: 8px !important;
-                margin-top: 12px !important;
+                gap: 6px !important;
+                margin-top: 8px !important;
                 align-items: center !important;
                 justify-content: flex-end !important;
             }
@@ -1339,15 +1386,15 @@ export class WebviewHtmlGenerator {
                 background: linear-gradient(135deg, #28a745, #20c997) !important;
                 color: #fff !important;
                 border: none !important;
-                padding: 8px 16px !important;
-                font-size: 0.9em !important;
-                border-radius: 6px !important;
+                padding: 6px 12px !important;
+                font-size: 0.85em !important;
+                border-radius: 4px !important;
                 cursor: pointer !important;
                 font-weight: 600 !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                gap: 6px !important;
+                gap: 4px !important;
                 box-shadow: 0 2px 4px rgba(40,167,69,0.2) !important;
             }
             .resend-btn:hover, .resend-btn:focus {
@@ -1367,15 +1414,15 @@ export class WebviewHtmlGenerator {
                 background: linear-gradient(135deg, #6c757d, #5a6268) !important;
                 color: #fff !important;
                 border: none !important;
-                padding: 8px 16px !important;
-                font-size: 0.9em !important;
-                border-radius: 6px !important;
+                padding: 6px 12px !important;
+                font-size: 0.85em !important;
+                border-radius: 4px !important;
                 cursor: pointer !important;
                 font-weight: 600 !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                gap: 6px !important;
+                gap: 4px !important;
                 box-shadow: 0 2px 4px rgba(108,117,125,0.2) !important;
             }
             .cancel-btn:hover, .cancel-btn:focus {
@@ -1395,11 +1442,11 @@ export class WebviewHtmlGenerator {
             /* --- Enhanced Edit Mode Styling --- */
             .edit-mode-container {
                 position: relative !important;
-                margin-top: 8px !important;
+                margin-top: 4px !important;
                 background: #f8f9fa !important;
                 border: 2px solid #007acc !important;
-                border-radius: 8px !important;
-                padding: 12px !important;
+                border-radius: 6px !important;
+                padding: 8px !important;
                 box-shadow: 0 2px 8px rgba(0,123,255,0.1) !important;
                 transition: all 0.2s ease !important;
             }
@@ -1411,19 +1458,23 @@ export class WebviewHtmlGenerator {
             
             .edit-mode-textarea {
                 width: 100% !important;
-                min-height: 80px !important;
-                max-height: 300px !important;
-                padding: 12px !important;
-                font-size: 1.1em !important;
+                min-height: 60px !important;
+                max-height: 200px !important;
+                padding: 8px !important;
+                font-size: 1em !important;
                 font-family: inherit !important;
                 border: none !important;
-                border-radius: 6px !important;
+                border-radius: 4px !important;
                 resize: vertical !important;
                 background: transparent !important;
                 transition: all 0.2s ease !important;
                 box-sizing: border-box !important;
-                line-height: 1.5 !important;
+                line-height: 1.4 !important;
                 outline: none !important;
+                word-wrap: break-word !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                white-space: pre-wrap !important;
             }
             .edit-mode-textarea:focus {
                 background: #fff !important;
@@ -1434,8 +1485,8 @@ export class WebviewHtmlGenerator {
                 display: flex !important;
                 justify-content: space-between !important;
                 align-items: center !important;
-                margin-bottom: 8px !important;
-                font-size: 0.9em !important;
+                margin-bottom: 4px !important;
+                font-size: 0.85em !important;
                 color: #007acc !important;
                 font-weight: 500 !important;
             }
@@ -4222,8 +4273,11 @@ export class WebviewHtmlGenerator {
                     const userDiv = target.closest('.user');
                     if (!userDiv) return;
                     const idx = parseInt(userDiv.getAttribute('data-index'));
-                    const pre = userDiv.querySelector('pre');
-                    if (!pre) return;
+                    const messageContent = userDiv.querySelector('.user-message-content');
+                    if (!messageContent) return;
+                    
+                    // Extract the text content from the message (remove the "You:" prefix)
+                    const messageText = messageContent.textContent.replace(/^You:\s*/, '');
                     
                     // Create enhanced edit mode container
                     const editContainer = document.createElement('div');
@@ -4236,7 +4290,7 @@ export class WebviewHtmlGenerator {
                     
                     // Create textarea with enhanced styling
                     const textarea = document.createElement('textarea');
-                    textarea.value = pre.textContent;
+                    textarea.value = messageText;
                     textarea.className = 'edit-mode-textarea';
                     textarea.placeholder = 'Edit your message here... (Ctrl+Enter to save, Esc to cancel)';
                     
@@ -4263,8 +4317,8 @@ export class WebviewHtmlGenerator {
                     editContainer.appendChild(textarea);
                     editContainer.appendChild(buttonContainer);
                     
-                    // Replace pre and edit button with enhanced edit container
-                    userDiv.replaceChild(editContainer, pre);
+                    // Replace message content and hide edit button
+                    userDiv.replaceChild(editContainer, messageContent);
                     target.style.display = 'none';
                     
                     // Auto-resize functionality for edit textarea
@@ -4306,14 +4360,23 @@ export class WebviewHtmlGenerator {
                     saveBtn.onclick = function() {
                         const newText = textarea.value.trim();
                         if (newText) {
-                            vscode.postMessage({ command: 'editAndResendUserMsg', index: idx, newText: newText });
+                            // Get the current diagram type selection
+                            const diagramTypeSelect = document.getElementById('diagramType');
+                            const selectedDiagramType = diagramTypeSelect ? diagramTypeSelect.value : '';
+                            
+                            vscode.postMessage({ 
+                                command: 'editAndResendUserMsg', 
+                                index: idx, 
+                                newText: newText,
+                                diagramType: selectedDiagramType
+                            });
                         }
                     };
                     
                     // Cancel handler
                     cancelBtn.onclick = function() {
-                        // Restore original pre and edit button
-                        userDiv.replaceChild(pre, editContainer);
+                        // Restore original message content and edit button
+                        userDiv.replaceChild(messageContent, editContainer);
                         target.style.display = '';
                     };
                     
@@ -4356,12 +4419,17 @@ export class WebviewHtmlGenerator {
                     });
                     
                     // Add visual feedback for changes
-                    const originalText = pre.textContent;
+                    const originalText = messageText;
                     textarea.addEventListener('input', function() {
                         const hasChanges = textarea.value !== originalText;
                         saveBtn.style.opacity = hasChanges ? '1' : '0.7';
                         saveBtn.disabled = !hasChanges;
                     });
+                } else if (target && target.classList.contains('delete-user-msg-btn')) {
+                    const userDiv = target.closest('.user');
+                    if (!userDiv) return;
+                    const idx = parseInt(userDiv.getAttribute('data-index'));
+                    vscode.postMessage({ command: 'deleteUserMsgAndFollowing', index: idx });
                 }
             });
 
