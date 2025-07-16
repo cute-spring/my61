@@ -1,0 +1,95 @@
+@startuml UML Chat Designer - Sequence Diagram
+!theme blueprint
+title UML Chat Designer - Diagram Generation Sequence
+
+actor User
+participant "VS Code Editor" as Editor
+participant "UML Chat Panel" as ChatPanel
+participant "Chat Manager" as ChatManager
+participant "UML Generator" as Generator
+participant "Language Model" as LLM
+participant "Engine Manager" as EngineManager
+participant "PlantUML Engine" as PlantUML
+participant "Event Bus" as EventBus
+participant "Analytics" as Analytics
+
+== User Interaction Flow ==
+
+User -> Editor : Opens UML Chat Designer
+Editor -> ChatPanel : activateUMLChatPanel()
+ChatPanel -> ChatManager : initialize()
+ChatPanel -> EventBus : subscribe('diagram.requested')
+ChatPanel -> Analytics : trackUsage('uml.chatPanel', 'open')
+
+== Diagram Generation Flow ==
+
+User -> ChatPanel : Enters requirement text
+ChatPanel -> ChatManager : addUserMessage(requirement)
+ChatManager -> EventBus : publish('user.message.sent', {text: requirement})
+
+ChatPanel -> Generator : generateFromRequirement(requirement, history, diagramType)
+Generator -> LLM : sendRequest(prompt, model)
+LLM --> Generator : response with PlantUML code
+Generator -> Generator : extractDiagramType(response)
+Generator -> Generator : extractExplanation(response)
+Generator --> ChatPanel : UMLGenerationResponse
+
+ChatPanel -> ChatManager : addBotMessage(explanation, plantUML)
+ChatManager -> EventBus : publish('bot.message.sent', {explanation, plantUML})
+
+== Diagram Rendering Flow ==
+
+ChatPanel -> EngineManager : selectEngine(requirements, 'performance')
+EngineManager -> EngineManager : rankEngines(requirements, availableEngines)
+EngineManager --> ChatPanel : PlantUML Engine
+
+ChatPanel -> PlantUML : render(diagramCode, options)
+PlantUML -> PlantUML : processPlantUML(diagramCode)
+PlantUML --> ChatPanel : RenderResult {success: true, output: SVG}
+
+ChatPanel -> EventBus : publish('diagram.rendered', {result})
+EventBus -> Analytics : trackUsage('diagram.render', 'success')
+
+== UI Update Flow ==
+
+ChatPanel -> ChatPanel : updatePreview(SVG)
+ChatPanel -> ChatPanel : updateChatHistory()
+ChatPanel -> User : Display diagram and chat history
+
+== Export Flow (Optional) ==
+
+User -> ChatPanel : Clicks Export
+ChatPanel -> ChatManager : exportSession()
+ChatManager -> Generator : generateSmartFilename(context)
+Generator -> LLM : sendRequest(filenamePrompt, model)
+LLM --> Generator : suggested filename
+ChatManager -> ChatManager : saveToFile(filename, sessionData)
+ChatManager -> EventBus : publish('session.exported', {filename})
+EventBus -> Analytics : trackUsage('session.export', 'success')
+
+== Error Handling Flow ==
+
+alt Engine Failure
+    PlantUML --> ChatPanel : RenderResult {success: false, error}
+    ChatPanel -> EngineManager : getFallbackEngines(requirements, failedEngine)
+    EngineManager --> ChatPanel : alternative engines
+    ChatPanel -> PlantUML : render(diagramCode, options) [retry]
+    PlantUML --> ChatPanel : RenderResult {success: true, output: SVG}
+    ChatPanel -> EventBus : publish('diagram.render.fallback', {originalEngine, fallbackEngine})
+end
+
+alt LLM Failure
+    Generator --> ChatPanel : Error("LLM API error")
+    ChatPanel -> ChatManager : addBotMessage("Sorry, I couldn't generate the diagram")
+    ChatPanel -> EventBus : publish('diagram.generation.failed', {error})
+    EventBus -> Analytics : trackUsage('diagram.generation', 'failed')
+end
+
+== Plugin Integration Flow ==
+
+Plugin -> EventBus : subscribe('diagram.requested')
+EventBus -> Plugin : diagram.requested event
+Plugin -> Plugin : processDiagramRequest(event)
+Plugin -> EventBus : publish('plugin.diagram.processed', {result})
+
+@enduml 
