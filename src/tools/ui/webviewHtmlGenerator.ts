@@ -636,10 +636,12 @@ export class WebviewHtmlGenerator {
         return `
             /* --- General Body and Layout --- */
             body { 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; 
+                font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif); 
                 margin: 0; 
                 padding: 0; 
                 height: 100vh; 
+                background-color: var(--vscode-editor-background, #ffffff);
+                color: var(--vscode-editor-foreground, #000000);
                 /* Windows-specific font smoothing */
                 -webkit-font-smoothing: antialiased;
                 -moz-osx-font-smoothing: grayscale;
@@ -653,31 +655,31 @@ export class WebviewHtmlGenerator {
                 display: flex; 
                 flex-direction: column; 
                 height: 100vh; 
-                border-right: 1px solid #ccc; 
-                background: #fafbfc; 
+                border-right: 1px solid var(--vscode-panel-border, #ccc); 
+                background: var(--vscode-panel-background, #fafbfc); 
                 resize: horizontal; 
                 overflow: auto; 
                 position: relative; 
                 transition: width 0.1s;
                 /* Windows scrollbar styling */
                 scrollbar-width: thin;
-                scrollbar-color: #c1c1c1 #f1f1f1;
+                scrollbar-color: var(--vscode-scrollbarSlider-background, #c1c1c1) var(--vscode-scrollbarSlider-background, #f1f1f1);
             }
             #leftPanel::-webkit-scrollbar { width: 12px; }
-            #leftPanel::-webkit-scrollbar-track { background: #f1f1f1; }
+            #leftPanel::-webkit-scrollbar-track { background: var(--vscode-scrollbarSlider-background, #f1f1f1); }
             #leftPanel::-webkit-scrollbar-thumb { 
-                background: #c1c1c1; 
+                background: var(--vscode-scrollbarSlider-activeBackground, #c1c1c1); 
                 border-radius: 6px; 
-                border: 2px solid #f1f1f1;
+                border: 2px solid var(--vscode-scrollbarSlider-background, #f1f1f1);
             }
-            #leftPanel::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-            #dragbar { width: 5px; cursor: ew-resize; background: #e0e0e0; height: 100vh; z-index: 10; }
-            #rightPanel { flex: 1 1 0; display: block; background: #fff; min-width: 0; position: relative; width: 100%; height: 100vh; }
+            #leftPanel::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground, #a8a8a8); }
+            #dragbar { width: 5px; cursor: ew-resize; background: var(--vscode-panel-border, #e0e0e0); height: 100vh; z-index: 10; }
+            #rightPanel { flex: 1 1 0; display: block; background: var(--vscode-editor-background, #fff); min-width: 0; position: relative; width: 100%; height: 100vh; }
             #svgPreview { 
                 width: 100%; 
                 height: 100vh; 
                 overflow: hidden; 
-                background: #fff; 
+                background: var(--vscode-editor-background, #fff); 
                 /* Remove borders that take up space */
                 border: none;
                 border-radius: 0; 
@@ -998,7 +1000,7 @@ export class WebviewHtmlGenerator {
             }
             .user, .bot-message { padding: 4px; margin-bottom: 2px; border-radius: 3px; }
             .user { 
-                background-color: #e9e9e9; 
+                background-color: var(--vscode-list-hoverBackground, #e9e9e9); 
                 position: relative; 
                 padding-bottom: 8px; 
                 display: flex;
@@ -1007,9 +1009,9 @@ export class WebviewHtmlGenerator {
             .user-message-content {
                 flex-grow: 1;
             }
-            .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
-            .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
-            .bot-message.active-message { border-color: #007acc; background-color: #cde0f0; }
+            .bot-message { background-color: var(--vscode-inputValidation-infoBackground, #dceaf5); border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
+            .bot-message:hover { cursor: pointer; background-color: var(--vscode-list-hoverBackground, #cde0f0); }
+            .bot-message.active-message { border-color: var(--vscode-focusBorder, #007acc); background-color: var(--vscode-list-hoverBackground, #cde0f0); }
             
             /* --- Diagram Type Label Styling --- */
             .bot-message pre {
@@ -1027,8 +1029,8 @@ export class WebviewHtmlGenerator {
                 display: flex; 
                 flex-direction: column; 
                 padding: 8px 12px 8px 12px;
-                border-top: 1px solid #e0e6ed; 
-                background: linear-gradient(135deg, #f8f9fa, #ffffff);
+                border-top: 1px solid var(--vscode-panel-border, #e0e6ed); 
+                background: var(--vscode-panel-background, linear-gradient(135deg, #f8f9fa, #ffffff));
                 box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
                 position: relative;
             }
@@ -1042,9 +1044,10 @@ export class WebviewHtmlGenerator {
                 font-family: inherit;
                 resize: vertical; 
                 margin-bottom: 6px; 
-                border: 2px solid #e1e8ed; 
+                border: 2px solid var(--vscode-input-border, #e1e8ed); 
                 border-radius: 8px; 
-                background: #ffffff;
+                background: var(--vscode-input-background, #ffffff);
+                color: var(--vscode-input-foreground, #000000);
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 line-height: 1.4;
                 overflow-y: auto;
@@ -1060,17 +1063,17 @@ export class WebviewHtmlGenerator {
                 white-space: pre-wrap;
             }
             #requirementInput:focus {
-                border-color: #007acc;
+                border-color: var(--vscode-focusBorder, #007acc);
                 box-shadow: 0 0 0 4px rgba(0, 122, 204, 0.12), 0 4px 12px rgba(0, 122, 204, 0.08);
-                background: #fafbfc;
+                background: var(--vscode-input-background, #fafbfc);
                 transform: translateY(-1px);
             }
             #requirementInput:hover:not(:focus) {
-                border-color: #b0c4de;
+                border-color: var(--vscode-input-border, #b0c4de);
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
             }
             #requirementInput::placeholder {
-                color: #8b9dc3;
+                color: var(--vscode-input-placeholderForeground, #8b9dc3);
                 font-style: normal;
                 font-weight: 400;
                 opacity: 0.8;
@@ -1092,19 +1095,19 @@ export class WebviewHtmlGenerator {
             .diagram-type-label {
                 font-weight: 600;
                 font-size: 0.875rem;
-                color: #374151;
+                color: var(--vscode-foreground, #374151);
                 letter-spacing: -0.01em;
                 margin: 0;
                 flex-shrink: 0;
             }
             
             .diagram-type-select {
-                background: linear-gradient(135deg, #ffffff, #f8f9fa);
-                border: 2px solid #e1e8ed;
+                background: var(--vscode-input-background, linear-gradient(135deg, #ffffff, #f8f9fa));
+                border: 2px solid var(--vscode-input-border, #e1e8ed);
                 border-radius: 8px;
                 padding: 6px 12px;
                 font-size: 0.875rem;
-                color: #374151;
+                color: var(--vscode-input-foreground, #374151);
                 min-width: 140px;
                 font-weight: 500;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1114,13 +1117,13 @@ export class WebviewHtmlGenerator {
             }
             
             .diagram-type-select:focus {
-                border-color: #007acc;
+                border-color: var(--vscode-focusBorder, #007acc);
                 box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12), 0 2px 6px rgba(0, 122, 204, 0.08);
-                background: #ffffff;
+                background: var(--vscode-input-background, #ffffff);
             }
             
             .diagram-type-select:hover:not(:focus) {
-                border-color: #b0c4de;
+                border-color: var(--vscode-input-border, #b0c4de);
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
             }
             
@@ -1194,7 +1197,7 @@ export class WebviewHtmlGenerator {
             /* Base button and select styling */
             button, select { 
                 border-radius: 8px; 
-                border: 2px solid #e1e8ed; 
+                border: 2px solid var(--vscode-input-border, #e1e8ed); 
                 background: linear-gradient(135deg, #ffffff, #f8f9fa); 
                 padding: 8px 12px; 
                 font-size: 0.875rem; 
@@ -3418,6 +3421,39 @@ export class WebviewHtmlGenerator {
                     0 2px 6px rgba(0, 0, 0, 0.08),
                     inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
             }
+            
+            /* Theme-specific adjustments */
+            .theme-dark {
+                --vscode-editor-background: #1e1e1e;
+                --vscode-editor-foreground: #cccccc;
+                --vscode-panel-background: #252526;
+                --vscode-panel-border: #3c3c3c;
+                --vscode-input-background: #3c3c3c;
+                --vscode-input-foreground: #cccccc;
+                --vscode-input-border: #3c3c3c;
+                --vscode-focusBorder: #007acc;
+                --vscode-list-hoverBackground: #2a2d2e;
+                --vscode-inputValidation-infoBackground: #1b4b6b;
+                --vscode-scrollbarSlider-background: #424242;
+                --vscode-scrollbarSlider-activeBackground: #4f4f4f;
+                --vscode-scrollbarSlider-hoverBackground: #4a4a4a;
+            }
+            
+            .theme-light {
+                --vscode-editor-background: #ffffff;
+                --vscode-editor-foreground: #000000;
+                --vscode-panel-background: #f3f3f3;
+                --vscode-panel-border: #e7e7e7;
+                --vscode-input-background: #ffffff;
+                --vscode-input-foreground: #000000;
+                --vscode-input-border: #e1e8ed;
+                --vscode-focusBorder: #007acc;
+                --vscode-list-hoverBackground: #f0f0f0;
+                --vscode-inputValidation-infoBackground: #dceaf5;
+                --vscode-scrollbarSlider-background: #c1c1c1;
+                --vscode-scrollbarSlider-activeBackground: #a8a8a8;
+                --vscode-scrollbarSlider-hoverBackground: #a8a8a8;
+            }
         `;
     }
 
@@ -3427,6 +3463,71 @@ export class WebviewHtmlGenerator {
     private static generateJavaScript(): string {
         return `
             const vscode = acquireVsCodeApi();
+
+            // --- Theme Detection and Adaptation ---
+            function detectTheme() {
+                // Get computed styles to detect current theme
+                const body = document.body;
+                const computedStyle = window.getComputedStyle(body);
+                const backgroundColor = computedStyle.backgroundColor;
+                const color = computedStyle.color;
+                
+                // Simple theme detection based on background color
+                const isDark = backgroundColor.includes('rgb(30, 30, 30)') || 
+                              backgroundColor.includes('rgb(51, 51, 51)') ||
+                              backgroundColor.includes('rgb(37, 37, 38)') ||
+                              backgroundColor.includes('rgb(43, 43, 43)') ||
+                              backgroundColor.includes('rgb(60, 60, 60)');
+                
+                return isDark ? 'dark' : 'light';
+            }
+            
+            function adaptToTheme() {
+                const theme = detectTheme();
+                const root = document.documentElement;
+                
+                // Set theme class for additional CSS customization
+                root.className = root.className.replace(/theme-\w+/g, '') + ' theme-' + theme;
+                
+                // Log theme detection for debugging
+                console.log('Theme detected:', theme);
+                
+                // Additional theme-specific adjustments
+                if (theme === 'dark') {
+                    // Dark theme specific adjustments
+                    document.body.style.setProperty('--vscode-editor-background', '#1e1e1e');
+                    document.body.style.setProperty('--vscode-editor-foreground', '#cccccc');
+                    document.body.style.setProperty('--vscode-panel-background', '#252526');
+                    document.body.style.setProperty('--vscode-panel-border', '#3c3c3c');
+                    document.body.style.setProperty('--vscode-input-background', '#3c3c3c');
+                    document.body.style.setProperty('--vscode-input-foreground', '#cccccc');
+                    document.body.style.setProperty('--vscode-input-border', '#3c3c3c');
+                    document.body.style.setProperty('--vscode-focusBorder', '#007acc');
+                    document.body.style.setProperty('--vscode-list-hoverBackground', '#2a2d2e');
+                    document.body.style.setProperty('--vscode-inputValidation-infoBackground', '#1b4b6b');
+                } else {
+                    // Light theme specific adjustments
+                    document.body.style.setProperty('--vscode-editor-background', '#ffffff');
+                    document.body.style.setProperty('--vscode-editor-foreground', '#000000');
+                    document.body.style.setProperty('--vscode-panel-background', '#f3f3f3');
+                    document.body.style.setProperty('--vscode-panel-border', '#e7e7e7');
+                    document.body.style.setProperty('--vscode-input-background', '#ffffff');
+                    document.body.style.setProperty('--vscode-input-foreground', '#000000');
+                    document.body.style.setProperty('--vscode-input-border', '#e1e8ed');
+                    document.body.style.setProperty('--vscode-focusBorder', '#007acc');
+                    document.body.style.setProperty('--vscode-list-hoverBackground', '#f0f0f0');
+                    document.body.style.setProperty('--vscode-inputValidation-infoBackground', '#dceaf5');
+                }
+            }
+            
+            // Initialize theme adaptation
+            adaptToTheme();
+            
+            // Listen for theme changes (if supported)
+            if (window.matchMedia) {
+                const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+                mediaQuery.addListener(adaptToTheme);
+            }
 
             // --- Elements ---
             const requirementInput = document.getElementById('requirementInput');
