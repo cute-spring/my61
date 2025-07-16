@@ -603,7 +603,7 @@ export class WebviewHtmlGenerator {
         const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
 
         return chatHistory.map((h, index) => {
-            const messageContent = `<pre style="white-space: pre-wrap; word-break: break-all;">${h.message}</pre>`;
+            const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;">${h.message}</pre>`;
             
             if (h.role === 'bot') {
                 const isActive = index === lastBotMessageIndex;
@@ -612,7 +612,13 @@ export class WebviewHtmlGenerator {
             }
             
             // User message with edit button
-            return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button></div>`;
+            return `<div class="user" data-index="${index}">
+                        <div class="user-message-content"><b>You:</b> ${messageContent}</div>
+                        <div class="user-message-actions">
+                            <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button>
+                            <button class='delete-user-msg-btn' title='Delete this request and all following history'>🗑️</button>
+                        </div>
+                    </div>`;
         }).join('');
     }
 
@@ -630,10 +636,12 @@ export class WebviewHtmlGenerator {
         return `
             /* --- General Body and Layout --- */
             body { 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; 
+                font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif); 
                 margin: 0; 
                 padding: 0; 
                 height: 100vh; 
+                background-color: var(--vscode-editor-background, #ffffff);
+                color: var(--vscode-editor-foreground, #000000);
                 /* Windows-specific font smoothing */
                 -webkit-font-smoothing: antialiased;
                 -moz-osx-font-smoothing: grayscale;
@@ -641,37 +649,37 @@ export class WebviewHtmlGenerator {
             }
             #container { display: flex; height: 100vh; }
             #leftPanel { 
-                width: 18vw; 
-                min-width: 280px; 
-                max-width: 600px; 
+                width: 25vw; 
+                min-width: 320px; 
+                max-width: 800px; 
                 display: flex; 
                 flex-direction: column; 
                 height: 100vh; 
-                border-right: 1px solid #ccc; 
-                background: #fafbfc; 
-                resize: none; 
+                border-right: 1px solid var(--vscode-panel-border, #ccc); 
+                background: var(--vscode-panel-background, #fafbfc); 
+                resize: horizontal; 
                 overflow: auto; 
                 position: relative; 
                 transition: width 0.1s;
                 /* Windows scrollbar styling */
                 scrollbar-width: thin;
-                scrollbar-color: #c1c1c1 #f1f1f1;
+                scrollbar-color: var(--vscode-scrollbarSlider-background, #c1c1c1) var(--vscode-scrollbarSlider-background, #f1f1f1);
             }
             #leftPanel::-webkit-scrollbar { width: 12px; }
-            #leftPanel::-webkit-scrollbar-track { background: #f1f1f1; }
+            #leftPanel::-webkit-scrollbar-track { background: var(--vscode-scrollbarSlider-background, #f1f1f1); }
             #leftPanel::-webkit-scrollbar-thumb { 
-                background: #c1c1c1; 
+                background: var(--vscode-scrollbarSlider-activeBackground, #c1c1c1); 
                 border-radius: 6px; 
-                border: 2px solid #f1f1f1;
+                border: 2px solid var(--vscode-scrollbarSlider-background, #f1f1f1);
             }
-            #leftPanel::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-            #dragbar { width: 5px; cursor: ew-resize; background: #e0e0e0; height: 100vh; z-index: 10; }
-            #rightPanel { flex: 1 1 0; display: block; background: #fff; min-width: 0; position: relative; width: 100%; height: 100vh; }
+            #leftPanel::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground, #a8a8a8); }
+            #dragbar { width: 5px; cursor: ew-resize; background: var(--vscode-panel-border, #e0e0e0); height: 100vh; z-index: 10; }
+            #rightPanel { flex: 1 1 0; display: block; background: var(--vscode-editor-background, #fff); min-width: 0; position: relative; width: 100%; height: 100vh; }
             #svgPreview { 
                 width: 100%; 
                 height: 100vh; 
                 overflow: hidden; 
-                background: #fff; 
+                background: var(--vscode-editor-background, #fff); 
                 /* Remove borders that take up space */
                 border: none;
                 border-radius: 0; 
@@ -758,32 +766,43 @@ export class WebviewHtmlGenerator {
                 pointer-events: auto;
             }
 
-            /* --- Refined Zoom Controls --- */
+            /* --- Enterprise-Grade Zoom Controls --- */
             .zoom-controls {
                 position: absolute !important;
-                bottom: 20px !important;
-                right: 20px !important;
+                bottom: 24px !important;
+                right: 24px !important;
                 display: flex !important;
                 flex-direction: column !important;
-                gap: 6px !important;
+                gap: 8px !important;
                 z-index: 1000 !important;
                 pointer-events: auto !important;
                 user-select: none !important;
                 -webkit-user-select: none !important;
                 -moz-user-select: none !important;
                 -ms-user-select: none !important;
-                /* Modern glass-morphism container */
-                background: rgba(255, 255, 255, 0.08) !important;
-                border: 1px solid rgba(255, 255, 255, 0.15) !important;
-                border-radius: 12px !important;
-                padding: 8px !important;
-                backdrop-filter: blur(16px) !important;
-                -webkit-backdrop-filter: blur(16px) !important;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 
-                           0 4px 16px rgba(0, 0, 0, 0.05),
-                           inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-                /* Subtle animation on appearance */
-                animation: zoomControlsAppear 0.3s ease-out !important;
+                /* Transparent container - no background */
+                background: transparent !important;
+                border: none !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                box-shadow: none !important;
+                /* Professional entrance animation */
+                animation: enterpriseZoomControlsAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                /* No enterprise branding border */
+                border-left: none !important;
+            }
+            
+            @keyframes enterpriseZoomControlsAppear {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
             }
             
             @keyframes zoomControlsAppear {
@@ -798,22 +817,24 @@ export class WebviewHtmlGenerator {
             }
             
             .zoom-btn {
-                background: rgba(255, 255, 255, 0.9) !important;
-                border: 1px solid rgba(59, 130, 246, 0.2) !important;
-                border-radius: 8px !important;
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8)) !important;
+                border: 1px solid rgba(0, 122, 204, 0.2) !important;
+                border-radius: 10px !important;
                 padding: 0 !important;
                 cursor: pointer !important;
-                color: #3b82f6 !important;
-                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1),
-                           0 1px 4px rgba(0, 0, 0, 0.05) !important;
-                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-                width: 36px !important;
-                height: 36px !important;
+                color: #007acc !important;
+                box-shadow: 
+                    0 2px 8px rgba(0, 122, 204, 0.08),
+                    0 1px 4px rgba(0, 0, 0, 0.04),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                width: 40px !important;
+                height: 40px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                backdrop-filter: blur(8px) !important;
-                -webkit-backdrop-filter: blur(8px) !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
                 pointer-events: auto !important;
                 user-select: none !important;
                 -webkit-user-select: none !important;
@@ -827,8 +848,11 @@ export class WebviewHtmlGenerator {
                 will-change: transform, background, border-color, box-shadow !important;
                 position: relative !important;
                 z-index: 101 !important;
-                /* Icon sizing */
+                /* Professional icon sizing */
                 font-size: 0 !important;
+                /* Enterprise button styling */
+                font-weight: 500 !important;
+                letter-spacing: -0.01em !important;
             }
             
             .zoom-btn svg {
@@ -838,90 +862,125 @@ export class WebviewHtmlGenerator {
             }
             
             .zoom-btn:hover {
-                background: rgba(255, 255, 255, 0.95) !important;
-                border-color: rgba(59, 130, 246, 0.4) !important;
-                color: #2563eb !important;
-                transform: translateY(-1px) translateZ(0) !important;
-                box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2),
-                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)) !important;
+                border-color: rgba(0, 122, 204, 0.4) !important;
+                color: #005fa3 !important;
+                transform: translateY(-2px) translateZ(0) !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.15),
+                    0 3px 10px rgba(0, 0, 0, 0.08),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
             }
             
             .zoom-btn:hover svg {
-                transform: scale(1.1) !important;
+                transform: scale(1.15) !important;
+                filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1)) !important;
             }
             
             .zoom-btn:active {
-                transform: translateY(0) translateZ(0) !important;
-                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15),
-                           0 1px 4px rgba(0, 0, 0, 0.1) !important;
-                background: rgba(59, 130, 246, 0.05) !important;
+                transform: translateY(-1px) translateZ(0) !important;
+                box-shadow: 
+                    0 3px 12px rgba(0, 122, 204, 0.12),
+                    0 2px 6px rgba(0, 0, 0, 0.06),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.08), rgba(0, 122, 204, 0.04)) !important;
             }
             
             .zoom-btn:active svg {
-                transform: scale(0.95) !important;
+                transform: scale(0.9) !important;
             }
             
             .zoom-btn:focus {
-                outline: 2px solid #3b82f6 !important;
-                outline-offset: 2px !important;
-                background: rgba(59, 130, 246, 0.05) !important;
+                outline: 2px solid #007acc !important;
+                outline-offset: 3px !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.1), rgba(0, 122, 204, 0.05)) !important;
+                box-shadow: 
+                    0 0 0 3px rgba(0, 122, 204, 0.2),
+                    0 2px 8px rgba(0, 122, 204, 0.08),
+                    0 1px 4px rgba(0, 0, 0, 0.04) !important;
             }
             
-            /* Individual button styling */
+            /* Enterprise individual button styling */
             .zoom-btn.zoom-in {
-                background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)) !important;
-                border-color: rgba(34, 197, 94, 0.2) !important;
-                color: #22c55e !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.12), rgba(0, 122, 204, 0.06)) !important;
+                border-color: rgba(0, 122, 204, 0.25) !important;
+                color: #007acc !important;
             }
             
             .zoom-btn.zoom-in:hover {
-                background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.08)) !important;
-                border-color: rgba(34, 197, 94, 0.4) !important;
-                color: #16a34a !important;
-                box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2),
-                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.18), rgba(0, 122, 204, 0.1)) !important;
+                border-color: rgba(0, 122, 204, 0.45) !important;
+                color: #005fa3 !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.18),
+                    0 3px 10px rgba(0, 0, 0, 0.08) !important;
             }
             
             .zoom-btn.zoom-out {
-                background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)) !important;
-                border-color: rgba(239, 68, 68, 0.2) !important;
-                color: #ef4444 !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.12), rgba(0, 122, 204, 0.06)) !important;
+                border-color: rgba(0, 122, 204, 0.25) !important;
+                color: #007acc !important;
             }
             
             .zoom-btn.zoom-out:hover {
-                background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08)) !important;
-                border-color: rgba(239, 68, 68, 0.4) !important;
-                color: #dc2626 !important;
-                box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2),
-                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.18), rgba(0, 122, 204, 0.1)) !important;
+                border-color: rgba(0, 122, 204, 0.45) !important;
+                color: #005fa3 !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.18),
+                    0 3px 10px rgba(0, 0, 0, 0.08) !important;
             }
             
             .zoom-btn.zoom-reset {
-                background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(168, 85, 247, 0.05)) !important;
-                border-color: rgba(168, 85, 247, 0.2) !important;
-                color: #a855f7 !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.12), rgba(0, 122, 204, 0.06)) !important;
+                border-color: rgba(0, 122, 204, 0.25) !important;
+                color: #007acc !important;
             }
             
             .zoom-btn.zoom-reset:hover {
-                background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.08)) !important;
-                border-color: rgba(168, 85, 247, 0.4) !important;
-                color: #9333ea !important;
-                box-shadow: 0 4px 16px rgba(168, 85, 247, 0.2),
-                           0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                background: linear-gradient(135deg, rgba(0, 122, 204, 0.18), rgba(0, 122, 204, 0.1)) !important;
+                border-color: rgba(0, 122, 204, 0.45) !important;
+                color: #005fa3 !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.18),
+                    0 3px 10px rgba(0, 0, 0, 0.08) !important;
             }
             
-            /* Responsive adjustments */
+            /* Enterprise responsive adjustments */
             @media (max-width: 768px) {
+                .zoom-controls {
+                    bottom: 18px !important;
+                    right: 18px !important;
+                    gap: 6px !important;
+                    padding: 0 !important;
+                    border-radius: 0 !important;
+                }
+                
+                .zoom-btn {
+                    width: 36px !important;
+                    height: 36px !important;
+                    border-radius: 8px !important;
+                }
+                
+                .zoom-btn svg {
+                    width: 16px !important;
+                    height: 16px !important;
+                }
+            }
+            
+            @media (max-width: 480px) {
                 .zoom-controls {
                     bottom: 15px !important;
                     right: 15px !important;
-                    gap: 4px !important;
-                    padding: 6px !important;
+                    gap: 5px !important;
+                    padding: 0 !important;
+                    border-radius: 0 !important;
                 }
                 
                 .zoom-btn {
                     width: 32px !important;
                     height: 32px !important;
+                    border-radius: 6px !important;
                 }
                 
                 .zoom-btn svg {
@@ -939,15 +998,20 @@ export class WebviewHtmlGenerator {
                 border-bottom: 1px solid #eee;
                 min-height: 150px;
             }
-            .user, .bot-message { padding: 6px; margin-bottom: 4px; border-radius: 4px; }
+            .user, .bot-message { padding: 4px; margin-bottom: 2px; border-radius: 3px; }
             .user { 
-                background-color: #e9e9e9; 
+                background-color: var(--vscode-list-hoverBackground, #e9e9e9); 
                 position: relative; 
                 padding-bottom: 8px; 
+                display: flex;
+                flex-direction: column;
             }
-            .bot-message { background-color: #dceaf5; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
-            .bot-message:hover { cursor: pointer; background-color: #cde0f0; }
-            .bot-message.active-message { border-color: #007acc; background-color: #cde0f0; }
+            .user-message-content {
+                flex-grow: 1;
+            }
+            .bot-message { background-color: var(--vscode-inputValidation-infoBackground, #dceaf5); border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
+            .bot-message:hover { cursor: pointer; background-color: var(--vscode-list-hoverBackground, #cde0f0); }
+            .bot-message.active-message { border-color: var(--vscode-focusBorder, #007acc); background-color: var(--vscode-list-hoverBackground, #cde0f0); }
             
             /* --- Diagram Type Label Styling --- */
             .bot-message pre {
@@ -964,27 +1028,28 @@ export class WebviewHtmlGenerator {
                 flex: 0 0 auto; 
                 display: flex; 
                 flex-direction: column; 
-                padding: 12px 16px 12px 16px;
-                border-top: 1px solid #e0e6ed; 
-                background: linear-gradient(135deg, #f8f9fa, #ffffff);
+                padding: 8px 12px 8px 12px;
+                border-top: 1px solid var(--vscode-panel-border, #e0e6ed); 
+                background: var(--vscode-panel-background, linear-gradient(135deg, #f8f9fa, #ffffff));
                 box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
                 position: relative;
             }
             #requirementInput { 
                 width: 100%; 
                 box-sizing: border-box; 
-                min-height: 64px; 
-                max-height: 200px; 
-                padding: 12px 16px; 
-                font-size: 1em; 
+                min-height: 48px; 
+                max-height: 150px; 
+                padding: 8px 12px; 
+                font-size: 0.95em; 
                 font-family: inherit;
                 resize: vertical; 
-                margin-bottom: 8px; 
-                border: 2px solid #e1e8ed; 
-                border-radius: 12px; 
-                background: #ffffff;
+                margin-bottom: 6px; 
+                border: 2px solid var(--vscode-input-border, #e1e8ed); 
+                border-radius: 8px; 
+                background: var(--vscode-input-background, #ffffff);
+                color: var(--vscode-input-foreground, #000000);
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                line-height: 1.5;
+                line-height: 1.4;
                 overflow-y: auto;
                 outline: none;
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
@@ -992,19 +1057,23 @@ export class WebviewHtmlGenerator {
                 letter-spacing: 0.01em;
                 position: relative;
                 z-index: 1;
+                word-wrap: break-word;
+                word-break: break-word;
+                overflow-wrap: break-word;
+                white-space: pre-wrap;
             }
             #requirementInput:focus {
-                border-color: #007acc;
+                border-color: var(--vscode-focusBorder, #007acc);
                 box-shadow: 0 0 0 4px rgba(0, 122, 204, 0.12), 0 4px 12px rgba(0, 122, 204, 0.08);
-                background: #fafbfc;
+                background: var(--vscode-input-background, #fafbfc);
                 transform: translateY(-1px);
             }
             #requirementInput:hover:not(:focus) {
-                border-color: #b0c4de;
+                border-color: var(--vscode-input-border, #b0c4de);
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
             }
             #requirementInput::placeholder {
-                color: #8b9dc3;
+                color: var(--vscode-input-placeholderForeground, #8b9dc3);
                 font-style: normal;
                 font-weight: 400;
                 opacity: 0.8;
@@ -1026,19 +1095,19 @@ export class WebviewHtmlGenerator {
             .diagram-type-label {
                 font-weight: 600;
                 font-size: 0.875rem;
-                color: #374151;
+                color: var(--vscode-foreground, #374151);
                 letter-spacing: -0.01em;
                 margin: 0;
                 flex-shrink: 0;
             }
             
             .diagram-type-select {
-                background: linear-gradient(135deg, #ffffff, #f8f9fa);
-                border: 2px solid #e1e8ed;
+                background: var(--vscode-input-background, linear-gradient(135deg, #ffffff, #f8f9fa));
+                border: 2px solid var(--vscode-input-border, #e1e8ed);
                 border-radius: 8px;
                 padding: 6px 12px;
                 font-size: 0.875rem;
-                color: #374151;
+                color: var(--vscode-input-foreground, #374151);
                 min-width: 140px;
                 font-weight: 500;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1048,13 +1117,13 @@ export class WebviewHtmlGenerator {
             }
             
             .diagram-type-select:focus {
-                border-color: #007acc;
+                border-color: var(--vscode-focusBorder, #007acc);
                 box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12), 0 2px 6px rgba(0, 122, 204, 0.08);
-                background: #ffffff;
+                background: var(--vscode-input-background, #ffffff);
             }
             
             .diagram-type-select:hover:not(:focus) {
-                border-color: #b0c4de;
+                border-color: var(--vscode-input-border, #b0c4de);
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
             }
             
@@ -1128,7 +1197,7 @@ export class WebviewHtmlGenerator {
             /* Base button and select styling */
             button, select { 
                 border-radius: 8px; 
-                border: 2px solid #e1e8ed; 
+                border: 2px solid var(--vscode-input-border, #e1e8ed); 
                 background: linear-gradient(135deg, #ffffff, #f8f9fa); 
                 padding: 8px 12px; 
                 font-size: 0.875rem; 
@@ -1308,17 +1377,16 @@ export class WebviewHtmlGenerator {
                 background: #f0f8ff !important;
                 color: #0066cc !important;
                 border: 1px solid #0066cc !important;
-                padding: 4px 8px !important;
-                font-size: 0.8em !important;
-                border-radius: 3px !important;
+                padding: 6px !important;
+                font-size: 0.9em !important;
+                border-radius: 4px !important;
                 cursor: pointer !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                position: absolute !important;
-                bottom: 4px !important;
-                right: 8px !important;
-                z-index: 10 !important;
+                justify-content: center !important;
+                min-width: 28px !important;
+                min-height: 28px !important;
             }
             .edit-user-msg-btn:hover {
                 background: #0066cc !important;
@@ -1327,11 +1395,44 @@ export class WebviewHtmlGenerator {
                 box-shadow: 0 2px 4px rgba(0,102,204,0.3) !important;
             }
 
+            /* --- User Message Actions Container --- */
+            .user-message-actions {
+                display: flex !important;
+                justify-content: flex-end !important;
+                gap: 6px !important;
+                margin-top: 4px !important;
+                border-top: 1px solid #ddd !important;
+                padding-top: 4px !important;
+            }
+
+            /* --- Delete Message Button Styling --- */
+            .delete-user-msg-btn {
+                background: #fff5f5 !important;
+                color: #dc3545 !important;
+                border: 1px solid #dc3545 !important;
+                padding: 6px !important;
+                font-size: 0.9em !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                min-width: 28px !important;
+                min-height: 28px !important;
+            }
+            .delete-user-msg-btn:hover {
+                background: #dc3545 !important;
+                color: #fff !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 2px 4px rgba(220,53,69,0.3) !important;
+            }
+
             /* --- Enhanced Edit Mode Buttons --- */
             .edit-mode-buttons {
                 display: flex !important;
-                gap: 8px !important;
-                margin-top: 12px !important;
+                gap: 6px !important;
+                margin-top: 8px !important;
                 align-items: center !important;
                 justify-content: flex-end !important;
             }
@@ -1339,15 +1440,15 @@ export class WebviewHtmlGenerator {
                 background: linear-gradient(135deg, #28a745, #20c997) !important;
                 color: #fff !important;
                 border: none !important;
-                padding: 8px 16px !important;
-                font-size: 0.9em !important;
-                border-radius: 6px !important;
+                padding: 6px 12px !important;
+                font-size: 0.85em !important;
+                border-radius: 4px !important;
                 cursor: pointer !important;
                 font-weight: 600 !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                gap: 6px !important;
+                gap: 4px !important;
                 box-shadow: 0 2px 4px rgba(40,167,69,0.2) !important;
             }
             .resend-btn:hover, .resend-btn:focus {
@@ -1367,15 +1468,15 @@ export class WebviewHtmlGenerator {
                 background: linear-gradient(135deg, #6c757d, #5a6268) !important;
                 color: #fff !important;
                 border: none !important;
-                padding: 8px 16px !important;
-                font-size: 0.9em !important;
-                border-radius: 6px !important;
+                padding: 6px 12px !important;
+                font-size: 0.85em !important;
+                border-radius: 4px !important;
                 cursor: pointer !important;
                 font-weight: 600 !important;
                 transition: all 0.2s ease !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                gap: 6px !important;
+                gap: 4px !important;
                 box-shadow: 0 2px 4px rgba(108,117,125,0.2) !important;
             }
             .cancel-btn:hover, .cancel-btn:focus {
@@ -1395,11 +1496,11 @@ export class WebviewHtmlGenerator {
             /* --- Enhanced Edit Mode Styling --- */
             .edit-mode-container {
                 position: relative !important;
-                margin-top: 8px !important;
+                margin-top: 4px !important;
                 background: #f8f9fa !important;
                 border: 2px solid #007acc !important;
-                border-radius: 8px !important;
-                padding: 12px !important;
+                border-radius: 6px !important;
+                padding: 8px !important;
                 box-shadow: 0 2px 8px rgba(0,123,255,0.1) !important;
                 transition: all 0.2s ease !important;
             }
@@ -1411,19 +1512,23 @@ export class WebviewHtmlGenerator {
             
             .edit-mode-textarea {
                 width: 100% !important;
-                min-height: 80px !important;
-                max-height: 300px !important;
-                padding: 12px !important;
-                font-size: 1.1em !important;
+                min-height: 60px !important;
+                max-height: 200px !important;
+                padding: 8px !important;
+                font-size: 1em !important;
                 font-family: inherit !important;
                 border: none !important;
-                border-radius: 6px !important;
+                border-radius: 4px !important;
                 resize: vertical !important;
                 background: transparent !important;
                 transition: all 0.2s ease !important;
                 box-sizing: border-box !important;
-                line-height: 1.5 !important;
+                line-height: 1.4 !important;
                 outline: none !important;
+                word-wrap: break-word !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                white-space: pre-wrap !important;
             }
             .edit-mode-textarea:focus {
                 background: #fff !important;
@@ -1434,8 +1539,8 @@ export class WebviewHtmlGenerator {
                 display: flex !important;
                 justify-content: space-between !important;
                 align-items: center !important;
-                margin-bottom: 8px !important;
-                font-size: 0.9em !important;
+                margin-bottom: 4px !important;
+                font-size: 0.85em !important;
                 color: #007acc !important;
                 font-weight: 500 !important;
             }
@@ -1541,6 +1646,29 @@ export class WebviewHtmlGenerator {
             }
             
             .show { display: block; }
+            
+            /* Navigation buttons with responsive design */
+            .next-btn, .prev-btn, .finish-btn, .skip-btn {
+                padding: 12px 24px;
+                font-size: 1em;
+                border-radius: 8px;
+                transition: all 0.3s ease;
+            }
+            
+            /* Responsive navigation buttons */
+            @media (max-width: 768px) {
+                .next-btn, .prev-btn, .finish-btn, .skip-btn {
+                    padding: 10px 20px;
+                    font-size: 0.9em;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .next-btn, .prev-btn, .finish-btn, .skip-btn {
+                    padding: 8px 16px;
+                    font-size: 0.85em;
+                }
+            }
 
             /* --- Fullscreen & Responsive --- */
             #leftPanel.fullscreen { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; background: #fafbfc; box-shadow: 0 0 10px #888; }
@@ -1548,10 +1676,104 @@ export class WebviewHtmlGenerator {
 
             /* --- Loading Message Style --- */
             .loading-message { font-style: italic; color: #888; background: #f5f5f5 !important; border-style: dashed !important; }
+            
+            /* Scenario cards with responsive design */
+            .scenario-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+                margin-top: 30px;
+            }
+            
+            .scenario-card {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+                border-radius: 16px;
+                padding: 20px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                backdrop-filter: blur(10px);
+            }
+            
+            .scenario-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            }
+            
+            /* Responsive scenario cards */
+            @media (max-width: 768px) {
+                .scenario-cards {
+                    grid-template-columns: 1fr;
+                    gap: 15px;
+                    margin-top: 25px;
+                }
+                
+                .scenario-card {
+                    padding: 16px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .scenario-cards {
+                    gap: 12px;
+                    margin-top: 20px;
+                }
+                
+                .scenario-card {
+                    padding: 14px;
+                }
+            }
+            
+            /* Comparison table with responsive design */
+            .comparison-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: 12px;
+                overflow: hidden;
+                backdrop-filter: blur(10px);
+            }
+            
+            .comparison-table th,
+            .comparison-table td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            }
+            
+            .comparison-table th {
+                background: rgba(0, 122, 204, 0.1);
+                font-weight: 600;
+                color: #1d1d1f;
+            }
+            
+            /* Responsive comparison table */
+            @media (max-width: 768px) {
+                .comparison-table {
+                    font-size: 0.9em;
+                }
+                
+                .comparison-table th,
+                .comparison-table td {
+                    padding: 8px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .comparison-table {
+                    font-size: 0.8em;
+                }
+                
+                .comparison-table th,
+                .comparison-table td {
+                    padding: 6px;
+                }
+            }
 
             /* --- Onboarding Styling --- */
 
-            /* --- Enterprise-grade tutorial guide styles --- */
+            /* --- Enterprise-grade tutorial guide styles with responsive design --- */
             .onboarding-modal {
                 position: absolute;
                 top: 0;
@@ -1566,6 +1788,27 @@ export class WebviewHtmlGenerator {
                 z-index: 1000;
                 display: none;
                 font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+                padding: 20px;
+                box-sizing: border-box;
+            }
+            
+            /* Responsive breakpoints */
+            @media (max-width: 1200px) {
+                .onboarding-modal {
+                    padding: 15px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .onboarding-modal {
+                    padding: 10px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-modal {
+                    padding: 5px;
+                }
             }
             
             .onboarding-content {
@@ -1580,10 +1823,38 @@ export class WebviewHtmlGenerator {
                 z-index: 1001;
                 width: 100%;
                 height: 100%;
+                max-width: 1400px;
+                max-height: 90vh;
                 overflow: hidden;
                 border: 1px solid rgba(0, 122, 204, 0.15);
                 display: flex;
                 flex-direction: column;
+                margin: 0 auto;
+            }
+            
+            /* Responsive content sizing */
+            @media (max-width: 1200px) {
+                .onboarding-content {
+                    max-width: 95vw;
+                    max-height: 95vh;
+                    border-radius: 20px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .onboarding-content {
+                    max-width: 98vw;
+                    max-height: 98vh;
+                    border-radius: 16px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-content {
+                    max-width: 100vw;
+                    max-height: 100vh;
+                    border-radius: 12px;
+                }
             }
             
             .onboarding-close-btn {
@@ -1607,6 +1878,27 @@ export class WebviewHtmlGenerator {
                 border: 1px solid rgba(255, 255, 255, 0.1);
             }
             
+            /* Responsive close button */
+            @media (max-width: 768px) {
+                .onboarding-close-btn {
+                    top: 16px;
+                    right: 16px;
+                    width: 40px;
+                    height: 40px;
+                    font-size: 20px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-close-btn {
+                    top: 12px;
+                    right: 12px;
+                    width: 36px;
+                    height: 36px;
+                    font-size: 18px;
+                }
+            }
+            
             .onboarding-close-btn:hover {
                 background: linear-gradient(135deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.15));
                 color: #333;
@@ -1614,13 +1906,26 @@ export class WebviewHtmlGenerator {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
             
-            /* 进度指示器 */
+            /* 进度指示器 with responsive design */
             .onboarding-progress {
                 position: absolute;
                 top: 24px;
                 left: 50%;
                 transform: translateX(-50%);
                 z-index: 1002;
+            }
+            
+            /* Responsive progress indicator */
+            @media (max-width: 768px) {
+                .onboarding-progress {
+                    top: 16px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-progress {
+                    top: 12px;
+                }
             }
             
             .progress-dots {
@@ -1666,7 +1971,7 @@ export class WebviewHtmlGenerator {
                 100% { transform: scale(1); opacity: 1; }
             }
             
-            /* Step styles */
+            /* Step styles with responsive design */
             .onboarding-step {
                 display: none;
                 padding: 20px 30px 20px;
@@ -1677,6 +1982,26 @@ export class WebviewHtmlGenerator {
                 flex-direction: column;
                 justify-content: space-between;
                 min-height: 0;
+                box-sizing: border-box;
+            }
+            
+            /* Responsive step padding */
+            @media (max-width: 1200px) {
+                .onboarding-step {
+                    padding: 18px 25px 18px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .onboarding-step {
+                    padding: 15px 20px 15px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .onboarding-step {
+                    padding: 12px 15px 12px;
+                }
             }
             
             .step-header {
@@ -1729,6 +2054,46 @@ export class WebviewHtmlGenerator {
                 font-size: 1.1em;
             }
             
+            /* Responsive typography */
+            @media (max-width: 1200px) {
+                .step-header h1 {
+                    font-size: 2.6em;
+                }
+                .step-subtitle {
+                    font-size: 1.2em;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .step-header h1 {
+                    font-size: 2.2em;
+                }
+                .step-subtitle {
+                    font-size: 1.1em;
+                }
+                .compact-header h1 {
+                    font-size: 2em;
+                }
+                .compact-header .step-subtitle {
+                    font-size: 1em;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .step-header h1 {
+                    font-size: 1.8em;
+                }
+                .step-subtitle {
+                    font-size: 1em;
+                }
+                .compact-header h1 {
+                    font-size: 1.6em;
+                }
+                .compact-header .step-subtitle {
+                    font-size: 0.9em;
+                }
+            }
+            
             .step-content {
                 margin-bottom: 40px;
                 flex: 1;
@@ -1741,7 +2106,7 @@ export class WebviewHtmlGenerator {
                 margin-bottom: 30px;
             }
             
-            /* 英雄区域 */
+            /* 英雄区域 with responsive design */
             .hero-section {
                 display: flex;
                 align-items: center;
@@ -1750,6 +2115,30 @@ export class WebviewHtmlGenerator {
                 text-align: left;
                 flex: 1;
                 min-height: 0;
+            }
+            
+            /* Responsive hero section */
+            @media (max-width: 1200px) {
+                .hero-section {
+                    gap: 30px;
+                    margin-bottom: 35px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .hero-section {
+                    flex-direction: column;
+                    gap: 25px;
+                    margin-bottom: 30px;
+                    text-align: center;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .hero-section {
+                    gap: 20px;
+                    margin-bottom: 25px;
+                }
             }
             
             .hero-text {
@@ -1865,7 +2254,7 @@ export class WebviewHtmlGenerator {
                 font-weight: 500;
             }
             
-            /* 图表类型网格 */
+            /* 图表类型网格 with responsive design */
             .diagram-types-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1873,6 +2262,31 @@ export class WebviewHtmlGenerator {
                 margin-bottom: 40px;
                 flex: 1;
                 min-height: 0;
+            }
+            
+            /* Responsive diagram grid */
+            @media (max-width: 1200px) {
+                .diagram-types-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                    gap: 18px;
+                    margin-bottom: 35px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .diagram-types-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                    gap: 15px;
+                    margin-bottom: 30px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .diagram-types-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                    gap: 12px;
+                    margin-bottom: 25px;
+                }
             }
             
             .diagram-type-card {
@@ -1952,7 +2366,7 @@ export class WebviewHtmlGenerator {
                     inset 0 1px 0 rgba(255, 255, 255, 0.9);
             }
             
-            /* Workflow grid */
+            /* Workflow grid with responsive design */
             .workflow-grid {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
@@ -1961,6 +2375,30 @@ export class WebviewHtmlGenerator {
                 max-width: 1200px;
                 margin-left: auto;
                 margin-right: auto;
+            }
+            
+            /* Responsive workflow grid */
+            @media (max-width: 1200px) {
+                .workflow-grid {
+                    gap: 25px;
+                    margin-bottom: 18px;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .workflow-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 20px;
+                    margin-bottom: 15px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .workflow-grid {
+                    grid-template-columns: 1fr;
+                    gap: 15px;
+                    margin-bottom: 12px;
+                }
             }
             
             .workflow-card {
@@ -2903,6 +3341,119 @@ export class WebviewHtmlGenerator {
             .onboarding-btn-center.hidden {
                 display: none;
             }
+
+            /* --- Windows-Specific Enhancements --- */
+            body.windows {
+                font-family: 'Segoe UI', 'Arial', 'Noto Sans', sans-serif;
+            }
+            body.windows .onboarding-content, body.windows .chat-panel, body.windows .user-message-content, body.windows .bot-message {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.08);
+            }
+            body.windows ::-webkit-scrollbar {
+                width: 10px;
+                background: #f1f1f1;
+            }
+            body.windows ::-webkit-scrollbar-thumb {
+                background: #b0b0b0;
+                border-radius: 6px;
+            }
+            body.windows ::-webkit-scrollbar-thumb:hover {
+                background: #888;
+            }
+            body.windows .onboarding-content {
+                backdrop-filter: none !important;
+                background: #fff !important;
+            }
+            body.windows .onboarding-modal {
+                backdrop-filter: none !important;
+                background: #f5f5f7 !important;
+            }
+            body.windows .onboarding-content, body.windows .onboarding-modal {
+                border: 1px solid #d1d5db !important;
+            }
+            body.windows .onboarding-content svg, body.windows #svgPreview svg {
+                shape-rendering: geometricPrecision;
+                text-rendering: geometricPrecision;
+                image-rendering: -webkit-optimize-contrast;
+                image-rendering: crisp-edges;
+                transform: translateZ(0);
+                -webkit-transform: translateZ(0);
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
+            }
+            body.windows .onboarding-content, body.windows .onboarding-modal {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.08);
+            }
+            body.windows .edit-mode-textarea, body.windows #requirementInput {
+                font-family: 'Segoe UI', 'Arial', 'Noto Sans', sans-serif !important;
+            }
+            body.windows .onboarding-content, body.windows .onboarding-modal {
+                /* Fallback for no backdrop-filter */
+                background: #fff !important;
+            }
+            /* Focus outline for keyboard navigation */
+            body.windows button:focus, body.windows .edit-user-msg-btn:focus, body.windows .delete-user-msg-btn:focus {
+                outline: 2px solid #0078d4 !important;
+                outline-offset: 2px !important;
+            }
+            
+            /* Windows-specific zoom controls */
+            body.windows .zoom-controls {
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            
+            body.windows .zoom-btn {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9)) !important;
+                border: 1px solid rgba(0, 122, 204, 0.25) !important;
+                box-shadow: 
+                    0 2px 6px rgba(0, 122, 204, 0.1),
+                    0 1px 3px rgba(0, 0, 0, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+            }
+            
+            body.windows .zoom-btn:hover {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.98)) !important;
+                border-color: rgba(0, 122, 204, 0.4) !important;
+                box-shadow: 
+                    0 4px 12px rgba(0, 122, 204, 0.15),
+                    0 2px 6px rgba(0, 0, 0, 0.08),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+            }
+            
+            /* Theme-specific adjustments */
+            .theme-dark {
+                --vscode-editor-background: #1e1e1e;
+                --vscode-editor-foreground: #cccccc;
+                --vscode-panel-background: #252526;
+                --vscode-panel-border: #3c3c3c;
+                --vscode-input-background: #3c3c3c;
+                --vscode-input-foreground: #cccccc;
+                --vscode-input-border: #3c3c3c;
+                --vscode-focusBorder: #007acc;
+                --vscode-list-hoverBackground: #2a2d2e;
+                --vscode-inputValidation-infoBackground: #1b4b6b;
+                --vscode-scrollbarSlider-background: #424242;
+                --vscode-scrollbarSlider-activeBackground: #4f4f4f;
+                --vscode-scrollbarSlider-hoverBackground: #4a4a4a;
+            }
+            
+            .theme-light {
+                --vscode-editor-background: #ffffff;
+                --vscode-editor-foreground: #000000;
+                --vscode-panel-background: #f3f3f3;
+                --vscode-panel-border: #e7e7e7;
+                --vscode-input-background: #ffffff;
+                --vscode-input-foreground: #000000;
+                --vscode-input-border: #e1e8ed;
+                --vscode-focusBorder: #007acc;
+                --vscode-list-hoverBackground: #f0f0f0;
+                --vscode-inputValidation-infoBackground: #dceaf5;
+                --vscode-scrollbarSlider-background: #c1c1c1;
+                --vscode-scrollbarSlider-activeBackground: #a8a8a8;
+                --vscode-scrollbarSlider-hoverBackground: #a8a8a8;
+            }
         `;
     }
 
@@ -2912,6 +3463,71 @@ export class WebviewHtmlGenerator {
     private static generateJavaScript(): string {
         return `
             const vscode = acquireVsCodeApi();
+
+            // --- Theme Detection and Adaptation ---
+            function detectTheme() {
+                // Get computed styles to detect current theme
+                const body = document.body;
+                const computedStyle = window.getComputedStyle(body);
+                const backgroundColor = computedStyle.backgroundColor;
+                const color = computedStyle.color;
+                
+                // Simple theme detection based on background color
+                const isDark = backgroundColor.includes('rgb(30, 30, 30)') || 
+                              backgroundColor.includes('rgb(51, 51, 51)') ||
+                              backgroundColor.includes('rgb(37, 37, 38)') ||
+                              backgroundColor.includes('rgb(43, 43, 43)') ||
+                              backgroundColor.includes('rgb(60, 60, 60)');
+                
+                return isDark ? 'dark' : 'light';
+            }
+            
+            function adaptToTheme() {
+                const theme = detectTheme();
+                const root = document.documentElement;
+                
+                // Set theme class for additional CSS customization
+                root.className = root.className.replace(/theme-\w+/g, '') + ' theme-' + theme;
+                
+                // Log theme detection for debugging
+                console.log('Theme detected:', theme);
+                
+                // Additional theme-specific adjustments
+                if (theme === 'dark') {
+                    // Dark theme specific adjustments
+                    document.body.style.setProperty('--vscode-editor-background', '#1e1e1e');
+                    document.body.style.setProperty('--vscode-editor-foreground', '#cccccc');
+                    document.body.style.setProperty('--vscode-panel-background', '#252526');
+                    document.body.style.setProperty('--vscode-panel-border', '#3c3c3c');
+                    document.body.style.setProperty('--vscode-input-background', '#3c3c3c');
+                    document.body.style.setProperty('--vscode-input-foreground', '#cccccc');
+                    document.body.style.setProperty('--vscode-input-border', '#3c3c3c');
+                    document.body.style.setProperty('--vscode-focusBorder', '#007acc');
+                    document.body.style.setProperty('--vscode-list-hoverBackground', '#2a2d2e');
+                    document.body.style.setProperty('--vscode-inputValidation-infoBackground', '#1b4b6b');
+                } else {
+                    // Light theme specific adjustments
+                    document.body.style.setProperty('--vscode-editor-background', '#ffffff');
+                    document.body.style.setProperty('--vscode-editor-foreground', '#000000');
+                    document.body.style.setProperty('--vscode-panel-background', '#f3f3f3');
+                    document.body.style.setProperty('--vscode-panel-border', '#e7e7e7');
+                    document.body.style.setProperty('--vscode-input-background', '#ffffff');
+                    document.body.style.setProperty('--vscode-input-foreground', '#000000');
+                    document.body.style.setProperty('--vscode-input-border', '#e1e8ed');
+                    document.body.style.setProperty('--vscode-focusBorder', '#007acc');
+                    document.body.style.setProperty('--vscode-list-hoverBackground', '#f0f0f0');
+                    document.body.style.setProperty('--vscode-inputValidation-infoBackground', '#dceaf5');
+                }
+            }
+            
+            // Initialize theme adaptation
+            adaptToTheme();
+            
+            // Listen for theme changes (if supported)
+            if (window.matchMedia) {
+                const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+                mediaQuery.addListener(adaptToTheme);
+            }
 
             // --- Elements ---
             const requirementInput = document.getElementById('requirementInput');
@@ -4222,8 +4838,11 @@ export class WebviewHtmlGenerator {
                     const userDiv = target.closest('.user');
                     if (!userDiv) return;
                     const idx = parseInt(userDiv.getAttribute('data-index'));
-                    const pre = userDiv.querySelector('pre');
-                    if (!pre) return;
+                    const messageContent = userDiv.querySelector('.user-message-content');
+                    if (!messageContent) return;
+                    
+                    // Extract the text content from the message (remove the "You:" prefix)
+                    const messageText = messageContent.textContent.replace(/^You:\s*/, '');
                     
                     // Create enhanced edit mode container
                     const editContainer = document.createElement('div');
@@ -4236,7 +4855,7 @@ export class WebviewHtmlGenerator {
                     
                     // Create textarea with enhanced styling
                     const textarea = document.createElement('textarea');
-                    textarea.value = pre.textContent;
+                    textarea.value = messageText;
                     textarea.className = 'edit-mode-textarea';
                     textarea.placeholder = 'Edit your message here... (Ctrl+Enter to save, Esc to cancel)';
                     
@@ -4263,8 +4882,8 @@ export class WebviewHtmlGenerator {
                     editContainer.appendChild(textarea);
                     editContainer.appendChild(buttonContainer);
                     
-                    // Replace pre and edit button with enhanced edit container
-                    userDiv.replaceChild(editContainer, pre);
+                    // Replace message content and hide edit button
+                    userDiv.replaceChild(editContainer, messageContent);
                     target.style.display = 'none';
                     
                     // Auto-resize functionality for edit textarea
@@ -4306,14 +4925,23 @@ export class WebviewHtmlGenerator {
                     saveBtn.onclick = function() {
                         const newText = textarea.value.trim();
                         if (newText) {
-                            vscode.postMessage({ command: 'editAndResendUserMsg', index: idx, newText: newText });
+                            // Get the current diagram type selection
+                            const diagramTypeSelect = document.getElementById('diagramType');
+                            const selectedDiagramType = diagramTypeSelect ? diagramTypeSelect.value : '';
+                            
+                            vscode.postMessage({ 
+                                command: 'editAndResendUserMsg', 
+                                index: idx, 
+                                newText: newText,
+                                diagramType: selectedDiagramType
+                            });
                         }
                     };
                     
                     // Cancel handler
                     cancelBtn.onclick = function() {
-                        // Restore original pre and edit button
-                        userDiv.replaceChild(pre, editContainer);
+                        // Restore original message content and edit button
+                        userDiv.replaceChild(messageContent, editContainer);
                         target.style.display = '';
                     };
                     
@@ -4356,12 +4984,17 @@ export class WebviewHtmlGenerator {
                     });
                     
                     // Add visual feedback for changes
-                    const originalText = pre.textContent;
+                    const originalText = messageText;
                     textarea.addEventListener('input', function() {
                         const hasChanges = textarea.value !== originalText;
                         saveBtn.style.opacity = hasChanges ? '1' : '0.7';
                         saveBtn.disabled = !hasChanges;
                     });
+                } else if (target && target.classList.contains('delete-user-msg-btn')) {
+                    const userDiv = target.closest('.user');
+                    if (!userDiv) return;
+                    const idx = parseInt(userDiv.getAttribute('data-index'));
+                    vscode.postMessage({ command: 'deleteUserMsgAndFollowing', index: idx });
                 }
             });
 
@@ -4782,6 +5415,12 @@ export class WebviewHtmlGenerator {
                             }
                         }
                         break;
+                }
+            });
+
+            window.addEventListener('DOMContentLoaded', function() {
+                if (navigator.userAgent.indexOf('Windows') !== -1) {
+                    document.body.classList.add('windows');
                 }
             });
 

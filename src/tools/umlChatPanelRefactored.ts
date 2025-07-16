@@ -12,6 +12,7 @@ import { WebviewHtmlGenerator } from './ui/webviewHtmlGenerator';
 import { InputValidator, ErrorHandler, debounce } from './utils/helpers';
 import { DiagramType, WebviewMessage } from './uml/types';
 import { trackUsage } from '../analytics';
+import { UserOnboardingState } from './uml/types';
 
 /**
  * Main activation function for UML Chat Panel
@@ -30,6 +31,17 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
 async function createUMLChatPanel(context: vscode.ExtensionContext) {
     // Track usage when panel is opened
     trackUsage('uml.chatPanel', 'open');
+    
+    // Initialize user onboarding state
+    let userOnboardingState: UserOnboardingState = {
+        hasSeenOnboarding: false
+    };
+    
+    // Load saved onboarding state
+    const savedState = context.globalState.get<UserOnboardingState>('umlChatOnboardingState');
+    if (savedState) {
+        userOnboardingState = { ...userOnboardingState, ...savedState };
+    }
     
     // Initialize components
     const generator = new UMLGenerator();
@@ -115,6 +127,33 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
                     await handleEditAndResend(message, generator, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
                     break;
 
+                case 'deleteUserMsgAndFollowing':
+                    trackUsage('uml.chatPanel', 'deleteUserMessage');
+                    await handleDeleteUserMessage(message, chatManager, debouncedUpdateChat, debouncedUpdatePreview, context, userOnboardingState, panel, generator);
+                    break;
+
+                case 'onboardingComplete':
+                    trackUsage('uml.chatPanel', 'onboardingComplete');
+                    if (userOnboardingState) {
+                        userOnboardingState.hasSeenOnboarding = true;
+                        userOnboardingState.onboardingCompletedAt = Date.now();
+                        await context.globalState.update('umlChatOnboardingState', userOnboardingState);
+                    }
+                    break;
+
+                case 'onboardingSkip':
+                    trackUsage('uml.chatPanel', 'onboardingSkip');
+                    if (userOnboardingState) {
+                        userOnboardingState.hasSeenOnboarding = true;
+                        await context.globalState.update('umlChatOnboardingState', userOnboardingState);
+                    }
+                    break;
+
+                case 'generateExample':
+                    trackUsage('uml.chatPanel', 'generateExample');
+                    // This will be handled by the webview JavaScript
+                    break;
+
                 default:
                     console.warn('Unknown command:', message.command);
             }
@@ -137,6 +176,13 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
 
     // Initial preview update
     debouncedUpdatePreview();
+    
+    // Check if we should show onboarding for new users
+    setTimeout(() => {
+        if (!userOnboardingState.hasSeenOnboarding) {
+            panel.webview.postMessage({ command: 'showOnboarding' });
+        }
+    }, 1000); // Delay to ensure webview is fully loaded
 }
 
 /**
@@ -249,8 +295,30 @@ function handleClearChat(
 async function handleExportChat(chatManager: ChatManager) {
     const sessionData = chatManager.exportSession();
     
+    // Generate smart filename
+    let suggestedFilename = 'chat-session.umlchat';
+    
+    try {
+        // Try AI-generated filename first
+        const generator = new UMLGenerator();
+        const userMessages = chatManager.getUserMessages();
+        const diagramType = chatManager.getLastDiagramType();
+        
+        const aiFilename = await generator.generateSmartFilename(userMessages, diagramType);
+        if (aiFilename && aiFilename.length > 0) {
+            suggestedFilename = `${aiFilename}.umlchat`;
+        } else {
+            // Fallback to local filename generation
+            suggestedFilename = `${chatManager.generateSmartFilename()}.umlchat`;
+        }
+    } catch (error) {
+        console.warn('Smart filename generation failed, using default:', error);
+        // Fallback to local filename generation
+        suggestedFilename = `${chatManager.generateSmartFilename()}.umlchat`;
+    }
+    
     const saveUri = await vscode.window.showSaveDialog({
-        defaultUri: vscode.Uri.file('chat-session.umlchat'),
+        defaultUri: vscode.Uri.file(suggestedFilename),
         filters: { 'UML Chat files': ['umlchat'] }
     });
 
@@ -303,7 +371,7 @@ async function handleEditAndResend(
     updateChat: () => void,
     updatePreview: () => void
 ) {
-    const { index, newText } = message;
+    const { index, newText, diagramType } = message;
     
     // Validate input
     const validation = InputValidator.validateRequirement(newText);
@@ -317,11 +385,14 @@ async function handleEditAndResend(
     updateChat();
 
     try {
+        // Use the selected diagram type if provided, otherwise use the last diagram type
+        const selectedDiagramType = diagramType || chatManager.getLastDiagramType();
+        
         // Regenerate from edited message
         const response = await generator.generateFromRequirement(
             newText,
             chatManager.getUserMessages(),
-            chatManager.getLastDiagramType()
+            selectedDiagramType
         );
 
         // Update state
@@ -340,13 +411,52 @@ async function handleEditAndResend(
 }
 
 /**
+ * Handle deleting user message and all following history
+ */
+async function handleDeleteUserMessage(
+    message: any,
+    chatManager: ChatManager,
+    updateChat: () => void,
+    updatePreview: () => void,
+    context?: vscode.ExtensionContext,
+    userOnboardingState?: UserOnboardingState,
+    panel?: vscode.WebviewPanel,
+    generator?: UMLGenerator
+) {
+    const { index } = message;
+    chatManager.deleteUserMessage(index);
+    updateChat();
+    
+    // Check if there's any remaining history
+    const chatHistory = chatManager.getChatHistory();
+    const hasHistory = chatHistory.length > 0;
+    
+    if (hasHistory) {
+        // If there's history, just update the preview with the existing PlantUML
+        // Don't regenerate to avoid adding new messages
+        updatePreview();
+    } else {
+        // If no history, clear the PlantUML and show tutorial for new users
+        chatManager.clearPlantUML();
+        
+        if (userOnboardingState && !userOnboardingState.hasSeenOnboarding && panel) {
+            // Show tutorial
+            panel.webview.postMessage({ command: 'showOnboarding' });
+        } else {
+            // Clear the preview for existing users
+            updatePreview();
+        }
+    }
+}
+
+/**
  * Generate HTML for chat messages
  */
 function generateChatHtml(chatHistory: any[]): string {
     const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
 
     return chatHistory.map((h, index) => {
-        const messageContent = `<pre style="white-space: pre-wrap; word-break: break-all;">${h.message}</pre>`;
+        const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;">${h.message}</pre>`;
         
         if (h.role === 'bot') {
             const isActive = index === lastBotMessageIndex;
@@ -355,6 +465,12 @@ function generateChatHtml(chatHistory: any[]): string {
         }
         
         // User message with edit button
-        return `<div class="user" data-index="${index}"><b>You:</b> ${messageContent} <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button></div>`;
+        return `<div class="user" data-index="${index}">
+                    <div class="user-message-content"><b>You:</b> ${messageContent}</div>
+                    <div class="user-message-actions">
+                        <button class='edit-user-msg-btn' title='Edit and resend'>✏️</button>
+                        <button class='delete-user-msg-btn' title='Delete this request and all following history'>🗑️</button>
+                    </div>
+                </div>`;
     }).join('');
 }

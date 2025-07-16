@@ -132,4 +132,112 @@ Diagram Type: <EXACTLY one of: activity, sequence, usecase, class, component>
         const explanationMatch = response.match(/Explanation:\s*(.*?)(?:\n\nDiagram Type:|$)/s);
         return explanationMatch?.[1]?.trim() || '';
     }
+
+    /**
+     * Generate a smart filename using AI based on chat content
+     */
+    async generateSmartFilename(
+        userMessages: string[], 
+        diagramType?: DiagramType
+    ): Promise<string> {
+        if (userMessages.length === 0) {
+            return 'uml-chat-session';
+        }
+
+        const prompt = this.buildFilenamePrompt(userMessages, diagramType);
+        
+        try {
+            const [model] = await vscode.lm.selectChatModels({ 
+                vendor: 'copilot', 
+                family: 'gpt-4o' 
+            });
+            
+            if (!model) {
+                throw new Error('No Copilot model available for filename generation.');
+            }
+
+            const token = new vscode.CancellationTokenSource().token;
+            const chatResponse = await model.sendRequest(prompt, {}, token);
+            
+            const responseText = await this.extractResponseText(chatResponse);
+            const filename = this.extractFilename(responseText);
+            
+            return filename || this.generateFallbackFilename(userMessages, diagramType);
+        } catch (err: any) {
+            console.warn('AI filename generation failed, using fallback:', err.message);
+            return this.generateFallbackFilename(userMessages, diagramType);
+        }
+    }
+
+    /**
+     * Build prompt for filename generation
+     */
+    private buildFilenamePrompt(
+        userMessages: string[], 
+        diagramType?: DiagramType
+    ): vscode.LanguageModelChatMessage[] {
+        const context = userMessages.join('\n');
+        const typeContext = diagramType ? `The diagram type is: ${diagramType}` : 'The diagram type is not specified';
+        
+        const systemPrompt = `You are an expert at creating descriptive, professional filenames for UML diagram sessions.
+
+Based on the user's requirements and conversation, generate a concise, descriptive filename that captures the essence of the design.
+
+Requirements:
+- Use only lowercase letters, numbers, and hyphens
+- Keep it under 50 characters
+- Make it descriptive but concise
+- Include the diagram type if relevant
+- Avoid special characters except hyphens
+- Make it suitable for file systems
+
+Context:
+${typeContext}
+
+User Requirements:
+${context}
+
+Generate ONLY the filename, nothing else. Example format: "user-authentication-system-sequence"`;
+
+        return [
+            vscode.LanguageModelChatMessage.User(systemPrompt)
+        ];
+    }
+
+    /**
+     * Extract filename from AI response
+     */
+    private extractFilename(response: string): string {
+        // Clean the response to extract just the filename
+        const cleanResponse = response.trim()
+            .replace(/^["']|["']$/g, '') // Remove quotes
+            .replace(/[^a-zA-Z0-9-]/g, '-') // Replace special chars with hyphens
+            .replace(/-+/g, '-') // Replace multiple hyphens with single
+            .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+            .toLowerCase();
+
+        return cleanResponse || '';
+    }
+
+    /**
+     * Generate fallback filename when AI generation fails
+     */
+    private generateFallbackFilename(userMessages: string[], diagramType?: DiagramType): string {
+        const primaryMessage = userMessages[0] || '';
+        
+        // Extract meaningful words
+        const words = primaryMessage.toLowerCase()
+            .replace(/[^\w\s]/g, ' ')
+            .split(/\s+/)
+            .filter(word => 
+                word.length > 2 && 
+                !['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'].includes(word)
+            )
+            .slice(0, 3);
+
+        const baseName = words.join('-') || 'uml';
+        const typeSuffix = diagramType ? `-${diagramType}` : '';
+        
+        return `${baseName}${typeSuffix}`;
+    }
 }
