@@ -37,6 +37,8 @@ export class WebviewHtmlGenerator {
                 <div id="chat">${chatHtml}</div>
                 <div id="inputArea">
                     <div class="input-controls">
+                        <label for="engineType" class="engine-type-label">Engine:</label>
+                        <select id="engineType" class="engine-type-select" title="Select Rendering Engine">${this.generateEngineOptions()}</select>
                         <label for="diagramType" class="diagram-type-label">Type:</label>
                         <select id="diagramType" class="diagram-type-select" title="Select Diagram Type">${diagramTypeOptions}</select>
                     </div>
@@ -630,6 +632,16 @@ export class WebviewHtmlGenerator {
     }
 
     /**
+     * Generate engine selection options
+     */
+    private static generateEngineOptions(): string {
+        return `
+            <option value="plantuml">PlantUML</option>
+            <option value="mermaid">Mermaid</option>
+        `;
+    }
+
+    /**
      * Generate CSS styles
      */
     private static generateCSS(): string {
@@ -1123,6 +1135,41 @@ export class WebviewHtmlGenerator {
             }
             
             .diagram-type-select:hover:not(:focus) {
+                border-color: var(--vscode-input-border, #b0c4de);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+            }
+            
+            .engine-type-label {
+                font-weight: 600;
+                font-size: 0.875rem;
+                color: var(--vscode-foreground, #374151);
+                letter-spacing: -0.01em;
+                margin: 0;
+                flex-shrink: 0;
+            }
+            
+            .engine-type-select {
+                background: var(--vscode-input-background, linear-gradient(135deg, #ffffff, #f8f9fa));
+                border: 2px solid var(--vscode-input-border, #e1e8ed);
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 0.875rem;
+                color: var(--vscode-input-foreground, #374151);
+                min-width: 100px;
+                font-weight: 500;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                cursor: pointer;
+                outline: none;
+            }
+            
+            .engine-type-select:focus {
+                border-color: var(--vscode-focusBorder, #007acc);
+                box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12), 0 2px 6px rgba(0, 122, 204, 0.08);
+                background: var(--vscode-input-background, #ffffff);
+            }
+            
+            .engine-type-select:hover:not(:focus) {
                 border-color: var(--vscode-input-border, #b0c4de);
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
             }
@@ -3929,7 +3976,12 @@ export class WebviewHtmlGenerator {
             sendBtn.onclick = () => {
                 const text = requirementInput.value.trim();
                 if (text) {
-                    vscode.postMessage({ command: 'sendRequirement', text: text, diagramType: document.getElementById('diagramType').value });
+                    vscode.postMessage({ 
+                        command: 'sendRequirement', 
+                        text: text, 
+                        diagramType: document.getElementById('diagramType').value,
+                        engineType: document.getElementById('engineType').value
+                    });
                     requirementInput.value = '';
                     // Reset height and counter after sending
                     requirementInput.style.height = '80px';

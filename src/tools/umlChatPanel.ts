@@ -189,7 +189,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             panel.webview.onDidReceiveMessage(async message => {
                 switch (message.command) {
                     case 'sendRequirement': {
-                        trackUsage('uml.chatPanel', 'sendMessage', { diagramType: message.diagramType });
+                        trackUsage('uml.chatPanel', 'sendMessage', { diagramType: message.diagramType, engineType: message.engineType || 'plantuml' });
                         const userInput = message.text.trim();
                         if (!userInput) { return; }
                         chatHistory.push({ role: 'user', message: userInput });
@@ -999,7 +999,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 <div id="chat">${chatHtml}</div>
                 <div id="inputArea" style="flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px; border-top: 1px solid #eee; background: #f9f9f9;">
                     ${layoutIndicator}
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px; gap: 12px;">
+                        <label for="engineType" style="margin-right: 8px; font-weight: 500;">Engine:</label>
+                        <select id="engineType" title="Select Rendering Engine">
+                            <option value="plantuml">PlantUML</option>
+                            <option value="mermaid">Mermaid</option>
+                        </select>
                         <label for="diagramType" style="margin-right: 8px; font-weight: 500;">Diagram Type:</label>
                         <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
                     </div>
@@ -1154,7 +1159,12 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             sendBtn.onclick = () => {
                 const text = requirementInput.value.trim();
                 if (text) {
-                    vscode.postMessage({ command: 'sendRequirement', text: text, diagramType: document.getElementById('diagramType').value });
+                    vscode.postMessage({ 
+                        command: 'sendRequirement', 
+                        text: text, 
+                        diagramType: document.getElementById('diagramType').value,
+                        engineType: document.getElementById('engineType').value
+                    });
                     requirementInput.value = '';
                     // Reset height and counter after sending
                     requirementInput.style.height = '80px';

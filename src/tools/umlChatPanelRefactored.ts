@@ -195,10 +195,10 @@ async function handleSendRequirement(
     updateChat: () => void,
     updatePreview: () => void
 ) {
-    const { text, diagramType } = message;
+    const { text, diagramType, engineType = 'plantuml' } = message;
     
     // Track message sending usage
-    trackUsage('uml.chatPanel', 'sendMessage', { diagramType });
+    trackUsage('uml.chatPanel', 'sendMessage', { diagramType, engineType });
     
     // Validate input
     const validation = InputValidator.validateRequirement(text);
