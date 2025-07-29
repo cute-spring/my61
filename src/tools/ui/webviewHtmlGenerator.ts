@@ -146,10 +146,7 @@ export class WebviewHtmlGenerator {
                         </div>
                     </div>
                     
-                    <!-- Engine Indicator -->
-                    <div id="engineIndicator" class="engine-indicator" style="display: none;">
-                        <span id="engineLabel"></span>
-                    </div>
+
                 </div>
                 <div class="zoom-controls">
                     <button class="zoom-btn zoom-in" id="zoomInBtn" title="Zoom In (Ctrl + +)" aria-label="Zoom In">
@@ -843,27 +840,7 @@ export class WebviewHtmlGenerator {
                 overflow: auto;
             }
             
-            .engine-indicator {
-                position: absolute;
-                top: 16px;
-                right: 16px;
-                background: rgba(0, 122, 204, 0.9);
-                color: white;
-                padding: 6px 12px;
-                border-radius: 16px;
-                font-size: 12px;
-                font-weight: 500;
-                z-index: 1000;
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                transition: opacity 0.3s ease;
-            }
-            
-            .engine-indicator.hidden {
-                opacity: 0;
-                pointer-events: none;
-            }
+
 
             /* --- Enterprise-Grade Zoom Controls --- */
             .zoom-controls {
@@ -5135,19 +5112,13 @@ export class WebviewHtmlGenerator {
                     // Show Mermaid diagram in unified panel
                     const plantUMLContainer = document.getElementById('plantUMLContainer');
                     const mermaidContainer = document.getElementById('mermaidContainer');
-                    const engineIndicator = document.getElementById('engineIndicator');
-                    const engineLabel = document.getElementById('engineLabel');
                     
-                    if (plantUMLContainer && mermaidContainer && engineIndicator && engineLabel) {
+                    if (plantUMLContainer && mermaidContainer) {
                         // Hide PlantUML container
                         plantUMLContainer.style.display = 'none';
                         
                         // Show Mermaid container
                         mermaidContainer.style.display = 'block';
-                        
-                        // Show engine indicator
-                        engineLabel.textContent = 'Mermaid';
-                        engineIndicator.style.display = 'block';
                         
                         // Render Mermaid diagram
                         renderMermaidDiagram(message.mermaidCode);
@@ -5156,19 +5127,13 @@ export class WebviewHtmlGenerator {
                     // Show PlantUML diagram in unified panel
                     const plantUMLContainer = document.getElementById('plantUMLContainer');
                     const mermaidContainer = document.getElementById('mermaidContainer');
-                    const engineIndicator = document.getElementById('engineIndicator');
-                    const engineLabel = document.getElementById('engineLabel');
                     
-                    if (plantUMLContainer && mermaidContainer && engineIndicator && engineLabel) {
+                    if (plantUMLContainer && mermaidContainer) {
                         // Hide Mermaid container
                         mermaidContainer.style.display = 'none';
                         
                         // Show PlantUML container
                         plantUMLContainer.style.display = 'block';
-                        
-                        // Show engine indicator
-                        engineLabel.textContent = 'PlantUML';
-                        engineIndicator.style.display = 'block';
                         
                         // Update PlantUML diagram
                         const svgContainer = document.getElementById('svgPreview');
@@ -5184,15 +5149,11 @@ export class WebviewHtmlGenerator {
                     // Show error in unified panel
                     const plantUMLContainer = document.getElementById('plantUMLContainer');
                     const mermaidContainer = document.getElementById('mermaidContainer');
-                    const engineIndicator = document.getElementById('engineIndicator');
                     
-                    if (plantUMLContainer && mermaidContainer && engineIndicator) {
+                    if (plantUMLContainer && mermaidContainer) {
                         // Hide both containers
                         plantUMLContainer.style.display = 'none';
                         mermaidContainer.style.display = 'none';
-                        
-                        // Hide engine indicator
-                        engineIndicator.style.display = 'none';
                         
                         // Show error in PlantUML container
                         plantUMLContainer.style.display = 'block';
