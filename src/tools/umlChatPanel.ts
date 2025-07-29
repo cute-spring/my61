@@ -43,18 +43,30 @@ function getCurrentPlantUMLConfig(): { layoutEngine: string, dotPath: string | n
 // Remove the async verification function from here since it's complex for UI use
 
 
-// Use Copilot API to generate PlantUML code from requirement, history, and diagram type
-async function generatePlantUMLFromRequirement(requirement: string, history: string[], diagramType?: string): Promise<string> {
+// Use Copilot API to generate diagram code from requirement, history, and diagram type
+async function generateDiagramFromRequirement(requirement: string, history: string[], diagramType?: string, engineType: string = 'plantuml'): Promise<string> {
     let typeInstruction = '';
-    if (diagramType && diagramType !== '') {
-        typeInstruction = `Generate a PlantUML ${diagramType} diagram.`;
+    let systemPrompt = '';
+    
+    if (engineType === 'mermaid') {
+        if (diagramType && diagramType !== '') {
+            typeInstruction = `Generate a Mermaid ${diagramType} diagram.`;
+        } else {
+            typeInstruction = 'Generate the most appropriate Mermaid diagram for the requirement.';
+        }
+        systemPrompt = `You are an expert software architect and technical writer specializing in AI-driven rapid Mermaid diagram generation.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding Mermaid code (and only valid Mermaid code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\n\nIMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:\n\nExplanation:\n<your explanation here>\n\nDiagram Type: <EXACTLY one of: flowchart, sequence, class, state, gantt, pie>\n\n\`\`\`mermaid\n<Mermaid code here>\n\`\`\``;
     } else {
-        typeInstruction = 'Generate the most appropriate UML diagram for the requirement.';
+        // Default to PlantUML
+        if (diagramType && diagramType !== '') {
+            typeInstruction = `Generate a PlantUML ${diagramType} diagram.`;
+        } else {
+            typeInstruction = 'Generate the most appropriate UML diagram for the requirement.';
+        }
+        systemPrompt = `You are an expert software architect and technical writer specializing in AI-driven rapid diagram generation.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\n\nIMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:\n\nExplanation:\n<your explanation here>\n\nDiagram Type: <EXACTLY one of: activity, sequence, usecase, class, component>\n\n@startuml\n<PlantUML code here>\n@enduml\n`;
     }
+    
     const prompt = [
-        vscode.LanguageModelChatMessage.User(
-            `You are an expert software architect and technical writer specializing in AI-driven rapid diagram generation.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\n\nIMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:\n\nExplanation:\n<your explanation here>\n\nDiagram Type: <EXACTLY one of: activity, sequence, usecase, class, component>\n\n@startuml\n<PlantUML code here>\n@enduml\n`
-        ),
+        vscode.LanguageModelChatMessage.User(systemPrompt),
         ...history.map(msg => vscode.LanguageModelChatMessage.User(msg)),
         vscode.LanguageModelChatMessage.User(requirement)
     ];
@@ -63,11 +75,11 @@ async function generatePlantUMLFromRequirement(requirement: string, history: str
         if (!model) { throw new Error('No Copilot model available.'); }
         const token = new vscode.CancellationTokenSource().token;
         const chatResponse = await model.sendRequest(prompt, {}, token);
-        let plantuml = '';
+        let diagramCode = '';
         for await (const fragment of chatResponse.text) {
-            plantuml += fragment;
+            diagramCode += fragment;
         }
-        return plantuml;
+        return diagramCode;
     } catch (err: any) {
         throw new Error('Copilot API error: ' + (err.message || String(err)));
     }
@@ -199,7 +211,8 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         chatHistory.push({ role: 'bot', message: 'Generating diagram, please wait...' });
                         updateChatInWebview();
                         try {
-                            const plantumlResponse = await generatePlantUMLFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType);
+                            const engineType = message.engineType || 'plantuml';
+                            const plantumlResponse = await generateDiagramFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, engineType);
                             // Remove the loading message
                             if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
                                 chatHistory.pop();
@@ -322,7 +335,8 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                             updateChatInWebview();
                             try {
                                 // Use lastDiagramType for follow-up requests
-                                const plantumlResponse = await generatePlantUMLFromRequirement(newText, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType);
+                                const engineType = message.engineType || 'plantuml';
+                                const plantumlResponse = await generateDiagramFromRequirement(newText, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, engineType);
                                 if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
                                     chatHistory.pop();
                                 }
@@ -1007,6 +1021,16 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                         </select>
                         <label for="diagramType" style="margin-right: 8px; font-weight: 500;">Diagram Type:</label>
                         <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
+                        <button id="testPromptBtn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: 2px solid #28a745; padding: 8px 12px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2); white-space: nowrap;" title="Insert test prompt for easy testing">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                            Test Prompt
+                        </button>
                     </div>
                     <div style="position: relative;">
                         <textarea id="requirementInput" placeholder="Describe your UML requirement... (Press Enter to send, Shift+Enter for new line, Esc to clear)"></textarea>
@@ -1230,6 +1254,17 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             clearChatBtn.onclick = () => vscode.postMessage({ command: 'clearChat' });
             importBtn.onclick = () => vscode.postMessage({ command: 'importChat' });
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });
+            
+            // Test prompt button functionality
+            const testPromptBtn = document.getElementById('testPromptBtn');
+            testPromptBtn.onclick = () => {
+                const testPrompt = "Design a secure payment processing system sequence diagram including user authentication, payment gateway integration, fraud detection, bank communication, and transaction settlement";
+                requirementInput.value = testPrompt;
+                requirementInput.style.height = '80px';
+                autoResizeTextarea();
+                updateCharCounter();
+                requirementInput.focus();
+            };
             expandBtn.onclick = () => {
                 const isFullscreen = leftPanel.classList.toggle('fullscreen');
                 rightPanel.classList.toggle('hide', isFullscreen);

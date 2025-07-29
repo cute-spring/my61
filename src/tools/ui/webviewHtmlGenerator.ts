@@ -41,6 +41,16 @@ export class WebviewHtmlGenerator {
                         <select id="engineType" class="engine-type-select" title="Select Rendering Engine">${this.generateEngineOptions()}</select>
                         <label for="diagramType" class="diagram-type-label">Type:</label>
                         <select id="diagramType" class="diagram-type-select" title="Select Diagram Type">${diagramTypeOptions}</select>
+                        <button id="testPromptBtn" class="test-prompt-btn" title="Insert test prompt for easy testing">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                            Test Prompt
+                        </button>
                     </div>
                     <div class="textarea-container">
                         <textarea id="requirementInput" placeholder="Describe your UML requirement... (Press Enter to send, Shift+Enter for new line, Esc to clear)"></textarea>
@@ -1172,6 +1182,42 @@ export class WebviewHtmlGenerator {
             .engine-type-select:hover:not(:focus) {
                 border-color: var(--vscode-input-border, #b0c4de);
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+            }
+            
+            .test-prompt-btn {
+                background: linear-gradient(135deg, #28a745, #20c997);
+                color: white;
+                border: 2px solid #28a745;
+                padding: 8px 12px;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+                letter-spacing: -0.01em;
+                white-space: nowrap;
+            }
+            
+            .test-prompt-btn:hover {
+                background: linear-gradient(135deg, #218838, #1ea085);
+                border-color: #1e7e34;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+            }
+            
+            .test-prompt-btn:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+            }
+            
+            .test-prompt-btn svg {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
             }
             
             .textarea-container {
@@ -4043,6 +4089,17 @@ export class WebviewHtmlGenerator {
                 vscode.postMessage({ command: 'importChat' });
             };
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });
+            
+            // Test prompt button functionality
+            const testPromptBtn = document.getElementById('testPromptBtn');
+            testPromptBtn.onclick = () => {
+                const testPrompt = "Design a secure payment processing system sequence diagram including user authentication, payment gateway integration, fraud detection, bank communication, and transaction settlement";
+                requirementInput.value = testPrompt;
+                requirementInput.style.height = '80px';
+                autoResizeTextarea();
+                updateCharCounter();
+                requirementInput.focus();
+            };
             
             expandBtn.onclick = () => {
                 const isFullscreen = leftPanel.classList.toggle('fullscreen');

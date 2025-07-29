@@ -5,9 +5,8 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { UMLGenerator } from './uml/generator';
+import { GeneratorFactory, EngineType } from './uml/generatorFactory';
 import { ChatManager } from './chat/chatManager';
-import { UMLRenderer } from './uml/renderer';
 import { WebviewHtmlGenerator } from './ui/webviewHtmlGenerator';
 import { InputValidator, ErrorHandler, debounce } from './utils/helpers';
 import { DiagramType, WebviewMessage } from './uml/types';
@@ -44,9 +43,8 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
     }
     
     // Initialize components
-    const generator = new UMLGenerator();
+    const factory = GeneratorFactory.getInstance();
     const chatManager = new ChatManager();
-    const renderer = new UMLRenderer();
     
     // Create webview panel
     const panel = vscode.window.createWebviewPanel(
@@ -75,7 +73,8 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
 
     // Debounced functions for performance
     const debouncedUpdatePreview = debounce(async () => {
-        const svgContent = await renderer.renderToSVG(chatManager.getCurrentPlantUML());
+        const currentEngine = chatManager.getCurrentEngine() || 'plantuml';
+        const svgContent = await factory.renderDiagram(currentEngine as EngineType, chatManager.getCurrentPlantUML());
         panel.webview.postMessage({
             command: 'updatePreview',
             svgContent: svgContent
@@ -95,11 +94,11 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
         try {
             switch (message.command) {
                 case 'sendRequirement':
-                    await handleSendRequirement(message, generator, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
+                    await handleSendRequirement(message, factory, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
                     break;
 
                 case 'renderSpecificUML':
-                    await handleRenderSpecificUML(message, chatManager, renderer, panel);
+                    await handleRenderSpecificUML(message, chatManager, factory, panel);
                     break;
 
                 case 'exportSVG':
@@ -114,7 +113,7 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
 
                 case 'exportChat':
                     trackUsage('uml.chatPanel', 'exportChat');
-                    await handleExportChat(chatManager);
+                    await handleExportChat(chatManager, factory);
                     break;
 
                 case 'importChat':
@@ -124,12 +123,12 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
 
                 case 'editAndResendUserMsg':
                     trackUsage('uml.chatPanel', 'editAndResend');
-                    await handleEditAndResend(message, generator, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
+                    await handleEditAndResend(message, factory, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
                     break;
 
                 case 'deleteUserMsgAndFollowing':
                     trackUsage('uml.chatPanel', 'deleteUserMessage');
-                    await handleDeleteUserMessage(message, chatManager, debouncedUpdateChat, debouncedUpdatePreview, context, userOnboardingState, panel, generator);
+                    await handleDeleteUserMessage(message, chatManager, debouncedUpdateChat, debouncedUpdatePreview, context, userOnboardingState, panel, factory);
                     break;
 
                 case 'onboardingComplete':
@@ -190,7 +189,7 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
  */
 async function handleSendRequirement(
     message: any,
-    generator: UMLGenerator,
+    factory: GeneratorFactory,
     chatManager: ChatManager,
     updateChat: () => void,
     updatePreview: () => void
@@ -210,14 +209,18 @@ async function handleSendRequirement(
         throw new Error('Invalid diagram type');
     }
 
+    // Validate engine type
+    const validatedEngineType = factory.validateEngineType(engineType);
+
     // Add user message and loading indicator
     chatManager.addUserMessage(text);
     chatManager.addLoadingMessage();
     updateChat();
 
     try {
-        // Generate UML
-        const response = await generator.generateFromRequirement(
+        // Generate diagram using the appropriate engine
+        const response = await factory.generateDiagram(
+            validatedEngineType,
             text,
             chatManager.getUserMessages(),
             diagramType as DiagramType
@@ -228,6 +231,7 @@ async function handleSendRequirement(
         chatManager.addBotMessage(response.plantUML);
         chatManager.updatePlantUML(response.plantUML);
         chatManager.updateDiagramType(response.diagramType);
+        chatManager.updateEngine(validatedEngineType);
 
         // Update UI
         updateChat();
@@ -244,17 +248,26 @@ async function handleSendRequirement(
 async function handleRenderSpecificUML(
     message: any,
     chatManager: ChatManager,
-    renderer: UMLRenderer,
+    factory: GeneratorFactory,
     panel: vscode.WebviewPanel
 ) {
     const { umlCode } = message;
+    const currentEngine = chatManager.getCurrentEngine();
     
-    if (renderer.isValidPlantUML(umlCode)) {
+    // For now, we'll use the current engine to render
+    // In the future, we could detect the code type and use appropriate renderer
+    try {
         chatManager.updatePlantUML(umlCode);
-        const svgContent = await renderer.renderToSVG(umlCode);
+        const svgContent = await factory.renderDiagram(currentEngine, umlCode);
         panel.webview.postMessage({
             command: 'updatePreview',
             svgContent: svgContent
+        });
+    } catch (error) {
+        console.error('Failed to render UML:', error);
+        panel.webview.postMessage({
+            command: 'error',
+            error: 'Failed to render diagram'
         });
     }
 }
@@ -292,7 +305,7 @@ function handleClearChat(
 /**
  * Handle exporting chat session
  */
-async function handleExportChat(chatManager: ChatManager) {
+async function handleExportChat(chatManager: ChatManager, factory: GeneratorFactory) {
     const sessionData = chatManager.exportSession();
     
     // Generate smart filename
@@ -300,10 +313,11 @@ async function handleExportChat(chatManager: ChatManager) {
     
     try {
         // Try AI-generated filename first
-        const generator = new UMLGenerator();
+        const currentEngine = chatManager.getCurrentEngine();
         const userMessages = chatManager.getUserMessages();
         const diagramType = chatManager.getLastDiagramType();
         
+        const generator = factory.getGenerator(currentEngine);
         const aiFilename = await generator.generateSmartFilename(userMessages, diagramType);
         if (aiFilename && aiFilename.length > 0) {
             suggestedFilename = `${aiFilename}.umlchat`;
@@ -366,7 +380,7 @@ async function handleImportChat(
  */
 async function handleEditAndResend(
     message: any,
-    generator: UMLGenerator,
+    factory: GeneratorFactory,
     chatManager: ChatManager,
     updateChat: () => void,
     updatePreview: () => void
@@ -388,8 +402,10 @@ async function handleEditAndResend(
         // Use the selected diagram type if provided, otherwise use the last diagram type
         const selectedDiagramType = diagramType || chatManager.getLastDiagramType();
         
-        // Regenerate from edited message
-        const response = await generator.generateFromRequirement(
+        // Regenerate from edited message using current engine
+        const currentEngine = chatManager.getCurrentEngine();
+        const response = await factory.generateDiagram(
+            currentEngine,
             newText,
             chatManager.getUserMessages(),
             selectedDiagramType
@@ -421,7 +437,7 @@ async function handleDeleteUserMessage(
     context?: vscode.ExtensionContext,
     userOnboardingState?: UserOnboardingState,
     panel?: vscode.WebviewPanel,
-    generator?: UMLGenerator
+    factory?: GeneratorFactory
 ) {
     const { index } = message;
     chatManager.deleteUserMessage(index);
