@@ -84,6 +84,43 @@ If the user provides an update, modify the previous diagram and explanation acco
 
 ${typeInstruction}
 
+CRITICAL MERMAID SYNTAX RULES:
+- For sequence diagrams: 
+  * Start with 'sequenceDiagram'
+  * Define participants with 'participant <Name>' (use simple names without spaces)
+  * MUST include actual sequence interactions using arrows (->>, -->, -x, etc.)
+  * Each interaction should have a message: 'Participant1->>Participant2: Message'
+  * Do NOT leave sequence diagrams empty after participant definitions
+  * Ensure each line ends cleanly without trailing characters
+  * Use consistent spacing and indentation
+  * Example of correct syntax:
+    sequenceDiagram
+        participant User
+        participant AuthService
+        participant PaymentGateway
+        
+        User->>AuthService: Submit credentials
+        AuthService->>User: Authentication success
+        User->>PaymentGateway: Initiate payment
+- For flowcharts: Use proper node syntax and arrow connections
+- For class diagrams: Use proper class syntax with attributes and methods
+- Always use valid Mermaid syntax - no custom or invalid symbols
+- Ensure all lines are properly terminated
+- Use consistent indentation and spacing
+
+SEQUENCE DIAGRAM REQUIREMENTS:
+- ALWAYS include actual sequence interactions after defining participants
+- Use proper arrow syntax: ->> (solid arrow), --> (dotted arrow), -x (crossed arrow)
+- Each line should show an interaction between participants
+- Include meaningful messages for each interaction
+- Show the complete flow from start to finish
+- Ensure each interaction line ends properly (no trailing characters)
+- Use simple participant names without spaces or special characters
+- Keep messages concise and clear
+- NEVER use complex participant names with spaces in sequence interactions
+- Use exact participant names as defined in participant statements
+- Ensure proper spacing around arrows and colons
+
 IMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:
 
 Explanation:
@@ -92,7 +129,7 @@ Explanation:
 Diagram Type: <EXACTLY one of: flowchart, sequence, class, state, gantt, pie>
 
 \`\`\`mermaid
-<Mermaid code here>
+<Valid Mermaid code here - ensure proper syntax and complete content>
 \`\`\``;
     }
 

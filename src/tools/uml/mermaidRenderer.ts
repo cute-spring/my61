@@ -59,7 +59,7 @@ export class MermaidRenderer {
     }
 
     /**
-     * Render Mermaid code to SVG format
+     * Render Mermaid code to SVG format for main preview area
      */
     async renderToSVG(mermaidCode: string): Promise<string> {
         try {
@@ -72,9 +72,10 @@ export class MermaidRenderer {
 
             console.log('Attempting to render Mermaid code:', cleanMermaidCode.substring(0, 100) + '...');
 
-            // Since Mermaid requires a DOM environment and we're in Node.js,
-            // we'll create a simple SVG representation of the Mermaid code
-            return this.createMermaidCodeFallback(mermaidCode);
+            // For Mermaid, we need to use the separate preview panel approach
+            // since VS Code webview doesn't allow JavaScript execution in SVG foreignObjects
+            // This will be handled by the chat panel calling openMermaidPreview
+            return this.createMermaidCodeFallback(cleanMermaidCode);
             
         } catch (err: any) {
             const errorMessage = err.message || String(err);
@@ -84,25 +85,461 @@ export class MermaidRenderer {
     }
 
     /**
+     * Open Mermaid diagram in a native VS Code preview panel
+     */
+    async openMermaidPreview(mermaidCode: string, title: string = 'Mermaid Diagram'): Promise<void> {
+        try {
+            const cleanMermaidCode = this.extractMermaidCode(mermaidCode);
+            
+            if (!cleanMermaidCode) {
+                vscode.window.showErrorMessage('No valid Mermaid code found');
+                return;
+            }
+
+            // For unified panel, we'll render the Mermaid diagram directly
+            // This method is now handled by the unified panel system
+            console.log('Mermaid preview requested for unified panel');
+            
+        } catch (error) {
+            console.error('Failed to open Mermaid preview:', error);
+            vscode.window.showErrorMessage('Failed to open Mermaid preview');
+        }
+    }
+
+
+
+
+
+    /**
+     * Generate HTML content for Mermaid preview panel - Full panel with zoom controls
+     */
+    private generateMermaidPreviewHtml(mermaidCode: string): string {
+        // Escape JavaScript string for embedding in template literal
+        const jsEscapedCode = mermaidCode
+            .replace(/\\/g, '\\\\')
+            .replace(/`/g, '\\`')
+            .replace(/\$/g, '\\$');
+
+        return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--vscode-editor-background);
+            color: var(--vscode-editor-foreground);
+            overflow: hidden;
+        }
+        .diagram-container {
+            background: white;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: auto;
+        }
+        .loading {
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+        }
+        .error {
+            color: var(--vscode-errorForeground);
+            background: var(--vscode-inputValidation-errorBackground);
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid var(--vscode-inputValidation-errorBorder);
+        }
+        
+        /* Zoom Controls - Same style as PlantUML */
+        .zoom-controls {
+            position: absolute !important;
+            bottom: 24px !important;
+            right: 24px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            z-index: 1000 !important;
+            pointer-events: auto !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+            animation: enterpriseZoomControlsAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border-left: none !important;
+        }
+        
+        @keyframes enterpriseZoomControlsAppear {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .zoom-btn {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8)) !important;
+            border: 1px solid rgba(0, 122, 204, 0.2) !important;
+            border-radius: 10px !important;
+            padding: 0 !important;
+            cursor: pointer !important;
+            color: #007acc !important;
+            box-shadow: 
+                0 2px 8px rgba(0, 122, 204, 0.08),
+                0 1px 4px rgba(0, 0, 0, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            width: 40px !important;
+            height: 40px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            pointer-events: auto !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            touch-action: manipulation !important;
+            -ms-touch-action: manipulation !important;
+            outline: none !important;
+            transform: translateZ(0) !important;
+            -webkit-transform: translateZ(0) !important;
+            will-change: transform, background, border-color, box-shadow !important;
+            position: relative !important;
+            z-index: 101 !important;
+            font-size: 0 !important;
+            font-weight: 500 !important;
+            letter-spacing: -0.01em !important;
+        }
+        
+        .zoom-btn svg {
+            width: 16px !important;
+            height: 16px !important;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        .zoom-btn:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)) !important;
+            border-color: rgba(0, 122, 204, 0.4) !important;
+            color: #005fa3 !important;
+            box-shadow: 
+                0 4px 12px rgba(0, 122, 204, 0.15),
+                0 2px 6px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+            transform: translateY(-1px) scale(1.02) !important;
+        }
+        
+        .zoom-btn:active {
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.9)) !important;
+            border-color: rgba(0, 122, 204, 0.6) !important;
+            color: #004d82 !important;
+            box-shadow: 
+                0 2px 4px rgba(0, 122, 204, 0.2),
+                0 1px 2px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+            transform: translateY(0) scale(0.98) !important;
+        }
+        
+        .zoom-btn:focus {
+            outline: 2px solid rgba(0, 122, 204, 0.4) !important;
+            outline-offset: 2px !important;
+        }
+        
+        .zoom-btn:disabled {
+            opacity: 0.5 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagram-container" id="diagramContainer">
+        <div class="loading">Loading diagram...</div>
+    </div>
+    
+    <div class="zoom-controls">
+        <button class="zoom-btn zoom-in" id="zoomInBtn" title="Zoom In (Ctrl + +)" aria-label="Zoom In">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="11" y1="8" x2="11" y2="14"/>
+                <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+        </button>
+        <button class="zoom-btn zoom-out" id="zoomOutBtn" title="Zoom Out (Ctrl + -)" aria-label="Zoom Out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+        </button>
+        <button class="zoom-btn zoom-reset" id="zoomResetBtn" title="Reset Zoom (Ctrl + 0)" aria-label="Reset Zoom">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+        let mermaidInitialized = false;
+        let currentZoom = 1;
+        const zoomStep = 0.2;
+        const minZoom = 0.3;
+        const maxZoom = 3;
+
+        // Initialize Mermaid
+        async function initializeMermaid() {
+            try {
+                if (typeof mermaid === 'undefined') {
+                    console.error('Mermaid library not loaded');
+                    return false;
+                }
+
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: 'default',
+                    securityLevel: 'loose',
+                    fontFamily: 'Arial, sans-serif',
+                    fontSize: 14,
+                    flowchart: {
+                        useMaxWidth: true,
+                        htmlLabels: true
+                    },
+                    sequence: {
+                        useMaxWidth: true,
+                        diagramMarginX: 50,
+                        diagramMarginY: 10
+                    },
+                    class: {
+                        useMaxWidth: true
+                    }
+                });
+                mermaidInitialized = true;
+                console.log('Mermaid initialized successfully');
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize Mermaid:', error);
+                return false;
+            }
+        }
+
+        // Render the diagram
+        async function renderDiagram() {
+            const container = document.getElementById('diagramContainer');
+            const code = \`${jsEscapedCode}\`;
+            
+            if (!mermaidInitialized) {
+                const initialized = await initializeMermaid();
+                if (!initialized) {
+                    container.innerHTML = '<div class="error">Failed to initialize Mermaid library</div>';
+                    vscode.postMessage({ command: 'error', error: 'Mermaid initialization failed' });
+                    return;
+                }
+            }
+
+            try {
+                container.innerHTML = '<div class="loading">Rendering diagram...</div>';
+                
+                const { svg } = await mermaid.render('mermaid-diagram', code);
+                
+                container.innerHTML = svg;
+                container.style.background = 'white';
+                
+                // Apply initial zoom
+                applyZoom(currentZoom);
+                
+                vscode.postMessage({ command: 'success' });
+                console.log('Diagram rendered successfully');
+            } catch (error) {
+                console.error('Rendering error:', error);
+                
+                let errorMessage = error.message || 'Unknown error';
+                container.innerHTML = \`<div class="error">Failed to render diagram: \${errorMessage}</div>\`;
+                vscode.postMessage({ command: 'error', error: errorMessage });
+            }
+        }
+
+        // Zoom functions
+        function applyZoom(zoom) {
+            const container = document.getElementById('diagramContainer');
+            const svg = container.querySelector('svg');
+            if (svg) {
+                svg.style.transform = \`scale(\${zoom})\`;
+                svg.style.transformOrigin = 'center center';
+                svg.style.transition = 'transform 0.3s ease';
+            }
+        }
+
+        function zoomIn() {
+            if (currentZoom < maxZoom) {
+                currentZoom = Math.min(maxZoom, currentZoom + zoomStep);
+                applyZoom(currentZoom);
+                updateZoomButtons();
+            }
+        }
+
+        function zoomOut() {
+            if (currentZoom > minZoom) {
+                currentZoom = Math.max(minZoom, currentZoom - zoomStep);
+                applyZoom(currentZoom);
+                updateZoomButtons();
+            }
+        }
+
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom(currentZoom);
+            updateZoomButtons();
+        }
+
+        function updateZoomButtons() {
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const zoomResetBtn = document.getElementById('zoomResetBtn');
+            
+            zoomInBtn.disabled = currentZoom >= maxZoom;
+            zoomOutBtn.disabled = currentZoom <= minZoom;
+            zoomResetBtn.disabled = currentZoom === 1;
+        }
+
+        // Setup zoom controls
+        function setupZoomControls() {
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const zoomResetBtn = document.getElementById('zoomResetBtn');
+            
+            zoomInBtn.addEventListener('click', zoomIn);
+            zoomOutBtn.addEventListener('click', zoomOut);
+            zoomResetBtn.addEventListener('click', resetZoom);
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    switch (e.key) {
+                        case '=':
+                        case '+':
+                            e.preventDefault();
+                            zoomIn();
+                            break;
+                        case '-':
+                            e.preventDefault();
+                            zoomOut();
+                            break;
+                        case '0':
+                            e.preventDefault();
+                            resetZoom();
+                            break;
+                    }
+                }
+            });
+            
+            updateZoomButtons();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                renderDiagram();
+                setupZoomControls();
+            }, 100);
+        });
+    </script>
+</body>
+</html>`;
+    }
+
+    /**
      * Extract Mermaid code from response text
      */
     private extractMermaidCode(response: string): string {
         console.log('Extracting Mermaid code from:', response.substring(0, 200) + '...');
         
-        // Try to find Mermaid code block with more flexible matching
+        // Check if this is actually PlantUML code (should not be processed by Mermaid renderer)
+        if (response.includes('@startuml') || response.includes('@enduml')) {
+            console.log('Detected PlantUML code in Mermaid renderer, returning empty string');
+            return '';
+        }
+        
+        // Try to find Mermaid code block with explicit mermaid language identifier
+        // This handles the pattern: ```mermaid ... ```
         const mermaidMatch = response.match(/```mermaid\s*([\s\S]*?)\s*```/i);
         if (mermaidMatch && mermaidMatch[1]) {
             const extracted = mermaidMatch[1].trim();
-            console.log('Extracted Mermaid code:', extracted.substring(0, 100) + '...');
+            console.log('Extracted Mermaid code (explicit):', extracted.substring(0, 100) + '...');
             return extracted;
         }
         
-        // Try to find any code block
+        // Try to find any code block and check if it looks like Mermaid
+        // This handles cases where the language identifier might be missing or different
         const codeBlockMatch = response.match(/```\s*([\s\S]*?)\s*```/);
         if (codeBlockMatch && codeBlockMatch[1]) {
             const extracted = codeBlockMatch[1].trim();
-            console.log('Extracted code block:', extracted.substring(0, 100) + '...');
-            return extracted;
+            // Check if the extracted code looks like Mermaid (contains sequenceDiagram, flowchart, etc.)
+            if (extracted.includes('sequenceDiagram') || 
+                extracted.includes('flowchart') || 
+                extracted.includes('graph') ||
+                extracted.includes('classDiagram') ||
+                extracted.includes('stateDiagram') ||
+                extracted.includes('erDiagram') ||
+                extracted.includes('journey') ||
+                extracted.includes('gantt') ||
+                extracted.includes('pie') ||
+                extracted.includes('gitgraph') ||
+                extracted.includes('C4Context') ||
+                extracted.includes('participant') ||
+                extracted.includes('->>') ||
+                extracted.includes('-->') ||
+                extracted.includes('---')) {
+                console.log('Extracted Mermaid code (detected):', extracted.substring(0, 100) + '...');
+                return extracted;
+            }
+            console.log('Extracted code block (not Mermaid):', extracted.substring(0, 100) + '...');
+        }
+        
+
+        
+        // If no code blocks found, check if the entire response looks like Mermaid
+        const trimmedResponse = response.trim();
+        if (trimmedResponse.includes('sequenceDiagram') || 
+            trimmedResponse.includes('flowchart') || 
+            trimmedResponse.includes('graph') ||
+            trimmedResponse.includes('classDiagram') ||
+            trimmedResponse.includes('stateDiagram') ||
+            trimmedResponse.includes('erDiagram') ||
+            trimmedResponse.includes('journey') ||
+            trimmedResponse.includes('gantt') ||
+            trimmedResponse.includes('pie') ||
+            trimmedResponse.includes('gitgraph') ||
+            trimmedResponse.includes('C4Context') ||
+            trimmedResponse.includes('participant') ||
+            trimmedResponse.includes('->>') ||
+            trimmedResponse.includes('-->') ||
+            trimmedResponse.includes('---')) {
+            console.log('Using entire response as Mermaid code');
+            return trimmedResponse;
         }
         
         // If no code blocks found, assume the entire response is Mermaid code

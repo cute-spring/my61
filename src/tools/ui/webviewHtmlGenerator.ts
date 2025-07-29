@@ -101,38 +101,55 @@ export class WebviewHtmlGenerator {
             </div>
             <div id="dragbar"></div>
             <div id="rightPanel">
-                <div id="svgPreview">
-                    <!-- Empty state display -->
-                    <div id="emptyState" class="empty-state" style="display: none;">
-                        <div class="empty-state-content">
-                            <h2>Welcome to UML Chat Designer</h2>
-                            <p>Describe your system, process, or requirements in natural language, and AI will automatically generate professional UML diagrams for you.</p>
-                            <div class="empty-state-features">
-                                <div class="feature-item">
-                                    <span class="feature-icon">📊</span>
-                                    <span>Supports 5 diagram types</span>
-                                </div>
-                                <div class="feature-item">
-                                    <span class="feature-icon">⚡</span>
-                                    <span>AI rapid generation</span>
-                                </div>
-                                <div class="feature-item">
-                                    <span class="feature-icon">🔄</span>
-                                    <span>Iterative design optimization</span>
+                <div id="unifiedDiagramPanel">
+                    <!-- PlantUML Diagram Container -->
+                    <div id="plantUMLContainer" class="diagram-container" style="display: none;">
+                        <div id="svgPreview">
+                            <!-- Empty state display -->
+                            <div id="emptyState" class="empty-state" style="display: none;">
+                                <div class="empty-state-content">
+                                    <h2>Welcome to UML Chat Designer</h2>
+                                    <p>Describe your system, process, or requirements in natural language, and AI will automatically generate professional UML diagrams for you.</p>
+                                    <div class="empty-state-features">
+                                        <div class="feature-item">
+                                            <span class="feature-icon">📊</span>
+                                            <span>Supports 5 diagram types</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <span class="feature-icon">⚡</span>
+                                            <span>AI rapid generation</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <span class="feature-icon">🔄</span>
+                                            <span>Iterative design optimization</span>
+                                        </div>
+                                    </div>
+                                    <button id="startExampleBtn" class="start-example-btn">Start Experience</button>
                                 </div>
                             </div>
-                            <button id="startExampleBtn" class="start-example-btn">Start Experience</button>
+                            
+                            <!-- Center Tutorial Button - Always visible -->
+                            <button id="onboardingBtnCenter" class="onboarding-btn-center" title="Start Tutorial Guide">
+                                <div class="btn-content">
+                                    <div class="btn-icon">🎯</div>
+                                    <div class="btn-text">Tutorial Guide</div>
+                                    <div class="btn-subtitle">Click to learn UML Designer</div>
+                                </div>
+                            </button>
                         </div>
                     </div>
                     
-                    <!-- Center Tutorial Button - Always visible -->
-                    <button id="onboardingBtnCenter" class="onboarding-btn-center" title="Start Tutorial Guide">
-                        <div class="btn-content">
-                            <div class="btn-icon">🎯</div>
-                            <div class="btn-text">Tutorial Guide</div>
-                            <div class="btn-subtitle">Click to learn UML Designer</div>
+                    <!-- Mermaid Diagram Container -->
+                    <div id="mermaidContainer" class="diagram-container" style="display: none;">
+                        <div id="mermaidPreview">
+                            <div class="loading">Loading Mermaid diagram...</div>
                         </div>
-                    </button>
+                    </div>
+                    
+                    <!-- Engine Indicator -->
+                    <div id="engineIndicator" class="engine-indicator" style="display: none;">
+                        <span id="engineLabel"></span>
+                    </div>
                 </div>
                 <div class="zoom-controls">
                     <button class="zoom-btn zoom-in" id="zoomInBtn" title="Zoom In (Ctrl + +)" aria-label="Zoom In">
@@ -786,6 +803,66 @@ export class WebviewHtmlGenerator {
                 user-select: none;
                 -webkit-user-select: none;
                 pointer-events: auto;
+            }
+
+            /* --- Unified Diagram Panel --- */
+            #unifiedDiagramPanel {
+                width: 100%;
+                height: 100vh;
+                position: relative;
+                background: var(--vscode-editor-background, #fff);
+                overflow: hidden;
+            }
+            
+            .diagram-container {
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                top: 0;
+                left: 0;
+                background: var(--vscode-editor-background, #fff);
+                transition: opacity 0.3s ease;
+            }
+            
+            #plantUMLContainer {
+                z-index: 1;
+            }
+            
+            #mermaidContainer {
+                z-index: 2;
+            }
+            
+            #mermaidPreview {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: white;
+                position: relative;
+                overflow: auto;
+            }
+            
+            .engine-indicator {
+                position: absolute;
+                top: 16px;
+                right: 16px;
+                background: rgba(0, 122, 204, 0.9);
+                color: white;
+                padding: 6px 12px;
+                border-radius: 16px;
+                font-size: 12px;
+                font-weight: 500;
+                z-index: 1000;
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                transition: opacity 0.3s ease;
+            }
+            
+            .engine-indicator.hidden {
+                opacity: 0;
+                pointer-events: none;
             }
 
             /* --- Enterprise-Grade Zoom Controls --- */
@@ -4369,7 +4446,23 @@ export class WebviewHtmlGenerator {
                         
                         console.log('Button clicked:', action);
                         
-                        const svgEl = document.querySelector('#svgPreview svg');
+                        // Check if we're in PlantUML or Mermaid mode
+                        const plantUMLContainer = document.getElementById('plantUMLContainer');
+                        const mermaidContainer = document.getElementById('mermaidContainer');
+                        
+                        let svgEl = null;
+                        let isMermaidMode = false;
+                        
+                        if (plantUMLContainer && plantUMLContainer.style.display !== 'none') {
+                            // PlantUML mode
+                            svgEl = document.querySelector('#svgPreview svg');
+                            isMermaidMode = false;
+                        } else if (mermaidContainer && mermaidContainer.style.display !== 'none') {
+                            // Mermaid mode
+                            svgEl = document.querySelector('#mermaidPreview svg');
+                            isMermaidMode = true;
+                        }
+                        
                         if (!svgEl) {
                             console.log('No SVG element found');
                             return false;
@@ -4377,35 +4470,61 @@ export class WebviewHtmlGenerator {
                         
                         let success = false;
                         
-                        // Try svg-pan-zoom first if available
-                        if (panZoomInstance && hasSvgPanZoom) {
+                        if (isMermaidMode) {
+                            // Mermaid mode - use Mermaid-specific zoom functions
                             try {
                                 switch(action) {
                                     case 'zoomIn':
-                                        if (typeof panZoomInstance.zoomIn === 'function') {
-                                            panZoomInstance.zoomIn();
-                                            success = true;
-                                            console.log('svg-pan-zoom zoomIn succeeded');
-                                        }
+                                        mermaidZoomIn();
+                                        success = true;
+                                        console.log('Mermaid zoomIn succeeded');
                                         break;
                                     case 'zoomOut':
-                                        if (typeof panZoomInstance.zoomOut === 'function') {
-                                            panZoomInstance.zoomOut();
-                                            success = true;
-                                            console.log('svg-pan-zoom zoomOut succeeded');
-                                        }
+                                        mermaidZoomOut();
+                                        success = true;
+                                        console.log('Mermaid zoomOut succeeded');
                                         break;
                                     case 'zoomReset':
-                                        if (typeof panZoomInstance.reset === 'function') {
-                                            panZoomInstance.reset();
-                                            success = true;
-                                            console.log('svg-pan-zoom reset succeeded');
-                                        }
+                                        mermaidResetZoom();
+                                        success = true;
+                                        console.log('Mermaid zoomReset succeeded');
                                         break;
                                 }
                             } catch (error) {
-                                console.warn('svg-pan-zoom operation failed:', error);
+                                console.warn('Mermaid zoom operation failed:', error);
                                 success = false;
+                            }
+                        } else {
+                            // PlantUML mode - try svg-pan-zoom first if available
+                            if (panZoomInstance && hasSvgPanZoom) {
+                                try {
+                                    switch(action) {
+                                        case 'zoomIn':
+                                            if (typeof panZoomInstance.zoomIn === 'function') {
+                                                panZoomInstance.zoomIn();
+                                                success = true;
+                                                console.log('svg-pan-zoom zoomIn succeeded');
+                                            }
+                                            break;
+                                        case 'zoomOut':
+                                            if (typeof panZoomInstance.zoomOut === 'function') {
+                                                panZoomInstance.zoomOut();
+                                                success = true;
+                                                console.log('svg-pan-zoom zoomOut succeeded');
+                                            }
+                                            break;
+                                        case 'zoomReset':
+                                            if (typeof panZoomInstance.reset === 'function') {
+                                                panZoomInstance.reset();
+                                                success = true;
+                                                console.log('svg-pan-zoom reset succeeded');
+                                            }
+                                            break;
+                                    }
+                                } catch (error) {
+                                    console.warn('svg-pan-zoom operation failed:', error);
+                                    success = false;
+                                }
                             }
                         }
                         
@@ -4458,6 +4577,137 @@ export class WebviewHtmlGenerator {
                         console.log('Initial zoom test completed');
                     }
                 }, 500);
+            }
+            
+            // --- Mermaid Rendering Function ---
+            let mermaidInitialized = false;
+            let currentMermaidZoom = 1;
+            const mermaidZoomStep = 0.2;
+            const mermaidMinZoom = 0.3;
+            const mermaidMaxZoom = 3;
+            
+            async function renderMermaidDiagram(mermaidCode) {
+                const mermaidPreview = document.getElementById('mermaidPreview');
+                if (!mermaidPreview) {
+                    console.error('Mermaid preview container not found');
+                    return;
+                }
+                
+                try {
+                    mermaidPreview.innerHTML = '<div class="loading">Loading Mermaid diagram...</div>';
+                    
+                    // Load Mermaid library if not already loaded
+                    if (typeof mermaid === 'undefined') {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js';
+                        script.onload = async () => {
+                            await initializeMermaid();
+                            await renderMermaid();
+                        };
+                        script.onerror = () => {
+                            mermaidPreview.innerHTML = '<div class="error">Failed to load Mermaid library</div>';
+                        };
+                        document.head.appendChild(script);
+                    } else {
+                        await initializeMermaid();
+                        await renderMermaid();
+                    }
+                } catch (error) {
+                    console.error('Mermaid rendering error:', error);
+                    mermaidPreview.innerHTML = '<div class="error">Failed to render Mermaid diagram: ' + error.message + '</div>';
+                }
+                
+                async function initializeMermaid() {
+                    try {
+                        if (typeof mermaid === 'undefined') {
+                            throw new Error('Mermaid library not loaded');
+                        }
+                        
+                        mermaid.initialize({
+                            startOnLoad: false,
+                            theme: 'default',
+                            securityLevel: 'loose',
+                            fontFamily: 'Arial, sans-serif',
+                            fontSize: 14,
+                            flowchart: {
+                                useMaxWidth: true,
+                                htmlLabels: true
+                            },
+                            sequence: {
+                                useMaxWidth: true,
+                                diagramMarginX: 50,
+                                diagramMarginY: 10
+                            },
+                            class: {
+                                useMaxWidth: true
+                            }
+                        });
+                        mermaidInitialized = true;
+                        console.log('Mermaid initialized successfully');
+                    } catch (error) {
+                        console.error('Failed to initialize Mermaid:', error);
+                        throw error;
+                    }
+                }
+                
+                async function renderMermaid() {
+                    try {
+                        const { svg } = await mermaid.render('mermaid-diagram', mermaidCode);
+                        mermaidPreview.innerHTML = svg;
+                        
+                        // Apply initial zoom
+                        applyMermaidZoom(currentMermaidZoom);
+                        
+                        console.log('Mermaid diagram rendered successfully');
+                    } catch (error) {
+                        console.error('Mermaid rendering error:', error);
+                        mermaidPreview.innerHTML = '<div class="error">Failed to render Mermaid diagram: ' + error.message + '</div>';
+                    }
+                }
+            }
+            
+            function applyMermaidZoom(zoom) {
+                const mermaidPreview = document.getElementById('mermaidPreview');
+                const svg = mermaidPreview.querySelector('svg');
+                if (svg) {
+                    svg.style.transform = \`scale(\${zoom})\`;
+                    svg.style.transformOrigin = 'center center';
+                    svg.style.transition = 'transform 0.3s ease';
+                }
+            }
+            
+            function mermaidZoomIn() {
+                if (currentMermaidZoom < mermaidMaxZoom) {
+                    currentMermaidZoom = Math.min(mermaidMaxZoom, currentMermaidZoom + mermaidZoomStep);
+                    applyMermaidZoom(currentMermaidZoom);
+                    updateMermaidZoomButtons();
+                }
+            }
+            
+            function mermaidZoomOut() {
+                if (currentMermaidZoom > mermaidMinZoom) {
+                    currentMermaidZoom = Math.max(mermaidMinZoom, currentMermaidZoom - mermaidZoomStep);
+                    applyMermaidZoom(currentMermaidZoom);
+                    updateMermaidZoomButtons();
+                }
+            }
+            
+            function mermaidResetZoom() {
+                currentMermaidZoom = 1;
+                applyMermaidZoom(currentMermaidZoom);
+                updateMermaidZoomButtons();
+            }
+            
+            function updateMermaidZoomButtons() {
+                const zoomInBtn = document.getElementById('zoomInBtn');
+                const zoomOutBtn = document.getElementById('zoomOutBtn');
+                const zoomResetBtn = document.getElementById('zoomResetBtn');
+                
+                if (zoomInBtn && zoomOutBtn && zoomResetBtn) {
+                    zoomInBtn.disabled = currentMermaidZoom >= mermaidMaxZoom;
+                    zoomOutBtn.disabled = currentMermaidZoom <= mermaidMinZoom;
+                    zoomResetBtn.disabled = currentMermaidZoom === 1;
+                }
             }
 
             // --- Pan and Pinch-to-Zoom Setup ---
@@ -4874,6 +5124,88 @@ export class WebviewHtmlGenerator {
                     const chatDiv = document.getElementById('chat');
                     if (chatDiv) {
                         chatDiv.scrollTop = chatDiv.scrollHeight;
+                    }
+                } else if (message.command === 'hidePreview') {
+                    // Hide the main preview area when Mermaid preview is opened
+                    const svgContainer = document.getElementById('svgPreview');
+                    if (svgContainer) {
+                        svgContainer.style.display = 'none';
+                    }
+                } else if (message.command === 'showMermaid') {
+                    // Show Mermaid diagram in unified panel
+                    const plantUMLContainer = document.getElementById('plantUMLContainer');
+                    const mermaidContainer = document.getElementById('mermaidContainer');
+                    const engineIndicator = document.getElementById('engineIndicator');
+                    const engineLabel = document.getElementById('engineLabel');
+                    
+                    if (plantUMLContainer && mermaidContainer && engineIndicator && engineLabel) {
+                        // Hide PlantUML container
+                        plantUMLContainer.style.display = 'none';
+                        
+                        // Show Mermaid container
+                        mermaidContainer.style.display = 'block';
+                        
+                        // Show engine indicator
+                        engineLabel.textContent = 'Mermaid';
+                        engineIndicator.style.display = 'block';
+                        
+                        // Render Mermaid diagram
+                        renderMermaidDiagram(message.mermaidCode);
+                    }
+                } else if (message.command === 'showPlantUML') {
+                    // Show PlantUML diagram in unified panel
+                    const plantUMLContainer = document.getElementById('plantUMLContainer');
+                    const mermaidContainer = document.getElementById('mermaidContainer');
+                    const engineIndicator = document.getElementById('engineIndicator');
+                    const engineLabel = document.getElementById('engineLabel');
+                    
+                    if (plantUMLContainer && mermaidContainer && engineIndicator && engineLabel) {
+                        // Hide Mermaid container
+                        mermaidContainer.style.display = 'none';
+                        
+                        // Show PlantUML container
+                        plantUMLContainer.style.display = 'block';
+                        
+                        // Show engine indicator
+                        engineLabel.textContent = 'PlantUML';
+                        engineIndicator.style.display = 'block';
+                        
+                        // Update PlantUML diagram
+                        const svgContainer = document.getElementById('svgPreview');
+                        if (svgContainer) {
+                            svgContainer.innerHTML = message.svgContent;
+                            setTimeout(() => {
+                                enablePanZoom();
+                                setupZoomControls();
+                            }, 100);
+                        }
+                    }
+                } else if (message.command === 'showError') {
+                    // Show error in unified panel
+                    const plantUMLContainer = document.getElementById('plantUMLContainer');
+                    const mermaidContainer = document.getElementById('mermaidContainer');
+                    const engineIndicator = document.getElementById('engineIndicator');
+                    
+                    if (plantUMLContainer && mermaidContainer && engineIndicator) {
+                        // Hide both containers
+                        plantUMLContainer.style.display = 'none';
+                        mermaidContainer.style.display = 'none';
+                        
+                        // Hide engine indicator
+                        engineIndicator.style.display = 'none';
+                        
+                        // Show error in PlantUML container
+                        plantUMLContainer.style.display = 'block';
+                        const svgContainer = document.getElementById('svgPreview');
+                        if (svgContainer) {
+                            svgContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #d73a49; font-family: Arial, sans-serif;">Error: ' + (message.error || 'Unknown error') + '</div>';
+                        }
+                    }
+                } else if (message.command === 'showPreview') {
+                    // Show the main preview area for PlantUML
+                    const svgContainer = document.getElementById('svgPreview');
+                    if (svgContainer) {
+                        svgContainer.style.display = 'block';
                     }
                 } else if (message.command === 'error') {
                     console.error('Extension error:', message.error);

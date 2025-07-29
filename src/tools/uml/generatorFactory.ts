@@ -25,6 +25,7 @@ export interface IGenerator {
 
 export interface IRenderer {
     renderToSVG(code: string): Promise<string>;
+    openMermaidPreview?(code: string, title?: string): Promise<void>;
 }
 
 export class GeneratorFactory {
@@ -103,6 +104,26 @@ export class GeneratorFactory {
     ): Promise<string> {
         const renderer = this.getRenderer(engineType);
         return await renderer.renderToSVG(code);
+    }
+
+    /**
+     * Open Mermaid preview panel (only works for Mermaid engine)
+     */
+    async openMermaidPreview(
+        engineType: EngineType,
+        code: string,
+        title?: string
+    ): Promise<void> {
+        if (engineType !== 'mermaid') {
+            throw new Error('Mermaid preview is only available for Mermaid engine');
+        }
+        
+        const renderer = this.getRenderer(engineType) as MermaidRenderer;
+        if (renderer.openMermaidPreview) {
+            await renderer.openMermaidPreview(code, title);
+        } else {
+            throw new Error('Mermaid preview not supported by renderer');
+        }
     }
 
     /**

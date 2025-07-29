@@ -147,6 +147,7 @@ export class ChatManager {
         this.chatHistory = [];
         this.currentPlantUML = UML_TEMPLATES.DEFAULT_PLANTUML;
         this.lastDiagramType = '';
+        this.currentEngine = 'plantuml'; // Reset to default engine
     }
 
     /**

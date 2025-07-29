@@ -74,11 +74,51 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
     // Debounced functions for performance
     const debouncedUpdatePreview = debounce(async () => {
         const currentEngine = chatManager.getCurrentEngine() || 'plantuml';
-        const svgContent = await factory.renderDiagram(currentEngine as EngineType, chatManager.getCurrentPlantUML());
-        panel.webview.postMessage({
-            command: 'updatePreview',
-            svgContent: svgContent
-        });
+        
+        // Use unified panel for both engines
+        if (currentEngine === 'mermaid') {
+            // For Mermaid, render in the unified panel
+            try {
+                // Extract Mermaid code from the AI response
+                const rawCode = chatManager.getCurrentPlantUML();
+                const cleanMermaidCode = extractMermaidCode(rawCode);
+                
+                if (!cleanMermaidCode) {
+                    panel.webview.postMessage({
+                        command: 'showError',
+                        error: 'No valid Mermaid code found'
+                    });
+                    return;
+                }
+                
+                panel.webview.postMessage({
+                    command: 'showMermaid',
+                    mermaidCode: cleanMermaidCode
+                });
+            } catch (error) {
+                console.error('Failed to render Mermaid in unified panel:', error);
+                // Fallback to error display
+                panel.webview.postMessage({
+                    command: 'showError',
+                    error: 'Failed to render Mermaid diagram'
+                });
+            }
+        } else {
+            // For PlantUML, render in the unified panel
+            try {
+                const svgContent = await factory.renderDiagram(currentEngine as EngineType, chatManager.getCurrentPlantUML());
+                panel.webview.postMessage({
+                    command: 'showPlantUML',
+                    svgContent: svgContent
+                });
+            } catch (error) {
+                console.error('Failed to render PlantUML in unified panel:', error);
+                panel.webview.postMessage({
+                    command: 'showError',
+                    error: 'Failed to render PlantUML diagram'
+                });
+            }
+        }
     }, 300);
 
     const debouncedUpdateChat = debounce(() => {
@@ -108,7 +148,7 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
 
                 case 'clearChat':
                     trackUsage('uml.chatPanel', 'clearChat');
-                    handleClearChat(chatManager, debouncedUpdateChat, debouncedUpdatePreview);
+                    handleClearChat(chatManager, debouncedUpdateChat, debouncedUpdatePreview, context, userOnboardingState, panel);
                     break;
 
                 case 'exportChat':
@@ -243,6 +283,78 @@ async function handleSendRequirement(
 }
 
 /**
+ * Extract Mermaid code from AI response
+ */
+function extractMermaidCode(response: string): string {
+    console.log('Extracting Mermaid code from:', response.substring(0, 200) + '...');
+    
+    // Check if this is actually PlantUML code (should not be processed by Mermaid renderer)
+    if (response.includes('@startuml') || response.includes('@enduml')) {
+        console.log('Detected PlantUML code in Mermaid renderer, returning empty string');
+        return '';
+    }
+    
+    // Try to find Mermaid code block with explicit mermaid language identifier
+    const mermaidMatch = response.match(/```mermaid\s*([\s\S]*?)\s*```/i);
+    if (mermaidMatch && mermaidMatch[1]) {
+        const extracted = mermaidMatch[1].trim();
+        console.log('Extracted Mermaid code (explicit):', extracted.substring(0, 100) + '...');
+        return extracted;
+    }
+    
+    // Try to find any code block and check if it looks like Mermaid
+    const codeBlockMatch = response.match(/```\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch && codeBlockMatch[1]) {
+        const extracted = codeBlockMatch[1].trim();
+        // Check if the extracted code looks like Mermaid (contains sequenceDiagram, flowchart, etc.)
+        if (extracted.includes('sequenceDiagram') || 
+            extracted.includes('flowchart') || 
+            extracted.includes('graph') ||
+            extracted.includes('classDiagram') ||
+            extracted.includes('stateDiagram') ||
+            extracted.includes('erDiagram') ||
+            extracted.includes('journey') ||
+            extracted.includes('gantt') ||
+            extracted.includes('pie') ||
+            extracted.includes('gitgraph') ||
+            extracted.includes('C4Context') ||
+            extracted.includes('participant') ||
+            extracted.includes('->>') ||
+            extracted.includes('-->') ||
+            extracted.includes('---')) {
+            console.log('Extracted Mermaid code (detected):', extracted.substring(0, 100) + '...');
+            return extracted;
+        }
+        console.log('Extracted code block (not Mermaid):', extracted.substring(0, 100) + '...');
+    }
+    
+    // If no code blocks found, check if the entire response looks like Mermaid
+    const trimmedResponse = response.trim();
+    if (trimmedResponse.includes('sequenceDiagram') || 
+        trimmedResponse.includes('flowchart') || 
+        trimmedResponse.includes('graph') ||
+        trimmedResponse.includes('classDiagram') ||
+        trimmedResponse.includes('stateDiagram') ||
+        trimmedResponse.includes('erDiagram') ||
+        trimmedResponse.includes('journey') ||
+        trimmedResponse.includes('gantt') ||
+        trimmedResponse.includes('pie') ||
+        trimmedResponse.includes('gitgraph') ||
+        trimmedResponse.includes('C4Context') ||
+        trimmedResponse.includes('participant') ||
+        trimmedResponse.includes('->>') ||
+        trimmedResponse.includes('-->') ||
+        trimmedResponse.includes('---')) {
+        console.log('Using entire response as Mermaid code');
+        return trimmedResponse;
+    }
+    
+    // If no code blocks found, assume the entire response is Mermaid code
+    console.log('No code blocks found, using entire response');
+    return response.trim();
+}
+
+/**
  * Handle rendering specific UML from chat history
  */
 async function handleRenderSpecificUML(
@@ -254,16 +366,52 @@ async function handleRenderSpecificUML(
     const { umlCode } = message;
     const currentEngine = chatManager.getCurrentEngine();
     
-    // For now, we'll use the current engine to render
-    // In the future, we could detect the code type and use appropriate renderer
     try {
         chatManager.updatePlantUML(umlCode);
-        const svgContent = await factory.renderDiagram(currentEngine, umlCode);
-        panel.webview.postMessage({
-            command: 'updatePreview',
-            svgContent: svgContent
-        });
-    } catch (error) {
+        
+        if (currentEngine === 'mermaid') {
+            // For Mermaid, render in the unified panel
+            try {
+                // Extract Mermaid code from the AI response
+                const cleanMermaidCode = extractMermaidCode(umlCode);
+                
+                if (!cleanMermaidCode) {
+                    panel.webview.postMessage({
+                        command: 'showError',
+                        error: 'No valid Mermaid code found'
+                    });
+                    return;
+                }
+                
+                panel.webview.postMessage({
+                    command: 'showMermaid',
+                    mermaidCode: cleanMermaidCode
+                });
+            } catch (error) {
+                console.error('Failed to render Mermaid in unified panel:', error);
+                // Fallback to error display
+                panel.webview.postMessage({
+                    command: 'showError',
+                    error: 'Failed to render Mermaid diagram'
+                });
+            }
+        } else {
+            // For PlantUML, render in the unified panel
+            try {
+                const svgContent = await factory.renderDiagram(currentEngine, umlCode);
+                panel.webview.postMessage({
+                    command: 'showPlantUML',
+                    svgContent: svgContent
+                });
+            } catch (error) {
+                console.error('Failed to render PlantUML in unified panel:', error);
+                panel.webview.postMessage({
+                    command: 'showError',
+                    error: 'Failed to render PlantUML diagram'
+                });
+            }
+        }
+    } catch (error: any) {
         console.error('Failed to render UML:', error);
         panel.webview.postMessage({
             command: 'error',
@@ -295,11 +443,24 @@ async function handleExportSVG(message: any) {
 function handleClearChat(
     chatManager: ChatManager,
     updateChat: () => void,
-    updatePreview: () => void
+    updatePreview: () => void,
+    context?: vscode.ExtensionContext,
+    userOnboardingState?: UserOnboardingState,
+    panel?: vscode.WebviewPanel
 ) {
     chatManager.clearHistory();
     updateChat();
-    updatePreview();
+    
+    // Clear the PlantUML and show tutorial for new users
+    chatManager.clearPlantUML();
+    
+    if (userOnboardingState && !userOnboardingState.hasSeenOnboarding && panel) {
+        // Show tutorial
+        panel.webview.postMessage({ command: 'showOnboarding' });
+    } else {
+        // Clear the preview for existing users
+        updatePreview();
+    }
 }
 
 /**

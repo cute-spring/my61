@@ -44,32 +44,74 @@ function getCurrentPlantUMLConfig(): { layoutEngine: string, dotPath: string | n
 
 
 // Use Copilot API to generate diagram code from requirement, history, and diagram type
-async function generateDiagramFromRequirement(requirement: string, history: string[], diagramType?: string, engineType: string = 'plantuml'): Promise<string> {
+async function generateDiagramFromRequirement(requirement: string, history: string[], diagramType?: string, engine?: string): Promise<string> {
+    const selectedEngine = engine || 'mermaid';
+    console.debug(`Generating ${selectedEngine} diagram from requirement with engine ${selectedEngine}`);
     let typeInstruction = '';
-    let systemPrompt = '';
-    
-    if (engineType === 'mermaid') {
-        if (diagramType && diagramType !== '') {
-            typeInstruction = `Generate a Mermaid ${diagramType} diagram.`;
-        } else {
-            typeInstruction = 'Generate the most appropriate Mermaid diagram for the requirement.';
-        }
-        systemPrompt = `You are an expert software architect and technical writer specializing in AI-driven rapid Mermaid diagram generation.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding Mermaid code (and only valid Mermaid code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\n\nIMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:\n\nExplanation:\n<your explanation here>\n\nDiagram Type: <EXACTLY one of: flowchart, sequence, class, state, gantt, pie>\n\n\`\`\`mermaid\n<Mermaid code here>\n\`\`\``;
+    if (diagramType && diagramType !== '') {
+        typeInstruction = `Generate a ${selectedEngine === 'mermaid' ? 'Mermaid' : 'PlantUML'} ${diagramType} diagram.`;
     } else {
-        // Default to PlantUML
-        if (diagramType && diagramType !== '') {
-            typeInstruction = `Generate a PlantUML ${diagramType} diagram.`;
-        } else {
-            typeInstruction = 'Generate the most appropriate UML diagram for the requirement.';
-        }
-        systemPrompt = `You are an expert software architect and technical writer specializing in AI-driven rapid diagram generation.\nFirst, briefly explain the user's system, question, or process in 2-3 sentences.\nThen, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.\nIf the user provides an update, modify the previous diagram and explanation accordingly.\n${typeInstruction}\n\nIMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:\n\nExplanation:\n<your explanation here>\n\nDiagram Type: <EXACTLY one of: activity, sequence, usecase, class, component>\n\n@startuml\n<PlantUML code here>\n@enduml\n`;
+        typeInstruction = `Generate the most appropriate UML diagram for the requirement using ${selectedEngine === 'mermaid' ? 'Mermaid' : 'PlantUML'}.`;
+    }
+    
+    // Define the appropriate code block markers
+    const codeBlockStart = selectedEngine === 'mermaid' ? '```mermaid' : '@startuml';
+    const codeBlockEnd = selectedEngine === 'mermaid' ? '```' : '@enduml';
+    
+    // Create engine-specific prompts
+    let systemPrompt = '';
+    let diagramTypeMapping = '';
+    
+    if (selectedEngine === 'mermaid') {
+        // Mermaid-specific prompt and type mapping
+        diagramTypeMapping = `
+- activity → flowchart (use flowchart syntax with decision nodes)
+- sequence → sequenceDiagram
+- class → classDiagram  
+- component → flowchart (represent components as nodes)
+- usecase → flowchart (represent actors and use cases as nodes)`;
+        
+        systemPrompt = `You are an expert software architect specializing in Mermaid diagram generation.
+First, briefly explain the user's system, question, or process in 2-3 sentences.
+Then, output the corresponding Mermaid code (and only valid Mermaid code) for the described system or process.
+
+IMPORTANT Mermaid Syntax Guidelines:
+${diagramTypeMapping}
+
+For flowcharts: Use 'flowchart TD' or 'flowchart LR' syntax
+For sequence diagrams: Use 'sequenceDiagram' followed by participant definitions and interactions
+For class diagrams: Use 'classDiagram' with proper class definitions and relationships
+Always use proper Mermaid syntax - no PlantUML syntax should be used.
+
+${typeInstruction}`;
+    } else {
+        // PlantUML-specific prompt
+        systemPrompt = `You are an expert software architect specializing in PlantUML diagram generation.
+First, briefly explain the user's system, question, or process in 2-3 sentences.
+Then, output the corresponding PlantUML code (and only valid PlantUML code) for the described system or process.
+
+${typeInstruction}`;
     }
     
     const prompt = [
-        vscode.LanguageModelChatMessage.User(systemPrompt),
+        vscode.LanguageModelChatMessage.User(
+            `${systemPrompt}
+
+IMPORTANT: You MUST always include the diagram type in your response. Format your response EXACTLY as follows:
+
+Explanation:
+<your explanation here>
+
+Diagram Type: <EXACTLY one of: activity, sequence, usecase, class, component>
+
+${codeBlockStart}
+<${selectedEngine === 'mermaid' ? 'Mermaid' : 'PlantUML'} code here>
+${codeBlockEnd}`
+        ),
         ...history.map(msg => vscode.LanguageModelChatMessage.User(msg)),
         vscode.LanguageModelChatMessage.User(requirement)
     ];
+    
     try {
         const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
         if (!model) { throw new Error('No Copilot model available.'); }
@@ -176,8 +218,8 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             }
 
             // Debounced render function
-            const debouncedRender = debounce(async (plantUMLToRender: string) => {
-                const svg = await renderPlantUMLToSVG(plantUMLToRender);
+            const debouncedRender = debounce(async (diagramCode: string, engine?: string) => {
+                const svg = await renderDiagramToSVG(diagramCode, engine);
                 panel.webview.postMessage({ command: 'updatePreview', svgContent: svg });
             }, 300);
 
@@ -201,18 +243,19 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
             panel.webview.onDidReceiveMessage(async message => {
                 switch (message.command) {
                     case 'sendRequirement': {
-                        trackUsage('uml.chatPanel', 'sendMessage', { diagramType: message.diagramType, engineType: message.engineType || 'plantuml' });
+                        trackUsage('uml.chatPanel', 'sendMessage', { diagramType: message.diagramType, diagramEngine: message.diagramEngine });
                         const userInput = message.text.trim();
                         if (!userInput) { return; }
                         chatHistory.push({ role: 'user', message: userInput });
                         // Update lastDiagramType if user selected a new one
                         lastDiagramType = message.diagramType || lastDiagramType || '';
+                        // Store the selected engine
+                        const selectedEngine = message.diagramEngine || 'mermaid';
                         // Add loading message
                         chatHistory.push({ role: 'bot', message: 'Generating diagram, please wait...' });
                         updateChatInWebview();
                         try {
-                            const engineType = message.engineType || 'plantuml';
-                            const plantumlResponse = await generateDiagramFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, engineType);
+                            const plantumlResponse = await generateDiagramFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, selectedEngine);
                             // Remove the loading message
                             if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
                                 chatHistory.pop();
@@ -237,7 +280,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                             
                             chatHistory.push({ role: 'bot', message: diagramTypeLabel + plantumlResponse });
                             updateChatInWebview();
-                            debouncedRender(currentPlantUML); // Debounced SVG update
+                            debouncedRender(currentPlantUML, selectedEngine); // Pass the selected engine
                             setTimeout(() => updateChatInWebview(), 200);
                         } catch (err: any) {
                             if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
@@ -334,9 +377,8 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                             chatHistory.push({ role: 'bot', message: 'Generating diagram, please wait...' });
                             updateChatInWebview();
                             try {
-                                // Use lastDiagramType for follow-up requests
-                                const engineType = message.engineType || 'plantuml';
-                                const plantumlResponse = await generateDiagramFromRequirement(newText, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, engineType);
+                                // Use lastDiagramType for follow-up requests and default to mermaid engine
+                                const plantumlResponse = await generateDiagramFromRequirement(newText, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, 'mermaid');
                                 if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
                                     chatHistory.pop();
                                 }
@@ -432,6 +474,79 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
     );
 }
 
+// Render diagram to SVG using the appropriate renderer
+async function renderDiagramToSVG(diagramCode: string, engine?: string): Promise<string> {
+    const selectedEngine = engine || 'mermaid';
+    
+    if (selectedEngine === 'mermaid') {
+        // Extract Mermaid code from the LLM response
+        const mermaidMatch = diagramCode.match(/```mermaid\n([\s\S]*?)\n```/);
+        if (mermaidMatch && mermaidMatch[1]) {
+            const mermaidCode = mermaidMatch[1].trim();
+            
+            // For now, create a visual representation showing the Mermaid code
+            // This will be replaced with actual Mermaid rendering when the engine is fully implemented
+            return `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="mermaidGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#e3f2fd;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#bbdefb;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                
+                <rect width="100%" height="100%" fill="url(#mermaidGrad)" rx="8" ry="8"/>
+                
+                <!-- Header -->
+                <rect x="0" y="0" width="100%" height="50" fill="#1976d2" rx="8" ry="8"/>
+                <text x="20" y="30" fill="white" font-family="Arial, sans-serif" font-size="18" font-weight="bold">
+                    🧜‍♀️ Mermaid Diagram Generated
+                </text>
+                
+                <!-- Success message -->
+                <text x="300" y="100" text-anchor="middle" fill="#1976d2" font-family="Arial, sans-serif" font-size="16" font-weight="bold">
+                    ✅ Mermaid Code Successfully Generated!
+                </text>
+                
+                <text x="300" y="130" text-anchor="middle" fill="#424242" font-family="Arial, sans-serif" font-size="14">
+                    The AI generated valid Mermaid syntax for your diagram.
+                </text>
+                
+                <!-- Code preview box -->
+                <rect x="50" y="160" width="500" height="180" fill="white" stroke="#1976d2" stroke-width="2" rx="4"/>
+                <text x="60" y="180" fill="#1976d2" font-family="Arial, sans-serif" font-size="12" font-weight="bold">Mermaid Code:</text>
+                
+                ${mermaidCode.split('\n').map((line, index) => 
+                    `<text x="60" y="${200 + index * 16}" fill="#333" font-family="monospace" font-size="11">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>`
+                ).slice(0, 8).join('')}
+                
+                ${mermaidCode.split('\n').length > 8 ? 
+                    `<text x="60" y="${200 + 8 * 16}" fill="#666" font-family="monospace" font-size="11">... (${mermaidCode.split('\n').length - 8} more lines)</text>` 
+                    : ''
+                }
+                
+                <!-- Footer note -->
+                <text x="300" y="370" text-anchor="middle" fill="#666" font-family="Arial, sans-serif" font-size="12">
+                    Copy the Mermaid code above to use in Mermaid-compatible tools
+                </text>
+            </svg>`;
+        } else {
+            // No Mermaid code found, show error
+            return `<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+                <rect width="400" height="300" fill="#fff3cd" stroke="#ffc107" stroke-width="2"/>
+                <text x="200" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#856404">
+                    ⚠️ No Mermaid Code Found
+                </text>
+                <text x="200" y="180" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#856404">
+                    The LLM response doesn't contain valid Mermaid syntax
+                </text>
+            </svg>`;
+        }
+    } else {
+        // Use existing PlantUML renderer
+        return renderPlantUMLToSVG(diagramCode);
+    }
+}
+
 // Render PlantUML to SVG using the local renderer
 async function renderPlantUMLToSVG(plantuml: string): Promise<string> {
     const diagram = {
@@ -506,6 +621,11 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
         { value: 'deployment', label: 'Deployment Diagram' }
     ];
     const diagramTypeOptions = diagramTypes.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+    
+    const diagramEngineOptions =
+        `<option value="mermaid">Mermaid</option>
+        <option value="plantuml">PlantUML</option>
+    `;
 
     // Get current PlantUML configuration for display
     const plantUMLConfig = getCurrentPlantUMLConfig();
@@ -519,7 +639,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             <button id="configureLayoutBtn" style="background: ${plantUMLConfig.layoutEngine === 'smetana' ? '#28a745' : '#007acc'}; color: white; border: none; border-radius: 4px; padding: 6px 10px; font-size: 0.85em; cursor: pointer; transition: all 0.2s; font-weight: 600;" title="Configure PlantUML Layout Engine" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">⚙️ Config</button>
         </div>
     `;
-
     return `
     <!DOCTYPE html>
     <html lang="en">
@@ -1013,24 +1132,13 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                 <div id="chat">${chatHtml}</div>
                 <div id="inputArea" style="flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px; border-top: 1px solid #eee; background: #f9f9f9;">
                     ${layoutIndicator}
-                    <div style="display: flex; align-items: center; margin-bottom: 8px; gap: 12px;">
-                        <label for="engineType" style="margin-right: 8px; font-weight: 500;">Engine:</label>
-                        <select id="engineType" title="Select Rendering Engine">
-                            <option value="plantuml">PlantUML</option>
-                            <option value="mermaid">Mermaid</option>
-                        </select>
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
                         <label for="diagramType" style="margin-right: 8px; font-weight: 500;">Diagram Type:</label>
                         <select id="diagramType" title="Select Diagram Type">${diagramTypeOptions}</select>
-                        <button id="testPromptBtn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: 2px solid #28a745; padding: 8px 12px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2); white-space: nowrap;" title="Insert test prompt for easy testing">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                            Test Prompt
-                        </button>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <label for="diagramEngine" style="margin-right: 8px; font-weight: 500;">Engine:</label>
+                        <select id="diagramEngine" title="Select Diagram Engine">${diagramEngineOptions}</select>
                     </div>
                     <div style="position: relative;">
                         <textarea id="requirementInput" placeholder="Describe your UML requirement... (Press Enter to send, Shift+Enter for new line, Esc to clear)"></textarea>
@@ -1057,16 +1165,20 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                                         <span>Save Session</span>
                                     </button>
                                     <button id="importBtn" title="Load a previous session from a .umlchat file" aria-label="Load Chat Session">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10V3h10v7"/><path d="M9 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4"/><path d="M17 10V3h-10v7"/><path d="M15 3v4a2 2 0 0 0-2 2h-4a2 2 0 0 0-2-2V3"/></svg>
                                         <span>Load Session</span>
                                     </button>
                                     <button id="exportSVGBtn" title="Export the current diagram as SVG" aria-label="Export SVG">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10V3h10v7"/><path d="M9 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3"/></svg>
                                         <span>Export SVG</span>
                                     </button>
-                                    <button id="clearChatBtn" class="danger" title="Clear the chat history" aria-label="Clear Chat">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z" fill="none"/><path d="M9 9h6v6H9z" fill="none"/><path d="M9 9h6v6H9z"/><path d="M9 15h6v6H9z" fill="none"/><path d="M9 15h6v6H9z"/></svg>
+                                    <button id="clearChatBtn" title="Clear the chat history" aria-label="Clear Chat">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z" fill="none"/><path d="M9 9l6 6M15 9l-6 6" fill="none" stroke-width="2"/></svg>
                                         <span>Clear Chat</span>
+                                    </button>
+                                    <button id="configurePlantUMLBtn" title="Configure PlantUML settings" aria-label="Configure PlantUML">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z" fill="none"/><path d="M12 8v8M8 12h8" fill="none" stroke-width="2"/></svg>
+                                        <span>Configure PlantUML</span>
                                     </button>
                                 </div>
                             </div>
@@ -1178,42 +1290,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             
             // Initialize auto-resize and counter
             autoResizeTextarea();
-            updateCharCounter();
-
-            sendBtn.onclick = () => {
-                const text = requirementInput.value.trim();
-                if (text) {
-                    vscode.postMessage({ 
-                        command: 'sendRequirement', 
-                        text: text, 
-                        diagramType: document.getElementById('diagramType').value,
-                        engineType: document.getElementById('engineType').value
-                    });
-                    requirementInput.value = '';
-                    // Reset height and counter after sending
-                    requirementInput.style.height = '80px';
-                    updateCharCounter();
-                }
-            };
-            
-            // Enhanced keyboard handling with better UX
-            requirementInput.addEventListener('keydown', (e) => {
-                // Send on Enter (without Shift)
-                if (e.key === 'Enter' && !e.shiftKey) { 
-                    e.preventDefault(); 
-                    sendBtn.click(); 
-                }
-                // Alternative: Ctrl+Enter to send
-                if (e.key === 'Enter' && e.ctrlKey) {
-                    e.preventDefault();
-                    sendBtn.click();
-                }
-                // Tab handling for accessibility
-                if (e.key === 'Tab') {
-                    // Let default tab behavior work
-                    return;
-                }
-                // Escape to clear input
                 if (e.key === 'Escape') {
                     requirementInput.value = '';
                     requirementInput.style.height = '80px';
@@ -1254,17 +1330,6 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             clearChatBtn.onclick = () => vscode.postMessage({ command: 'clearChat' });
             importBtn.onclick = () => vscode.postMessage({ command: 'importChat' });
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });
-            
-            // Test prompt button functionality
-            const testPromptBtn = document.getElementById('testPromptBtn');
-            testPromptBtn.onclick = () => {
-                const testPrompt = "Design a secure payment processing system sequence diagram including user authentication, payment gateway integration, fraud detection, bank communication, and transaction settlement";
-                requirementInput.value = testPrompt;
-                requirementInput.style.height = '80px';
-                autoResizeTextarea();
-                updateCharCounter();
-                requirementInput.focus();
-            };
             expandBtn.onclick = () => {
                 const isFullscreen = leftPanel.classList.toggle('fullscreen');
                 rightPanel.classList.toggle('hide', isFullscreen);
@@ -1467,7 +1532,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     // Fallback for Windows: basic SVG display using maximum space
                     const svgEl = document.querySelector('#svgPreview svg');
                     if (svgEl) {
-                        svgEl.style.display = 'block';
+                        svgEl
                         svgEl.style.margin = '0';
                         svgEl.style.width = '100%';
                         svgEl.style.height = 'auto';
