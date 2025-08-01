@@ -57,25 +57,32 @@ else
     exit 1
 fi
 
-# Test 6: Check force tutorial button in clearChat
+# Test 6: Check clearChat shows button, not modal
 echo ""
-echo "🔍 Test 6: Checking force tutorial button in clearChat..."
+echo "🔍 Test 6: Checking clearChat shows button, not modal..."
 
-if grep -A 15 "Clear the preview for existing users" src/tools/umlChatPanelRefactored.ts | grep -q "forceShowTutorialButton"; then
-    echo "✅ clearChat sends forceShowTutorialButton for existing users"
+if grep -A 35 "function handleClearChat" src/tools/umlChatPanelRefactored.ts | grep -q "forceShowTutorialButton"; then
+    echo "✅ clearChat shows tutorial button"
+    # Check that there's no showOnboarding in the clearChat function body
+    if ! grep -A 35 "function handleClearChat" src/tools/umlChatPanelRefactored.ts | grep -q "showOnboarding"; then
+        echo "✅ clearChat does not show modal directly"
+    else
+        echo "❌ clearChat still shows modal - should only show button"
+        exit 1
+    fi
 else
     echo "❌ clearChat not sending forceShowTutorialButton"
     exit 1
 fi
 
-# Test 7: Check initial onboarding logging
+# Test 7: Check initial tutorial button logic
 echo ""
-echo "🔍 Test 7: Checking initial onboarding logging..."
+echo "🔍 Test 7: Checking initial tutorial button logic..."
 
-if grep -A 10 "Check if we should show onboarding" src/tools/umlChatPanelRefactored.ts | grep -q "console.log.*Checking initial onboarding state"; then
-    echo "✅ Initial onboarding has enhanced logging"
+if grep -A 10 "Check if we should show tutorial button" src/tools/umlChatPanelRefactored.ts | grep -q "forceShowTutorialButton"; then
+    echo "✅ Initial load shows tutorial button for empty chat"
 else
-    echo "❌ Initial onboarding missing enhanced logging"
+    echo "❌ Initial load not showing tutorial button correctly"
     exit 1
 fi
 
@@ -102,7 +109,7 @@ echo "  ✅ Force show tutorial button after clearing chat"
 echo "  ✅ Better debugging and state tracking"
 echo ""
 echo "🛠️ To test the fix:"
-echo "  1. Use 'Reset UML Tutorial State (Debug)' command to reset state"
-echo "  2. Open UML Chat Designer - tutorial should show for new users"
-echo "  3. Clear chat - tutorial button should be visible"
+echo "  1. Open UML Chat Designer - tutorial button should show in center when empty"
+echo "  2. Clear chat - tutorial button should appear in center of diagram panel"
+echo "  3. Click tutorial button to open tutorial modal"
 echo "  4. Check browser console for detailed logging"
