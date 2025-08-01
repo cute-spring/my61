@@ -63,6 +63,10 @@
       {
         "command": "copilotTools.showAnalytics",
         "title": "Show Usage Analytics Dashboard"
+      },
+      {
+        "command": "copilotTools.resetOnboardingState",
+        "title": "Reset UML Tutorial State (Debug)"
       }
     ],
     "menus": {

@@ -112,7 +112,8 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('copilotTools.configurePlantUML', () => configurePlantUML()),
     vscode.commands.registerCommand('copilotTools.showPlantUMLStatus', () => showPlantUMLStatus()),
     vscode.commands.registerCommand('copilotTools.runAutoDetection', () => runAutoDetection()),
-    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context))
+    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context)),
+    vscode.commands.registerCommand('copilotTools.resetOnboardingState', () => resetOnboardingState(context))
   );
 
   // Auto-configure PlantUML layout engine on first activation
@@ -905,6 +906,20 @@ async function showAnalytics(context: vscode.ExtensionContext): Promise<void> {
   } catch (error) {
     console.error('Error showing analytics dashboard:', error);
     vscode.window.showErrorMessage('Failed to open analytics dashboard');
+  }
+}
+
+/**
+ * Reset onboarding state for debugging
+ */
+async function resetOnboardingState(context: vscode.ExtensionContext): Promise<void> {
+  try {
+    await context.globalState.update('umlChatOnboardingState', undefined);
+    vscode.window.showInformationMessage('Onboarding state has been reset. The tutorial will show again when you open UML Chat Designer.');
+    console.log('Onboarding state reset successfully');
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to reset onboarding state: ${error}`);
+    console.error('Failed to reset onboarding state:', error);
   }
 }
 

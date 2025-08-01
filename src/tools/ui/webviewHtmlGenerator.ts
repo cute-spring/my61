@@ -5800,11 +5800,22 @@ export class WebviewHtmlGenerator {
                 const message = event.data;
                 switch (message.command) {
                     case 'showOnboarding':
+                        console.log('[ONBOARDING] Received showOnboarding command');
                         onboardingModal.style.display = 'block';
                         currentOnboardingStep = 1;
                         showOnboardingStep(currentOnboardingStep);
                         isOnboardingActive = true;
                         tutorialButtonState.setOnboardingActive(true);
+                        break;
+
+                    case 'forceShowTutorialButton':
+                        console.log('[TUTORIAL] Received forceShowTutorialButton command');
+                        const centerBtn = document.getElementById('onboardingBtnCenter');
+                        if (centerBtn) {
+                            centerBtn.classList.remove('hidden');
+                            centerBtn.style.display = 'flex';
+                            console.log('[TUTORIAL] Force showing tutorial button');
+                        }
                         break;
 
                     case 'fillExample':

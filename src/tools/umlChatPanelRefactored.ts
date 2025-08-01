@@ -218,8 +218,16 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
     
     // Check if we should show onboarding for new users
     setTimeout(() => {
+        console.log('Checking initial onboarding state:', {
+            hasSeenOnboarding: userOnboardingState.hasSeenOnboarding,
+            chatHistoryLength: chatManager.getChatHistory().length
+        });
+        
         if (!userOnboardingState.hasSeenOnboarding) {
+            console.log('Showing initial onboarding for new user');
             panel.webview.postMessage({ command: 'showOnboarding' });
+        } else {
+            console.log('User has already seen onboarding, not showing');
         }
     }, 1000); // Delay to ensure webview is fully loaded
 }
@@ -448,6 +456,13 @@ function handleClearChat(
     userOnboardingState?: UserOnboardingState,
     panel?: vscode.WebviewPanel
 ) {
+    console.log('handleClearChat called with:', {
+        hasUserOnboardingState: !!userOnboardingState,
+        hasSeenOnboarding: userOnboardingState?.hasSeenOnboarding,
+        hasPanel: !!panel,
+        chatHistoryLength: chatManager.getChatHistory().length
+    });
+
     chatManager.clearHistory();
     updateChat();
     
@@ -455,11 +470,26 @@ function handleClearChat(
     chatManager.clearPlantUML();
     
     if (userOnboardingState && !userOnboardingState.hasSeenOnboarding && panel) {
-        // Show tutorial
-        panel.webview.postMessage({ command: 'showOnboarding' });
+        console.log('Showing onboarding after clear chat for new user');
+        // Add a small delay to ensure the UI is ready
+        setTimeout(() => {
+            panel.webview.postMessage({ command: 'showOnboarding' });
+        }, 500);
     } else {
+        console.log('Not showing onboarding after clear chat:', {
+            hasUserOnboardingState: !!userOnboardingState,
+            hasSeenOnboarding: userOnboardingState?.hasSeenOnboarding,
+            hasPanel: !!panel
+        });
         // Clear the preview for existing users
-    updatePreview();
+        updatePreview();
+        
+        // Always ensure tutorial button is visible when chat is empty
+        if (panel) {
+            setTimeout(() => {
+                panel.webview.postMessage({ command: 'forceShowTutorialButton' });
+            }, 300);
+        }
     }
 }
 
