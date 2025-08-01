@@ -104,38 +104,38 @@ export class WebviewHtmlGenerator {
                 <div id="unifiedDiagramPanel">
                     <!-- PlantUML Diagram Container -->
                     <div id="plantUMLContainer" class="diagram-container" style="display: none;">
-                        <div id="svgPreview">
-                            <!-- Empty state display -->
-                            <div id="emptyState" class="empty-state" style="display: none;">
-                                <div class="empty-state-content">
-                                    <h2>Welcome to UML Chat Designer</h2>
-                                    <p>Describe your system, process, or requirements in natural language, and AI will automatically generate professional UML diagrams for you.</p>
-                                    <div class="empty-state-features">
-                                        <div class="feature-item">
-                                            <span class="feature-icon">📊</span>
-                                            <span>Supports 5 diagram types</span>
-                                        </div>
-                                        <div class="feature-item">
-                                            <span class="feature-icon">⚡</span>
-                                            <span>AI rapid generation</span>
-                                        </div>
-                                        <div class="feature-item">
-                                            <span class="feature-icon">🔄</span>
-                                            <span>Iterative design optimization</span>
-                                        </div>
-                                    </div>
-                                    <button id="startExampleBtn" class="start-example-btn">Start Experience</button>
+                <div id="svgPreview">
+                    <!-- Empty state display -->
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <div class="empty-state-content">
+                            <h2>Welcome to UML Chat Designer</h2>
+                            <p>Describe your system, process, or requirements in natural language, and AI will automatically generate professional UML diagrams for you.</p>
+                            <div class="empty-state-features">
+                                <div class="feature-item">
+                                    <span class="feature-icon">📊</span>
+                                    <span>Supports 5 diagram types</span>
+                                </div>
+                                <div class="feature-item">
+                                    <span class="feature-icon">⚡</span>
+                                    <span>AI rapid generation</span>
+                                </div>
+                                <div class="feature-item">
+                                    <span class="feature-icon">🔄</span>
+                                    <span>Iterative design optimization</span>
                                 </div>
                             </div>
-                            
-                            <!-- Center Tutorial Button - Always visible -->
-                            <button id="onboardingBtnCenter" class="onboarding-btn-center" title="Start Tutorial Guide">
-                                <div class="btn-content">
-                                    <div class="btn-icon">🎯</div>
-                                    <div class="btn-text">Tutorial Guide</div>
-                                    <div class="btn-subtitle">Click to learn UML Designer</div>
-                                </div>
-                            </button>
+                            <button id="startExampleBtn" class="start-example-btn">Start Experience</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Center Tutorial Button - Always visible -->
+                    <button id="onboardingBtnCenter" class="onboarding-btn-center" title="Start Tutorial Guide">
+                        <div class="btn-content">
+                            <div class="btn-icon">🎯</div>
+                            <div class="btn-text">Tutorial Guide</div>
+                            <div class="btn-subtitle">Click to learn UML Designer</div>
+                        </div>
+                    </button>
                         </div>
                     </div>
                     
@@ -4473,34 +4473,34 @@ export class WebviewHtmlGenerator {
                             }
                         } else {
                             // PlantUML mode - try svg-pan-zoom first if available
-                            if (panZoomInstance && hasSvgPanZoom) {
-                                try {
-                                    switch(action) {
-                                        case 'zoomIn':
-                                            if (typeof panZoomInstance.zoomIn === 'function') {
-                                                panZoomInstance.zoomIn();
-                                                success = true;
-                                                console.log('svg-pan-zoom zoomIn succeeded');
-                                            }
-                                            break;
-                                        case 'zoomOut':
-                                            if (typeof panZoomInstance.zoomOut === 'function') {
-                                                panZoomInstance.zoomOut();
-                                                success = true;
-                                                console.log('svg-pan-zoom zoomOut succeeded');
-                                            }
-                                            break;
-                                        case 'zoomReset':
-                                            if (typeof panZoomInstance.reset === 'function') {
-                                                panZoomInstance.reset();
-                                                success = true;
-                                                console.log('svg-pan-zoom reset succeeded');
-                                            }
-                                            break;
-                                    }
-                                } catch (error) {
-                                    console.warn('svg-pan-zoom operation failed:', error);
-                                    success = false;
+                        if (panZoomInstance && hasSvgPanZoom) {
+                            try {
+                                switch(action) {
+                                    case 'zoomIn':
+                                        if (typeof panZoomInstance.zoomIn === 'function') {
+                                            panZoomInstance.zoomIn();
+                                            success = true;
+                                            console.log('svg-pan-zoom zoomIn succeeded');
+                                        }
+                                        break;
+                                    case 'zoomOut':
+                                        if (typeof panZoomInstance.zoomOut === 'function') {
+                                            panZoomInstance.zoomOut();
+                                            success = true;
+                                            console.log('svg-pan-zoom zoomOut succeeded');
+                                        }
+                                        break;
+                                    case 'zoomReset':
+                                        if (typeof panZoomInstance.reset === 'function') {
+                                            panZoomInstance.reset();
+                                            success = true;
+                                            console.log('svg-pan-zoom reset succeeded');
+                                        }
+                                        break;
+                                }
+                            } catch (error) {
+                                console.warn('svg-pan-zoom operation failed:', error);
+                                success = false;
                                 }
                             }
                         }

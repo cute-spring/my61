@@ -1,109 +1,108 @@
 #!/bin/bash
 
-# Test script for Tutorial Display Fix
-# This script verifies that the tutorial displays correctly when clearing chat
+# Test Tutorial Display Fix - Verify new user tutorial shows when chat history is empty
+echo "=== Testing Tutorial Display Fix ==="
 
-set -e
+# Test 1: Check handleClearChat function signature and logic
+echo "🔍 Test 1: Checking handleClearChat function signature and tutorial logic..."
 
-echo "🧪 Testing Tutorial Display Fix"
-echo "==============================="
-
-# Test case 1: Check if handleClearChat function has the correct parameters
-echo "📋 Checking if handleClearChat has correct parameters..."
-if grep -q "userOnboardingState.*UserOnboardingState" src/tools/umlChatPanelRefactored.ts; then
-    echo "✅ handleClearChat has userOnboardingState parameter"
+if grep -q "function handleClearChat(" src/tools/umlChatPanelRefactored.ts; then
+    echo "✅ handleClearChat function found"
+    
+    # Check if function has correct parameters
+    if grep -A 10 "function handleClearChat(" src/tools/umlChatPanelRefactored.ts | grep -q "context.*vscode.ExtensionContext" && \
+       grep -A 10 "function handleClearChat(" src/tools/umlChatPanelRefactored.ts | grep -q "userOnboardingState.*UserOnboardingState" && \
+       grep -A 10 "function handleClearChat(" src/tools/umlChatPanelRefactored.ts | grep -q "panel.*vscode.WebviewPanel"; then
+        echo "✅ handleClearChat has correct parameters (context, userOnboardingState, panel)"
+    else
+        echo "❌ handleClearChat missing required parameters"
+        exit 1
+    fi
+    
+    # Check if it has tutorial logic
+    if grep -A 25 "function handleClearChat(" src/tools/umlChatPanelRefactored.ts | grep -q "showOnboarding"; then
+        echo "✅ handleClearChat contains showOnboarding logic"
+    else
+        echo "❌ handleClearChat missing showOnboarding logic"
+        exit 1
+    fi
 else
-    echo "❌ handleClearChat missing userOnboardingState parameter"
+    echo "❌ handleClearChat function not found"
     exit 1
 fi
 
-if grep -q "panel.*vscode.WebviewPanel" src/tools/umlChatPanelRefactored.ts; then
-    echo "✅ handleClearChat has panel parameter"
-else
-    echo "❌ handleClearChat missing panel parameter"
-    exit 1
-fi
+# Test 2: Check clearChat case handler calls handleClearChat with correct parameters
+echo ""
+echo "🔍 Test 2: Checking clearChat case handler..."
 
-# Test case 2: Check if handleClearChat calls clearPlantUML
-echo "📋 Checking if handleClearChat calls clearPlantUML..."
-if grep -q "clearPlantUML" src/tools/umlChatPanelRefactored.ts; then
-    echo "✅ handleClearChat calls clearPlantUML"
-else
-    echo "❌ handleClearChat does not call clearPlantUML"
-    exit 1
-fi
-
-# Test case 3: Check if handleClearChat has tutorial display logic
-echo "📋 Checking if handleClearChat has tutorial display logic..."
-if grep -q "hasSeenOnboarding" src/tools/umlChatPanelRefactored.ts; then
-    echo "✅ handleClearChat has tutorial display logic"
-else
-    echo "❌ handleClearChat missing tutorial display logic"
-    exit 1
-fi
-
-# Test case 4: Check if handleClearChat sends showOnboarding command
-echo "📋 Checking if handleClearChat sends showOnboarding command..."
-if grep -q "showOnboarding" src/tools/umlChatPanelRefactored.ts; then
-    echo "✅ handleClearChat sends showOnboarding command"
-else
-    echo "❌ handleClearChat does not send showOnboarding command"
-    exit 1
-fi
-
-# Test case 5: Check if the clearChat case calls handleClearChat with correct parameters
-echo "📋 Checking if clearChat case calls handleClearChat correctly..."
-if grep -q "handleClearChat.*context.*userOnboardingState.*panel" src/tools/umlChatPanelRefactored.ts; then
+if grep -A 5 "case 'clearChat':" src/tools/umlChatPanelRefactored.ts | grep -q "handleClearChat.*context.*userOnboardingState.*panel"; then
     echo "✅ clearChat case calls handleClearChat with correct parameters"
 else
-    echo "❌ clearChat case does not call handleClearChat with correct parameters"
+    echo "❌ clearChat case not calling handleClearChat with correct parameters"
     exit 1
 fi
 
-# Test case 6: Check if handleDeleteUserMessage has similar logic (for comparison)
-echo "📋 Checking if handleDeleteUserMessage has similar logic..."
-if grep -q "hasSeenOnboarding.*panel" src/tools/umlChatPanelRefactored.ts; then
-    echo "✅ handleDeleteUserMessage has similar tutorial logic"
+# Test 3: Check webview showOnboarding message handler
+echo ""
+echo "🔍 Test 3: Checking webview showOnboarding message handler..."
+
+if grep -A 10 "case 'showOnboarding':" src/tools/ui/webviewHtmlGenerator.ts | grep -q "onboardingModal.style.display = 'block'"; then
+    echo "✅ showOnboarding message handler displays modal correctly"
 else
-    echo "❌ handleDeleteUserMessage missing tutorial logic"
+    echo "❌ showOnboarding message handler not working correctly"
     exit 1
 fi
 
-# Test case 7: Check if the tutorial display logic is consistent
-echo "📋 Checking if tutorial display logic is consistent..."
-if grep -q "!userOnboardingState.hasSeenOnboarding.*panel" src/tools/umlChatPanelRefactored.ts; then
-    echo "✅ Tutorial display logic is consistent"
+# Test 4: Check initial onboarding trigger for new users
+echo ""
+echo "🔍 Test 4: Checking initial onboarding trigger..."
+
+if grep -A 5 "if (!userOnboardingState.hasSeenOnboarding)" src/tools/umlChatPanelRefactored.ts | grep -q "showOnboarding"; then
+    echo "✅ Initial onboarding trigger found for new users"
 else
-    echo "❌ Tutorial display logic is inconsistent"
+    echo "❌ Initial onboarding trigger missing"
     exit 1
 fi
 
-# Test case 8: Check if the fallback logic exists
-echo "📋 Checking if fallback logic exists..."
-if grep -q "updatePreview" src/tools/umlChatPanelRefactored.ts; then
-    echo "✅ Fallback logic exists"
+# Test 5: Check tutorial button visibility logic
+echo ""
+echo "🔍 Test 5: Checking tutorial button visibility logic..."
+
+if grep -q "TutorialButtonStateManager" src/tools/ui/webviewHtmlGenerator.ts; then
+    echo "✅ TutorialButtonStateManager found"
+    
+    if grep -A 10 "shouldShowButton()" src/tools/ui/webviewHtmlGenerator.ts | grep -q "!this.state.hasSvg && !this.state.isOnboardingActive"; then
+        echo "✅ Tutorial button shows when no SVG and onboarding not active"
+    else
+        echo "❌ Tutorial button visibility logic incorrect"
+        exit 1
+    fi
 else
-    echo "❌ Fallback logic missing"
+    echo "❌ TutorialButtonStateManager not found"
+    exit 1
+fi
+
+# Test 6: Check onboarding HTML structure
+echo ""
+echo "🔍 Test 6: Checking onboarding HTML structure..."
+
+if grep -q 'id="onboardingModal"' src/tools/ui/webviewHtmlGenerator.ts; then
+    echo "✅ Onboarding modal HTML found"
+else
+    echo "❌ Onboarding modal HTML missing"
+    exit 1
+fi
+
+if grep -q 'id="onboardingBtnCenter"' src/tools/ui/webviewHtmlGenerator.ts; then
+    echo "✅ Center tutorial button HTML found"
+else
+    echo "❌ Center tutorial button HTML missing"
     exit 1
 fi
 
 echo ""
-echo "🎉 All tests passed! Tutorial display should now work correctly when clearing chat."
-echo ""
-echo "📋 Expected behavior:"
-echo "  ✅ When clicking 'Clear Chat' button, tutorial displays for new users"
-echo "  ✅ When clicking 'Clear Chat' button, empty state shows for existing users"
-echo "  ✅ Tutorial display logic is consistent with delete message functionality"
-echo "  ✅ Proper fallback behavior when tutorial should not be shown"
-echo ""
-echo "🚀 The fix addresses:"
-echo "   - Missing tutorial display when clearing chat"
-echo "   - Inconsistent behavior between clear chat and delete message"
-echo "   - Proper parameter passing to handleClearChat function"
-echo "   - Consistent user onboarding experience"
-echo ""
-echo "💡 Next steps:"
-echo "   - Test the 'Clear Chat' button functionality"
-echo "   - Verify tutorial displays for new users"
-echo "   - Verify empty state shows for existing users"
-echo "   - Test consistency with delete message behavior" 
+echo "🎉 All tutorial display tests passed!"
+echo "The tutorial should now display correctly:"
+echo "  - For new users when the extension first loads"
+echo "  - When clearing chat history if user hasn't seen onboarding"
+echo "  - Center tutorial button should be visible when no diagrams are present"

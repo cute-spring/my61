@@ -107,10 +107,10 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
             // For PlantUML, render in the unified panel
             try {
                 const svgContent = await factory.renderDiagram(currentEngine as EngineType, chatManager.getCurrentPlantUML());
-                panel.webview.postMessage({
+        panel.webview.postMessage({
                     command: 'showPlantUML',
-                    svgContent: svgContent
-                });
+            svgContent: svgContent
+        });
             } catch (error) {
                 console.error('Failed to render PlantUML in unified panel:', error);
                 panel.webview.postMessage({
@@ -459,7 +459,7 @@ function handleClearChat(
         panel.webview.postMessage({ command: 'showOnboarding' });
     } else {
         // Clear the preview for existing users
-        updatePreview();
+    updatePreview();
     }
 }
 
