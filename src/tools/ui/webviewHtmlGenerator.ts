@@ -5572,7 +5572,8 @@ export class WebviewHtmlGenerator {
                 constructor() {
                     this.state = {
                         hasSvg: false,
-                        isOnboardingActive: false
+                        isOnboardingActive: false,
+                        forceVisible: false
                     };
                     this.listeners = [];
                 }
@@ -5605,7 +5606,7 @@ export class WebviewHtmlGenerator {
                 
                 // Computed property: should button be visible?
                 shouldShowButton() {
-                    return !this.state.hasSvg && !this.state.isOnboardingActive;
+                    return this.state.forceVisible || (!this.state.hasSvg && !this.state.isOnboardingActive);
                 }
                 
                 // Public methods
@@ -5615,6 +5616,10 @@ export class WebviewHtmlGenerator {
                 
                 setOnboardingActive(isActive) {
                     this.updateState({ isOnboardingActive: isActive });
+                }
+                
+                setForceVisible(forceVisible) {
+                    this.updateState({ forceVisible: forceVisible });
                 }
                 
                 // Initialize with current DOM state
@@ -5816,6 +5821,15 @@ export class WebviewHtmlGenerator {
                             centerBtn.style.display = 'flex';
                             console.log('[TUTORIAL] Force showing tutorial button');
                         }
+                        // Update the state manager to force visibility
+                        tutorialButtonState.setForceVisible(true);
+                        tutorialButtonState.setSvgContent(false);
+                        tutorialButtonState.setOnboardingActive(false);
+                        break;
+
+                    case 'resetTutorialButtonState':
+                        console.log('[TUTORIAL] Received resetTutorialButtonState command');
+                        tutorialButtonState.setForceVisible(false);
                         break;
 
                     case 'fillExample':
