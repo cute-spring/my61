@@ -91,10 +91,7 @@ export class WebviewHtmlGenerator {
                                         <span>Export SVG</span>
                                     </button>
 
-                                    <button id="onboardingBtn" class="tutorial-guide-btn" title="Start Interactive Tutorial" aria-label="Tutorial Guide">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>
-                                        <span>Tutorial Guide</span>
-                                    </button>
+
                                 </div>
                             </div>
                         </div>
@@ -131,14 +128,7 @@ export class WebviewHtmlGenerator {
                         </div>
                     </div>
                     
-                    <!-- Center Tutorial Button - Always visible -->
-                    <button id="onboardingBtnCenter" class="onboarding-btn-center" title="Start Tutorial Guide">
-                        <div class="btn-content">
-                            <div class="btn-icon">🎯</div>
-                            <div class="btn-text">Tutorial Guide</div>
-                            <div class="btn-subtitle">Click to learn UML Designer</div>
-                        </div>
-                    </button>
+
                         </div>
                     </div>
                     
@@ -1782,58 +1772,7 @@ export class WebviewHtmlGenerator {
             .dropdown-content button:hover { background-color: #f1f1f1; }
             .dropdown-content button.danger:hover { background-color: #d32f2f; color: #fff; }
             
-            /* --- Enhanced Tutorial Guide Button --- */
-            .tutorial-guide-btn {
-                background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
-                color: #ffffff !important;
-                border: none !important;
-                font-weight: 600 !important;
-                position: relative !important;
-                overflow: hidden !important;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-                box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3) !important;
-                border-radius: 6px !important;
-            }
-            
-            .tutorial-guide-btn::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-                transition: left 0.5s;
-            }
-            
-            .tutorial-guide-btn:hover::before {
-                left: 100%;
-            }
-            
-            .tutorial-guide-btn:hover {
-                background: linear-gradient(135deg, #3730a3, #6d28d9) !important;
-                transform: translateY(-1px) !important;
-                box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4) !important;
-            }
-            
-            .tutorial-guide-btn:active {
-                transform: translateY(0) !important;
-                box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3) !important;
-            }
-            
-            .tutorial-guide-btn svg {
-                color: #ffffff !important;
-                transition: transform 0.2s ease !important;
-            }
-            
-            .tutorial-guide-btn:hover svg {
-                transform: scale(1.1) rotate(5deg) !important;
-            }
-            
-            .tutorial-guide-btn span {
-                font-weight: 600 !important;
-                letter-spacing: 0.025em !important;
-            }
+
             
             .show { display: block; }
             
@@ -3468,69 +3407,7 @@ export class WebviewHtmlGenerator {
                 display: none;
             }
             
-            /* Center Tutorial Button - Always visible, appears above all content */
-            .onboarding-btn-center {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: linear-gradient(135deg, #007ACC, #005A99);
-                color: white;
-                border: none;
-                border-radius: 16px;
-                padding: 20px 24px;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                cursor: pointer;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 8px;
-                box-shadow: 
-                    0 8px 32px rgba(0, 122, 204, 0.3),
-                    0 4px 16px rgba(0, 122, 204, 0.2);
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                z-index: 9999;
-                min-width: 200px;
-                pointer-events: auto;
-            }
-            
-            .onboarding-btn-center:hover {
-                background: linear-gradient(135deg, #0056CC, #004499);
-                transform: translate(-50%, -50%) scale(1.05);
-                box-shadow: 
-                    0 12px 40px rgba(0, 122, 204, 0.4),
-                    0 6px 20px rgba(0, 122, 204, 0.3);
-            }
-            
-            .onboarding-btn-center .btn-content {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 4px;
-            }
-            
-            .onboarding-btn-center .btn-icon {
-                font-size: 24px;
-                line-height: 1;
-            }
-            
-            .onboarding-btn-center .btn-text {
-                font-size: 16px;
-                font-weight: 600;
-                line-height: 1.2;
-            }
-            
-            .onboarding-btn-center .btn-subtitle {
-                font-size: 12px;
-                opacity: 0.9;
-                line-height: 1.2;
-            }
-            
-            .onboarding-btn-center.hidden {
-                display: none;
-            }
+
 
             /* --- Windows-Specific Enhancements --- */
             body.windows {
@@ -5467,14 +5344,7 @@ export class WebviewHtmlGenerator {
                 }
             }
             
-            // Onboarding button functionality
-            onboardingBtn.addEventListener('click', () => {
-                onboardingModal.style.display = 'block';
-                currentOnboardingStep = 1;
-                showOnboardingStep(currentOnboardingStep);
-                isOnboardingActive = true;
-                tutorialButtonState.setOnboardingActive(true);
-            });
+
             
             // Fixed tutorial button functionality
             const tutorialBtn = document.getElementById('tutorialBtn');
@@ -5491,33 +5361,7 @@ export class WebviewHtmlGenerator {
             
 
             
-            // Center onboarding button functionality
-            const onboardingBtnCenter = document.getElementById('onboardingBtnCenter');
-            if (onboardingBtnCenter) {
-                console.log('[DEBUG] Center button found, adding click handler');
-                onboardingBtnCenter.addEventListener('click', (e) => {
-                    console.log('[DEBUG] Center button clicked!', e);
-                    onboardingModal.style.display = 'block';
-                    currentOnboardingStep = 1;
-                    showOnboardingStep(currentOnboardingStep);
-                    isOnboardingActive = true;
-                    tutorialButtonState.setOnboardingActive(true);
-                    // Hide the center button when onboarding is active
-                    onboardingBtnCenter.classList.add('hidden');
-                    console.log('[DEBUG] Center button hidden during onboarding');
-                });
-                
-                // Add debugging for button state
-                console.log('[DEBUG] Center button details:', {
-                    id: onboardingBtnCenter.id,
-                    className: onboardingBtnCenter.className,
-                    style: onboardingBtnCenter.style.cssText,
-                    visible: onboardingBtnCenter.offsetParent !== null,
-                    clickable: onboardingBtnCenter.style.pointerEvents !== 'none'
-                });
-            } else {
-                console.warn('[DEBUG] Center button not found!');
-            }
+
             
             // Next button functionality
             document.addEventListener('click', (e) => {
@@ -5556,12 +5400,7 @@ export class WebviewHtmlGenerator {
                         onboardingModal.style.display = 'none';
                         isOnboardingActive = false;
                         tutorialButtonState.setOnboardingActive(false);
-                        // Show the center button again when onboarding is closed
-                        const centerBtn = document.getElementById('onboardingBtnCenter');
-                        if (centerBtn) {
-                            centerBtn.classList.remove('hidden');
-                            console.log('[DEBUG] Center button shown after onboarding closed');
-                        }
+
                     }
                 }
             });
@@ -5572,12 +5411,7 @@ export class WebviewHtmlGenerator {
                     onboardingModal.style.display = 'none';
                     isOnboardingActive = false;
                     tutorialButtonState.setOnboardingActive(false);
-                    // Show the center button again when onboarding is closed
-                    const centerBtn = document.getElementById('onboardingBtnCenter');
-                    if (centerBtn) {
-                        centerBtn.classList.remove('hidden');
-                        console.log('[DEBUG] Center button shown after onboarding finished');
-                    }
+
                     vscode.postMessage({ command: 'onboardingComplete' });
                 }
             });
@@ -5588,12 +5422,7 @@ export class WebviewHtmlGenerator {
                     onboardingModal.style.display = 'none';
                     isOnboardingActive = false;
                     tutorialButtonState.setOnboardingActive(false);
-                    // Show the center button again when onboarding is closed
-                    const centerBtn = document.getElementById('onboardingBtnCenter');
-                    if (centerBtn) {
-                        centerBtn.classList.remove('hidden');
-                        console.log('[DEBUG] Center button shown after onboarding skipped');
-                    }
+
                     vscode.postMessage({ command: 'onboardingSkip' });
                 }
             });
@@ -5779,28 +5608,6 @@ export class WebviewHtmlGenerator {
                 
                 // Update button visibility in DOM
                 updateButtonVisibility() {
-                    const tutorialBtn = document.getElementById('onboardingBtn');
-                    const tutorialBtnCenter = document.getElementById('onboardingBtnCenter');
-                    const shouldShow = this.shouldShowButton();
-                    
-                    // Always show chat area tutorial button
-                    if (tutorialBtn) {
-                        tutorialBtn.classList.remove('hidden');
-                    }
-                    
-                    // Show/hide center button based on state
-                    if (tutorialBtnCenter) {
-                        if (shouldShow) {
-                            tutorialBtnCenter.classList.remove('hidden');
-                            console.log('[REACTIVE] ✅ Showing center tutorial button');
-                } else {
-                            tutorialBtnCenter.classList.add('hidden');
-                            console.log('[REACTIVE] ❌ Hiding center tutorial button');
-                        }
-                    } else {
-                        console.warn('[REACTIVE] ⚠️ Center button not found in DOM');
-                    }
-                    
                     // Hide empty state display
                     if (emptyState) {
                     emptyState.style.display = 'none';
@@ -5867,18 +5674,7 @@ export class WebviewHtmlGenerator {
                         tutorialButtonState.setOnboardingActive(true);
                         break;
 
-                    case 'forceShowTutorialButton':
-                        console.log('[TUTORIAL] Received forceShowTutorialButton command');
-                        const centerBtn = document.getElementById('onboardingBtnCenter');
-                        if (centerBtn) {
-                            centerBtn.classList.remove('hidden');
-                            centerBtn.style.display = 'flex';
-                            console.log('[TUTORIAL] Force showing tutorial button');
-                        }
-                        // Update the state manager to show button
-                        tutorialButtonState.setSvgContent(false);
-                        tutorialButtonState.setOnboardingActive(false);
-                        break;
+
 
                     case 'fillExample':
                         if (message.example) {
