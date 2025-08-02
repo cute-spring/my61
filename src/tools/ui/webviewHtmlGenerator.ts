@@ -68,7 +68,11 @@ export class WebviewHtmlGenerator {
                         </div>
                         <div class="utility-actions">
                             <button id="tutorialBtn" class="icon-only tutorial-btn" title="Tutorial Guide" aria-label="Start Tutorial">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="6"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                </svg>
                             </button>
                             <button id="expandChatBtn" class="icon-only" title="Expand Chat Panel" aria-label="Expand or Collapse Chat Panel">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
@@ -1336,13 +1340,13 @@ export class WebviewHtmlGenerator {
             
             /* Tutorial Button Styling */
             .tutorial-btn {
-                background: linear-gradient(135deg, #ff6b35, #f7931e) !important;
+                background: linear-gradient(135deg, #007ACC, #005A99) !important;
                 color: white !important;
                 border: none !important;
                 border-radius: 10px !important;
                 padding: 10px !important;
                 font-weight: 600 !important;
-                box-shadow: 0 2px 6px rgba(255, 107, 53, 0.25), 0 1px 3px rgba(255, 107, 53, 0.1) !important;
+                box-shadow: 0 2px 6px rgba(0, 122, 204, 0.25), 0 1px 3px rgba(0, 122, 204, 0.1) !important;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
                 position: relative !important;
                 overflow: hidden !important;
@@ -1364,14 +1368,14 @@ export class WebviewHtmlGenerator {
             }
             
             .tutorial-btn:hover, .tutorial-btn:focus {
-                background: linear-gradient(135deg, #e55a2b, #e8851a) !important;
+                background: linear-gradient(135deg, #005FA3, #004080) !important;
                 transform: translateY(-2px) !important;
-                box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3), 0 2px 6px rgba(255, 107, 53, 0.2) !important;
+                box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3), 0 2px 6px rgba(0, 122, 204, 0.2) !important;
             }
             
             .tutorial-btn:active {
                 transform: translateY(0) !important;
-                box-shadow: 0 2px 6px rgba(255, 107, 53, 0.25) !important;
+                box-shadow: 0 2px 6px rgba(0, 122, 204, 0.25) !important;
             }
             
             /* Base button and select styling */
