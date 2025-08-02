@@ -216,14 +216,14 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
     // Initial preview update
     debouncedUpdatePreview();
     
-    // Check if we should show tutorial button for users with empty chat
+    // Show tutorial button for empty chat
     setTimeout(() => {
         console.log('Checking initial tutorial button state:', {
             hasSeenOnboarding: userOnboardingState.hasSeenOnboarding,
             chatHistoryLength: chatManager.getChatHistory().length
         });
         
-        // Always show tutorial button when chat is empty, regardless of onboarding state
+        // Show tutorial button when chat is empty
         if (chatManager.getChatHistory().length === 0) {
             console.log('Showing tutorial button for empty chat');
             panel.webview.postMessage({ command: 'forceShowTutorialButton' });
@@ -468,13 +468,13 @@ function handleClearChat(
     // Clear the PlantUML and show tutorial for new users
     chatManager.clearPlantUML();
     
-    // Always show tutorial button when chat is cleared, regardless of onboarding state
+    // Show tutorial button when chat is cleared
     console.log('Showing tutorial button after clear chat');
     
     // Clear the preview for all users
     updatePreview();
     
-    // Always ensure tutorial button is visible when chat is empty
+    // Show tutorial button when chat is empty
     if (panel) {
         setTimeout(() => {
             panel.webview.postMessage({ command: 'forceShowTutorialButton' });
