@@ -242,6 +242,7 @@ export class WebviewHtmlGenerator {
                 </div>
               </div>
               <div class="step-actions">
+                <button class="prev-btn secondary">← Previous</button>
                 <button class="next-btn primary">Explore Platform <span class="arrow">→</span></button>
               </div>
             </div>
@@ -2078,6 +2079,12 @@ export class WebviewHtmlGenerator {
                 background: rgba(0, 122, 204, 0.3);
                 transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                 position: relative;
+                cursor: pointer;
+            }
+            
+            .progress-dot:hover {
+                background: rgba(0, 122, 204, 0.6);
+                transform: scale(1.1);
             }
             
             .progress-dot.active {
@@ -5346,6 +5353,32 @@ export class WebviewHtmlGenerator {
                 if (activeDot) {
                     activeDot.classList.add('active');
                 }
+                
+                // Update navigation button states
+                updateNavigationButtons(step);
+            }
+            
+            function updateNavigationButtons(step) {
+                // Handle previous buttons
+                document.querySelectorAll('.prev-btn').forEach(btn => {
+                    if (step === 1) {
+                        btn.style.display = 'none';
+                        btn.disabled = true;
+                    } else {
+                        btn.style.display = 'inline-flex';
+                        btn.disabled = false;
+                    }
+                });
+                
+                // Handle next buttons
+                document.querySelectorAll('.next-btn').forEach(btn => {
+                    if (step === totalOnboardingSteps) {
+                        btn.textContent = 'Get Started';
+                        btn.innerHTML = 'Get Started <span class="arrow">→</span>';
+                    } else {
+                        btn.innerHTML = 'Next <span class="arrow">→</span>';
+                    }
+                });
             }
             
 
@@ -5367,27 +5400,104 @@ export class WebviewHtmlGenerator {
             
 
             
-            // Next button functionality
+            // Enhanced navigation button functionality
             document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('next-btn')) {
+                // Next button navigation
+                if (e.target.classList.contains('next-btn') || e.target.closest('.next-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     if (currentOnboardingStep < totalOnboardingSteps) {
                         currentOnboardingStep++;
                         showOnboardingStep(currentOnboardingStep);
+                        console.log('[TUTORIAL] Navigated to step ' + currentOnboardingStep);
+                    } else {
+                        // Last step - close tutorial
+                        console.log('[TUTORIAL] Tutorial completed, closing modal');
+                        onboardingModal.style.display = 'none';
+                        isOnboardingActive = false;
+                        tutorialButtonState.setOnboardingActive(false);
                     }
                 }
-            });
-            
-            // Previous button functionality
-            document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('prev-btn')) {
+                
+                // Previous button navigation
+                if (e.target.classList.contains('prev-btn') || e.target.closest('.prev-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     if (currentOnboardingStep > 1) {
                         currentOnboardingStep--;
                         showOnboardingStep(currentOnboardingStep);
+                        console.log('[TUTORIAL] Navigated back to step ' + currentOnboardingStep);
                     }
+                }
+                
+                // Progress dot navigation
+                if (e.target.classList.contains('progress-dot')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const targetStep = parseInt(e.target.getAttribute('data-step'));
+                    if (targetStep && targetStep >= 1 && targetStep <= totalOnboardingSteps) {
+                        currentOnboardingStep = targetStep;
+                        showOnboardingStep(currentOnboardingStep);
+                        console.log('[TUTORIAL] Jumped to step ' + currentOnboardingStep);
+                    }
+                }
+                
+                // Close button functionality
+                if (e.target.id === 'onboardingCloseBtn' || e.target.closest('#onboardingCloseBtn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[TUTORIAL] Tutorial closed by user');
+                    onboardingModal.style.display = 'none';
+                    isOnboardingActive = false;
+                    tutorialButtonState.setOnboardingActive(false);
                 }
             });
             
 
+            
+            // Keyboard navigation support
+            document.addEventListener('keydown', (e) => {
+                if (!isOnboardingActive) return;
+                
+                switch(e.key) {
+                    case 'Escape':
+                        // Close tutorial
+                        console.log('[TUTORIAL] Tutorial closed via Escape key');
+                        onboardingModal.style.display = 'none';
+                        isOnboardingActive = false;
+                        tutorialButtonState.setOnboardingActive(false);
+                        break;
+                    case 'ArrowLeft':
+                        // Previous step
+                        if (currentOnboardingStep > 1) {
+                            currentOnboardingStep--;
+                            showOnboardingStep(currentOnboardingStep);
+                            console.log('[TUTORIAL] Navigated back to step ' + currentOnboardingStep);
+                        }
+                        break;
+                    case 'ArrowRight':
+                        // Next step
+                        if (currentOnboardingStep < totalOnboardingSteps) {
+                            currentOnboardingStep++;
+                            showOnboardingStep(currentOnboardingStep);
+                            console.log('[TUTORIAL] Navigated to step ' + currentOnboardingStep);
+                        } else {
+                            // Last step - close tutorial
+                            console.log('[TUTORIAL] Tutorial completed, closing modal');
+                            onboardingModal.style.display = 'none';
+                            isOnboardingActive = false;
+                            tutorialButtonState.setOnboardingActive(false);
+                        }
+                        break;
+                }
+            });
+            
+            // Initialize navigation state
+            updateNavigationButtons(1);
             
             // Scenario card functionality
             document.addEventListener('click', (e) => {
@@ -5411,29 +5521,39 @@ export class WebviewHtmlGenerator {
             
             // Finish button functionality
             document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('finish-btn')) {
+                if (e.target.classList.contains('finish-btn') || e.target.closest('.finish-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[TUTORIAL] Finish button clicked');
                     onboardingModal.style.display = 'none';
                     isOnboardingActive = false;
                     tutorialButtonState.setOnboardingActive(false);
-
                     vscode.postMessage({ command: 'onboardingComplete' });
                 }
             });
             
             // Skip button functionality
             document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('skip-btn')) {
+                if (e.target.classList.contains('skip-btn') || e.target.closest('.skip-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[TUTORIAL] Skip button clicked');
                     onboardingModal.style.display = 'none';
                     isOnboardingActive = false;
                     tutorialButtonState.setOnboardingActive(false);
-
                     vscode.postMessage({ command: 'onboardingSkip' });
                 }
             });
             
-            // Close button functionality
+            // Close button functionality (duplicate - main logic is in navigation section)
             document.addEventListener('click', (e) => {
-                if (e.target.id === 'onboardingCloseBtn') {
+                if (e.target.id === 'onboardingCloseBtn' || e.target.closest('#onboardingCloseBtn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[TUTORIAL] Close button clicked');
                     onboardingModal.style.display = 'none';
                     isOnboardingActive = false;
                     tutorialButtonState.setOnboardingActive(false);
