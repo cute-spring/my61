@@ -5,9 +5,8 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { UMLGenerator } from './uml/generator';
+import { GeneratorFactory, EngineType } from './uml/generatorFactory';
 import { ChatManager } from './chat/chatManager';
-import { UMLRenderer } from './uml/renderer';
 import { WebviewHtmlGenerator } from './ui/webviewHtmlGenerator';
 import { InputValidator, ErrorHandler, debounce } from './utils/helpers';
 import { DiagramType, WebviewMessage } from './uml/types';
@@ -44,9 +43,8 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
     }
     
     // Initialize components
-    const generator = new UMLGenerator();
+    const factory = GeneratorFactory.getInstance();
     const chatManager = new ChatManager();
-    const renderer = new UMLRenderer();
     
     // Create webview panel
     const panel = vscode.window.createWebviewPanel(
@@ -75,11 +73,52 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
 
     // Debounced functions for performance
     const debouncedUpdatePreview = debounce(async () => {
-        const svgContent = await renderer.renderToSVG(chatManager.getCurrentPlantUML());
+        const currentEngine = chatManager.getCurrentEngine() || 'plantuml';
+        
+        // Use unified panel for both engines
+        if (currentEngine === 'mermaid') {
+            // For Mermaid, render in the unified panel
+            try {
+                // Extract Mermaid code from the AI response
+                const rawCode = chatManager.getCurrentPlantUML();
+                const cleanMermaidCode = extractMermaidCode(rawCode);
+                
+                if (!cleanMermaidCode) {
+                    panel.webview.postMessage({
+                        command: 'showError',
+                        error: 'No valid Mermaid code found'
+                    });
+                    return;
+                }
+                
+                panel.webview.postMessage({
+                    command: 'showMermaid',
+                    mermaidCode: cleanMermaidCode
+                });
+            } catch (error) {
+                console.error('Failed to render Mermaid in unified panel:', error);
+                // Fallback to error display
+                panel.webview.postMessage({
+                    command: 'showError',
+                    error: 'Failed to render Mermaid diagram'
+                });
+            }
+        } else {
+            // For PlantUML, render in the unified panel
+            try {
+                const svgContent = await factory.renderDiagram(currentEngine as EngineType, chatManager.getCurrentPlantUML());
         panel.webview.postMessage({
-            command: 'updatePreview',
+                    command: 'showPlantUML',
             svgContent: svgContent
         });
+            } catch (error) {
+                console.error('Failed to render PlantUML in unified panel:', error);
+                panel.webview.postMessage({
+                    command: 'showError',
+                    error: 'Failed to render PlantUML diagram'
+                });
+            }
+        }
     }, 300);
 
     const debouncedUpdateChat = debounce(() => {
@@ -95,11 +134,11 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
         try {
             switch (message.command) {
                 case 'sendRequirement':
-                    await handleSendRequirement(message, generator, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
+                    await handleSendRequirement(message, factory, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
                     break;
 
                 case 'renderSpecificUML':
-                    await handleRenderSpecificUML(message, chatManager, renderer, panel);
+                    await handleRenderSpecificUML(message, chatManager, factory, panel);
                     break;
 
                 case 'exportSVG':
@@ -109,12 +148,12 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
 
                 case 'clearChat':
                     trackUsage('uml.chatPanel', 'clearChat');
-                    handleClearChat(chatManager, debouncedUpdateChat, debouncedUpdatePreview);
+                    handleClearChat(chatManager, debouncedUpdateChat, debouncedUpdatePreview, context, userOnboardingState, panel);
                     break;
 
                 case 'exportChat':
                     trackUsage('uml.chatPanel', 'exportChat');
-                    await handleExportChat(chatManager);
+                    await handleExportChat(chatManager, factory);
                     break;
 
                 case 'importChat':
@@ -124,12 +163,12 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
 
                 case 'editAndResendUserMsg':
                     trackUsage('uml.chatPanel', 'editAndResend');
-                    await handleEditAndResend(message, generator, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
+                    await handleEditAndResend(message, factory, chatManager, debouncedUpdateChat, debouncedUpdatePreview);
                     break;
 
                 case 'deleteUserMsgAndFollowing':
                     trackUsage('uml.chatPanel', 'deleteUserMessage');
-                    await handleDeleteUserMessage(message, chatManager, debouncedUpdateChat, debouncedUpdatePreview, context, userOnboardingState, panel, generator);
+                    await handleDeleteUserMessage(message, chatManager, debouncedUpdateChat, debouncedUpdatePreview, context, userOnboardingState, panel, factory);
                     break;
 
                 case 'onboardingComplete':
@@ -177,12 +216,7 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
     // Initial preview update
     debouncedUpdatePreview();
     
-    // Check if we should show onboarding for new users
-    setTimeout(() => {
-        if (!userOnboardingState.hasSeenOnboarding) {
-            panel.webview.postMessage({ command: 'showOnboarding' });
-        }
-    }, 1000); // Delay to ensure webview is fully loaded
+
 }
 
 /**
@@ -190,15 +224,15 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
  */
 async function handleSendRequirement(
     message: any,
-    generator: UMLGenerator,
+    factory: GeneratorFactory,
     chatManager: ChatManager,
     updateChat: () => void,
     updatePreview: () => void
 ) {
-    const { text, diagramType } = message;
+    const { text, diagramType, engineType = 'plantuml' } = message;
     
     // Track message sending usage
-    trackUsage('uml.chatPanel', 'sendMessage', { diagramType });
+    trackUsage('uml.chatPanel', 'sendMessage', { diagramType, engineType });
     
     // Validate input
     const validation = InputValidator.validateRequirement(text);
@@ -210,14 +244,18 @@ async function handleSendRequirement(
         throw new Error('Invalid diagram type');
     }
 
+    // Validate engine type
+    const validatedEngineType = factory.validateEngineType(engineType);
+
     // Add user message and loading indicator
     chatManager.addUserMessage(text);
     chatManager.addLoadingMessage();
     updateChat();
 
     try {
-        // Generate UML
-        const response = await generator.generateFromRequirement(
+        // Generate diagram using the appropriate engine
+        const response = await factory.generateDiagram(
+            validatedEngineType,
             text,
             chatManager.getUserMessages(),
             diagramType as DiagramType
@@ -228,6 +266,7 @@ async function handleSendRequirement(
         chatManager.addBotMessage(response.plantUML);
         chatManager.updatePlantUML(response.plantUML);
         chatManager.updateDiagramType(response.diagramType);
+        chatManager.updateEngine(validatedEngineType);
 
         // Update UI
         updateChat();
@@ -239,22 +278,139 @@ async function handleSendRequirement(
 }
 
 /**
+ * Extract Mermaid code from AI response
+ */
+function extractMermaidCode(response: string): string {
+    console.log('Extracting Mermaid code from:', response.substring(0, 200) + '...');
+    
+    // Check if this is actually PlantUML code (should not be processed by Mermaid renderer)
+    if (response.includes('@startuml') || response.includes('@enduml')) {
+        console.log('Detected PlantUML code in Mermaid renderer, returning empty string');
+        return '';
+    }
+    
+    // Try to find Mermaid code block with explicit mermaid language identifier
+    const mermaidMatch = response.match(/```mermaid\s*([\s\S]*?)\s*```/i);
+    if (mermaidMatch && mermaidMatch[1]) {
+        const extracted = mermaidMatch[1].trim();
+        console.log('Extracted Mermaid code (explicit):', extracted.substring(0, 100) + '...');
+        return extracted;
+    }
+    
+    // Try to find any code block and check if it looks like Mermaid
+    const codeBlockMatch = response.match(/```\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch && codeBlockMatch[1]) {
+        const extracted = codeBlockMatch[1].trim();
+        // Check if the extracted code looks like Mermaid (contains sequenceDiagram, flowchart, etc.)
+        if (extracted.includes('sequenceDiagram') || 
+            extracted.includes('flowchart') || 
+            extracted.includes('graph') ||
+            extracted.includes('classDiagram') ||
+            extracted.includes('stateDiagram') ||
+            extracted.includes('erDiagram') ||
+            extracted.includes('journey') ||
+            extracted.includes('gantt') ||
+            extracted.includes('pie') ||
+            extracted.includes('gitgraph') ||
+            extracted.includes('C4Context') ||
+            extracted.includes('participant') ||
+            extracted.includes('->>') ||
+            extracted.includes('-->') ||
+            extracted.includes('---')) {
+            console.log('Extracted Mermaid code (detected):', extracted.substring(0, 100) + '...');
+            return extracted;
+        }
+        console.log('Extracted code block (not Mermaid):', extracted.substring(0, 100) + '...');
+    }
+    
+    // If no code blocks found, check if the entire response looks like Mermaid
+    const trimmedResponse = response.trim();
+    if (trimmedResponse.includes('sequenceDiagram') || 
+        trimmedResponse.includes('flowchart') || 
+        trimmedResponse.includes('graph') ||
+        trimmedResponse.includes('classDiagram') ||
+        trimmedResponse.includes('stateDiagram') ||
+        trimmedResponse.includes('erDiagram') ||
+        trimmedResponse.includes('journey') ||
+        trimmedResponse.includes('gantt') ||
+        trimmedResponse.includes('pie') ||
+        trimmedResponse.includes('gitgraph') ||
+        trimmedResponse.includes('C4Context') ||
+        trimmedResponse.includes('participant') ||
+        trimmedResponse.includes('->>') ||
+        trimmedResponse.includes('-->') ||
+        trimmedResponse.includes('---')) {
+        console.log('Using entire response as Mermaid code');
+        return trimmedResponse;
+    }
+    
+    // If no code blocks found, assume the entire response is Mermaid code
+    console.log('No code blocks found, using entire response');
+    return response.trim();
+}
+
+/**
  * Handle rendering specific UML from chat history
  */
 async function handleRenderSpecificUML(
     message: any,
     chatManager: ChatManager,
-    renderer: UMLRenderer,
+    factory: GeneratorFactory,
     panel: vscode.WebviewPanel
 ) {
     const { umlCode } = message;
+    const currentEngine = chatManager.getCurrentEngine();
     
-    if (renderer.isValidPlantUML(umlCode)) {
+    try {
         chatManager.updatePlantUML(umlCode);
-        const svgContent = await renderer.renderToSVG(umlCode);
+        
+        if (currentEngine === 'mermaid') {
+            // For Mermaid, render in the unified panel
+            try {
+                // Extract Mermaid code from the AI response
+                const cleanMermaidCode = extractMermaidCode(umlCode);
+                
+                if (!cleanMermaidCode) {
+                    panel.webview.postMessage({
+                        command: 'showError',
+                        error: 'No valid Mermaid code found'
+                    });
+                    return;
+                }
+                
+                panel.webview.postMessage({
+                    command: 'showMermaid',
+                    mermaidCode: cleanMermaidCode
+                });
+            } catch (error) {
+                console.error('Failed to render Mermaid in unified panel:', error);
+                // Fallback to error display
+                panel.webview.postMessage({
+                    command: 'showError',
+                    error: 'Failed to render Mermaid diagram'
+                });
+            }
+        } else {
+            // For PlantUML, render in the unified panel
+            try {
+                const svgContent = await factory.renderDiagram(currentEngine, umlCode);
+                panel.webview.postMessage({
+                    command: 'showPlantUML',
+                    svgContent: svgContent
+                });
+            } catch (error) {
+                console.error('Failed to render PlantUML in unified panel:', error);
+                panel.webview.postMessage({
+                    command: 'showError',
+                    error: 'Failed to render PlantUML diagram'
+                });
+            }
+        }
+    } catch (error: any) {
+        console.error('Failed to render UML:', error);
         panel.webview.postMessage({
-            command: 'updatePreview',
-            svgContent: svgContent
+            command: 'error',
+            error: 'Failed to render diagram'
         });
     }
 }
@@ -282,17 +438,32 @@ async function handleExportSVG(message: any) {
 function handleClearChat(
     chatManager: ChatManager,
     updateChat: () => void,
-    updatePreview: () => void
+    updatePreview: () => void,
+    context?: vscode.ExtensionContext,
+    userOnboardingState?: UserOnboardingState,
+    panel?: vscode.WebviewPanel
 ) {
+    console.log('handleClearChat called with:', {
+        hasUserOnboardingState: !!userOnboardingState,
+        hasSeenOnboarding: userOnboardingState?.hasSeenOnboarding,
+        hasPanel: !!panel,
+        chatHistoryLength: chatManager.getChatHistory().length
+    });
+
     chatManager.clearHistory();
     updateChat();
+    
+    // Clear the PlantUML and show tutorial for new users
+    chatManager.clearPlantUML();
+    
+    // Clear the preview for all users
     updatePreview();
 }
 
 /**
  * Handle exporting chat session
  */
-async function handleExportChat(chatManager: ChatManager) {
+async function handleExportChat(chatManager: ChatManager, factory: GeneratorFactory) {
     const sessionData = chatManager.exportSession();
     
     // Generate smart filename
@@ -300,10 +471,11 @@ async function handleExportChat(chatManager: ChatManager) {
     
     try {
         // Try AI-generated filename first
-        const generator = new UMLGenerator();
+        const currentEngine = chatManager.getCurrentEngine();
         const userMessages = chatManager.getUserMessages();
         const diagramType = chatManager.getLastDiagramType();
         
+        const generator = factory.getGenerator(currentEngine);
         const aiFilename = await generator.generateSmartFilename(userMessages, diagramType);
         if (aiFilename && aiFilename.length > 0) {
             suggestedFilename = `${aiFilename}.umlchat`;
@@ -366,7 +538,7 @@ async function handleImportChat(
  */
 async function handleEditAndResend(
     message: any,
-    generator: UMLGenerator,
+    factory: GeneratorFactory,
     chatManager: ChatManager,
     updateChat: () => void,
     updatePreview: () => void
@@ -388,8 +560,10 @@ async function handleEditAndResend(
         // Use the selected diagram type if provided, otherwise use the last diagram type
         const selectedDiagramType = diagramType || chatManager.getLastDiagramType();
         
-        // Regenerate from edited message
-        const response = await generator.generateFromRequirement(
+        // Regenerate from edited message using current engine
+        const currentEngine = chatManager.getCurrentEngine();
+        const response = await factory.generateDiagram(
+            currentEngine,
             newText,
             chatManager.getUserMessages(),
             selectedDiagramType
@@ -421,7 +595,7 @@ async function handleDeleteUserMessage(
     context?: vscode.ExtensionContext,
     userOnboardingState?: UserOnboardingState,
     panel?: vscode.WebviewPanel,
-    generator?: UMLGenerator
+    factory?: GeneratorFactory
 ) {
     const { index } = message;
     chatManager.deleteUserMessage(index);

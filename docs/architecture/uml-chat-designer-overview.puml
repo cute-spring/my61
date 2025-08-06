@@ -1,0 +1,183 @@
+@startuml UML Chat Designer - System Overview
+!theme blueprint
+title UML Chat Designer - System Architecture Overview
+
+package "VS Code Extension Context" {
+  class ExtensionMain {
+    +activate(context: ExtensionContext)
+    +deactivate()
+    -toolManager: ToolManager
+    -pluginManager: PluginManager
+    -engineManager: EngineManager
+  }
+}
+
+package "Core Architecture (Phase 3)" {
+  class DependencyInjectionContainer {
+    +register<T>(serviceName, factory, options)
+    +resolve<T>(serviceName): T
+    +createScope(): ServiceScope
+    +dispose()
+    +getStats(): ContainerStats
+  }
+
+  class AdvancedEventBus {
+    +subscribe<T>(eventType, handler, options)
+    +publish<T>(eventType, event)
+    +enableHistory(options)
+    +getHistory(options): EventHistoryEntry[]
+    +replayEvents(options)
+    +getStats(): EventBusStats
+  }
+
+  class LazyLoadingManager {
+    +registerModule<T>(id, loader, options): LazyModule<T>
+    +preloadModule(id)
+    +unloadModule(id)
+    +getStats(): LazyLoadingStats
+    +clearCache()
+  }
+}
+
+package "Plugin System" {
+  class PluginManager {
+    +loadPlugin(manifestPath): Plugin
+    +unloadPlugin(pluginId)
+    +reloadPlugin(pluginId)
+    +getLoadedPlugins(): Plugin[]
+    +getStats(): PluginManagerStats
+  }
+
+  interface Plugin {
+    +manifest: PluginManifest
+    +context: PluginContext
+    +onActivate?(): Promise<void>
+    +onDeactivate?(): Promise<void>
+    +onSettingsChanged?(settings): Promise<void>
+  }
+
+  class PluginContext {
+    +container: DependencyInjectionContainer
+    +eventBus: AdvancedEventBus
+    +settings: PluginSettings
+    +logger: PluginLogger
+    +workspace: PluginWorkspace
+  }
+}
+
+package "Engine Strategy System" {
+  class EngineManager {
+    +registerStrategy(strategy: EngineStrategy)
+    +selectEngine(requirements, selectorName): EngineStrategy
+    +renderDiagram(diagramCode, requirements, options): RenderResult
+    +warmupEngines()
+    +optimizeEngines()
+    +getEngineStats(): EngineStats
+  }
+
+  interface EngineStrategy {
+    +id: string
+    +name: string
+    +description: string
+    +capabilities: EngineCapabilities
+    +canHandle(diagramType, requirements): boolean
+    +render(diagramCode, options): Promise<RenderResult>
+    +initialize?(): Promise<void>
+    +dispose?(): Promise<void>
+    +warmup?(): Promise<void>
+    +optimize?(): Promise<void>
+  }
+
+  class StrategySelector {
+    +selectEngine(requirements, engines): EngineStrategy
+    +rankEngines(requirements, engines): EngineStrategy[]
+  }
+}
+
+package "UML Processing" {
+  class UMLGenerator {
+    +generateFromRequirement(requirement, history, diagramType): Promise<UMLGenerationResponse>
+    +generateSmartFilename(context): Promise<string>
+    -buildPrompt(requirement, history, diagramType): LanguageModelChatMessage[]
+    -extractResponseText(chatResponse): Promise<string>
+    -extractDiagramType(responseText): DiagramType
+    -extractExplanation(responseText): string
+  }
+
+  class ChatManager {
+    +addUserMessage(message: string)
+    +addBotMessage(message: string, plantUML?: string)
+    +deleteUserMessage(messageIndex: number)
+    +getChatHistory(): ChatMessage[]
+    +getCurrentPlantUML(): string
+    +exportSession(): Promise<void>
+    +generateSmartFilename(): Promise<string>
+  }
+
+  class PlantUMLPreviewTool {
+    +handleInput(editor, selection, settings)
+    +buildPrompt(text, settings): string
+    +parseResponse(response): any
+    +getWebviewHtml(text, parsed, settings): string
+  }
+}
+
+package "UI Components" {
+  class UMLChatPanel {
+    +activateUMLChatPanel(context: ExtensionContext)
+    +createUMLChatPanel(context): WebviewPanel
+    +handleWebviewMessage(message, panel, context)
+    +updatePreview(plantUML: string)
+  }
+
+  class WebviewHtmlGenerator {
+    +generateWebviewContent(chatHistory, currentPlantUML, isEditing, svgPanZoomUri): string
+    +generateUserMessageHtml(message: ChatMessage, index: number): string
+    +generateBotMessageHtml(message: ChatMessage, index: number): string
+    +generateOnboardingModal(): string
+  }
+}
+
+package "Analytics & Monitoring" {
+  class UsageAnalytics {
+    +initialize(context: ExtensionContext)
+    +trackUsage(feature: string, action?: string, metadata?: any)
+    +getStats(): AnalyticsStats
+  }
+
+  class AnalyticsDashboard {
+    +showDashboard(context: ExtensionContext)
+    +getUsageData(): UsageData[]
+    +exportData(): Promise<void>
+  }
+}
+
+' Relationships
+ExtensionMain --> DependencyInjectionContainer : uses
+ExtensionMain --> AdvancedEventBus : uses
+ExtensionMain --> LazyLoadingManager : uses
+ExtensionMain --> PluginManager : manages
+ExtensionMain --> EngineManager : manages
+
+PluginManager --> Plugin : manages
+Plugin --> PluginContext : has
+PluginContext --> DependencyInjectionContainer : uses
+PluginContext --> AdvancedEventBus : uses
+
+EngineManager --> EngineStrategy : manages
+EngineManager --> StrategySelector : uses
+
+UMLGenerator --> ChatManager : collaborates
+ChatManager --> PlantUMLPreviewTool : uses
+UMLChatPanel --> WebviewHtmlGenerator : uses
+UMLChatPanel --> ChatManager : manages
+
+UsageAnalytics --> AdvancedEventBus : subscribes to events
+AnalyticsDashboard --> UsageAnalytics : displays data
+
+' Event flows
+AdvancedEventBus --> UMLGenerator : diagram generation events
+AdvancedEventBus --> ChatManager : chat events
+AdvancedEventBus --> PlantUMLPreviewTool : preview events
+
+@enduml 

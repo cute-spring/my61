@@ -63,6 +63,10 @@
       {
         "command": "copilotTools.showAnalytics",
         "title": "Show Usage Analytics Dashboard"
+      },
+      {
+        "command": "copilotTools.resetOnboardingState",
+        "title": "Reset UML Tutorial State (Debug)"
       }
     ],
     "menus": {
@@ -186,6 +190,26 @@
           "type": "boolean",
           "default": false,
           "description": "Enable detailed logging of analytics events to the console (for development and debugging)."
+        },
+        "umlChatDesigner.features.mermaidEngine": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Mermaid diagram engine support (experimental)"
+        },
+        "umlChatDesigner.features.mermaidFormatDetection": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable automatic Mermaid format detection"
+        },
+        "umlChatDesigner.features.mermaidUI": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Mermaid-specific UI enhancements"
+        },
+        "umlChatDesigner.features.mermaidAnalytics": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable analytics for Mermaid feature usage"
         }
       }
     }
@@ -205,6 +229,8 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/dompurify": "^3.0.5",
     "@types/marked": "^5.0.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
@@ -216,6 +242,7 @@
     "esbuild": "^0.25.3",
     "eslint": "^9.25.1",
     "npm-run-all": "^4.1.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
   "repository": {
@@ -223,9 +250,11 @@
     "url": "https://github.com/cute-spring/my61.git"
   },
   "dependencies": {
+    "@types/mermaid": "^9.2.0",
     "@types/uuid": "^10.0.0",
     "axios": "^1.10.0",
     "marked": "^15.0.12",
+    "mermaid": "^10.6.1",
     "uuid": "^11.1.0"
   }
 }

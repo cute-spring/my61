@@ -37,8 +37,20 @@ export class WebviewHtmlGenerator {
                 <div id="chat">${chatHtml}</div>
                 <div id="inputArea">
                     <div class="input-controls">
+                        <label for="engineType" class="engine-type-label">Engine:</label>
+                        <select id="engineType" class="engine-type-select" title="Select Rendering Engine">${this.generateEngineOptions()}</select>
                         <label for="diagramType" class="diagram-type-label">Type:</label>
                         <select id="diagramType" class="diagram-type-select" title="Select Diagram Type">${diagramTypeOptions}</select>
+                        <button id="testPromptBtn" class="test-prompt-btn" title="Insert test prompt for easy testing">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                            Test Prompt
+                        </button>
                     </div>
                     <div class="textarea-container">
                         <textarea id="requirementInput" placeholder="Describe your UML requirement... (Press Enter to send, Shift+Enter for new line, Esc to clear)"></textarea>
@@ -55,6 +67,13 @@ export class WebviewHtmlGenerator {
                             </button>
                         </div>
                         <div class="utility-actions">
+                            <button id="tutorialBtn" class="icon-only tutorial-btn" title="Tutorial Guide" aria-label="Start Tutorial">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="6"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                </svg>
+                            </button>
                             <button id="expandChatBtn" class="icon-only" title="Expand Chat Panel" aria-label="Expand or Collapse Chat Panel">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                             </button>
@@ -76,10 +95,7 @@ export class WebviewHtmlGenerator {
                                         <span>Export SVG</span>
                                     </button>
 
-                                    <button id="onboardingBtn" class="tutorial-guide-btn" title="Start Interactive Tutorial" aria-label="Tutorial Guide">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>
-                                        <span>Tutorial Guide</span>
-                                    </button>
+
                                 </div>
                             </div>
                         </div>
@@ -89,6 +105,9 @@ export class WebviewHtmlGenerator {
             </div>
             <div id="dragbar"></div>
             <div id="rightPanel">
+                <div id="unifiedDiagramPanel">
+                    <!-- PlantUML Diagram Container -->
+                    <div id="plantUMLContainer" class="diagram-container" style="display: none;">
                 <div id="svgPreview">
                     <!-- Empty state display -->
                     <div id="emptyState" class="empty-state" style="display: none;">
@@ -113,14 +132,18 @@ export class WebviewHtmlGenerator {
                         </div>
                     </div>
                     
-                    <!-- Center Tutorial Button - Always visible -->
-                    <button id="onboardingBtnCenter" class="onboarding-btn-center" title="Start Tutorial Guide">
-                        <div class="btn-content">
-                            <div class="btn-icon">🎯</div>
-                            <div class="btn-text">Tutorial Guide</div>
-                            <div class="btn-subtitle">Click to learn UML Designer</div>
+
                         </div>
-                    </button>
+                    </div>
+                    
+                    <!-- Mermaid Diagram Container -->
+                    <div id="mermaidContainer" class="diagram-container" style="display: none;">
+                        <div id="mermaidPreview">
+                            <div class="loading">Loading Mermaid diagram...</div>
+                        </div>
+                    </div>
+                    
+
                 </div>
                 <div class="zoom-controls">
                     <button class="zoom-btn zoom-in" id="zoomInBtn" title="Zoom In (Ctrl + +)" aria-label="Zoom In">
@@ -219,6 +242,7 @@ export class WebviewHtmlGenerator {
                 </div>
               </div>
               <div class="step-actions">
+                <button class="prev-btn secondary">← Previous</button>
                 <button class="next-btn primary">Explore Platform <span class="arrow">→</span></button>
               </div>
             </div>
@@ -630,6 +654,16 @@ export class WebviewHtmlGenerator {
     }
 
     /**
+     * Generate engine selection options
+     */
+    private static generateEngineOptions(): string {
+        return `
+            <option value="plantuml">PlantUML</option>
+            <option value="mermaid">Mermaid</option>
+        `;
+    }
+
+    /**
      * Generate CSS styles
      */
     private static generateCSS(): string {
@@ -765,6 +799,46 @@ export class WebviewHtmlGenerator {
                 -webkit-user-select: none;
                 pointer-events: auto;
             }
+
+            /* --- Unified Diagram Panel --- */
+            #unifiedDiagramPanel {
+                width: 100%;
+                height: 100vh;
+                position: relative;
+                background: var(--vscode-editor-background, #fff);
+                overflow: hidden;
+            }
+            
+            .diagram-container {
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                top: 0;
+                left: 0;
+                background: var(--vscode-editor-background, #fff);
+                transition: opacity 0.3s ease;
+            }
+            
+            #plantUMLContainer {
+                z-index: 1;
+            }
+            
+            #mermaidContainer {
+                z-index: 2;
+            }
+            
+            #mermaidPreview {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: white;
+                position: relative;
+                overflow: auto;
+            }
+            
+
 
             /* --- Enterprise-Grade Zoom Controls --- */
             .zoom-controls {
@@ -1127,6 +1201,77 @@ export class WebviewHtmlGenerator {
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
             }
             
+            .engine-type-label {
+                font-weight: 600;
+                font-size: 0.875rem;
+                color: var(--vscode-foreground, #374151);
+                letter-spacing: -0.01em;
+                margin: 0;
+                flex-shrink: 0;
+            }
+            
+            .engine-type-select {
+                background: var(--vscode-input-background, linear-gradient(135deg, #ffffff, #f8f9fa));
+                border: 2px solid var(--vscode-input-border, #e1e8ed);
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 0.875rem;
+                color: var(--vscode-input-foreground, #374151);
+                min-width: 100px;
+                font-weight: 500;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                cursor: pointer;
+                outline: none;
+            }
+            
+            .engine-type-select:focus {
+                border-color: var(--vscode-focusBorder, #007acc);
+                box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12), 0 2px 6px rgba(0, 122, 204, 0.08);
+                background: var(--vscode-input-background, #ffffff);
+            }
+            
+            .engine-type-select:hover:not(:focus) {
+                border-color: var(--vscode-input-border, #b0c4de);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+            }
+            
+            .test-prompt-btn {
+                background: linear-gradient(135deg, #28a745, #20c997);
+                color: white;
+                border: 2px solid #28a745;
+                padding: 8px 12px;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+                letter-spacing: -0.01em;
+                white-space: nowrap;
+            }
+            
+            .test-prompt-btn:hover {
+                background: linear-gradient(135deg, #218838, #1ea085);
+                border-color: #1e7e34;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+            }
+            
+            .test-prompt-btn:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+            }
+            
+            .test-prompt-btn svg {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+            
             .textarea-container {
                 position: relative;
             }
@@ -1193,6 +1338,46 @@ export class WebviewHtmlGenerator {
             #buttonRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
             .primary-actions { display: flex; align-items: center; gap: 8px; }
             .utility-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+            
+            /* Tutorial Button Styling */
+            .tutorial-btn {
+                background: linear-gradient(135deg, #007ACC, #005A99) !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 10px !important;
+                padding: 10px !important;
+                font-weight: 600 !important;
+                box-shadow: 0 2px 6px rgba(0, 122, 204, 0.25), 0 1px 3px rgba(0, 122, 204, 0.1) !important;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                position: relative !important;
+                overflow: hidden !important;
+            }
+            
+            .tutorial-btn::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                transition: left 0.5s;
+            }
+            
+            .tutorial-btn:hover::before {
+                left: 100%;
+            }
+            
+            .tutorial-btn:hover, .tutorial-btn:focus {
+                background: linear-gradient(135deg, #005FA3, #004080) !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3), 0 2px 6px rgba(0, 122, 204, 0.2) !important;
+            }
+            
+            .tutorial-btn:active {
+                transform: translateY(0) !important;
+                box-shadow: 0 2px 6px rgba(0, 122, 204, 0.25) !important;
+            }
             
             /* Base button and select styling */
             button, select { 
@@ -1592,58 +1777,7 @@ export class WebviewHtmlGenerator {
             .dropdown-content button:hover { background-color: #f1f1f1; }
             .dropdown-content button.danger:hover { background-color: #d32f2f; color: #fff; }
             
-            /* --- Enhanced Tutorial Guide Button --- */
-            .tutorial-guide-btn {
-                background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
-                color: #ffffff !important;
-                border: none !important;
-                font-weight: 600 !important;
-                position: relative !important;
-                overflow: hidden !important;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-                box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3) !important;
-                border-radius: 6px !important;
-            }
-            
-            .tutorial-guide-btn::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-                transition: left 0.5s;
-            }
-            
-            .tutorial-guide-btn:hover::before {
-                left: 100%;
-            }
-            
-            .tutorial-guide-btn:hover {
-                background: linear-gradient(135deg, #3730a3, #6d28d9) !important;
-                transform: translateY(-1px) !important;
-                box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4) !important;
-            }
-            
-            .tutorial-guide-btn:active {
-                transform: translateY(0) !important;
-                box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3) !important;
-            }
-            
-            .tutorial-guide-btn svg {
-                color: #ffffff !important;
-                transition: transform 0.2s ease !important;
-            }
-            
-            .tutorial-guide-btn:hover svg {
-                transform: scale(1.1) rotate(5deg) !important;
-            }
-            
-            .tutorial-guide-btn span {
-                font-weight: 600 !important;
-                letter-spacing: 0.025em !important;
-            }
+
             
             .show { display: block; }
             
@@ -1945,6 +2079,12 @@ export class WebviewHtmlGenerator {
                 background: rgba(0, 122, 204, 0.3);
                 transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                 position: relative;
+                cursor: pointer;
+            }
+            
+            .progress-dot:hover {
+                background: rgba(0, 122, 204, 0.6);
+                transform: scale(1.1);
             }
             
             .progress-dot.active {
@@ -3278,69 +3418,7 @@ export class WebviewHtmlGenerator {
                 display: none;
             }
             
-            /* Center Tutorial Button - Always visible, appears above all content */
-            .onboarding-btn-center {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: linear-gradient(135deg, #007ACC, #005A99);
-                color: white;
-                border: none;
-                border-radius: 16px;
-                padding: 20px 24px;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                cursor: pointer;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 8px;
-                box-shadow: 
-                    0 8px 32px rgba(0, 122, 204, 0.3),
-                    0 4px 16px rgba(0, 122, 204, 0.2);
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                z-index: 9999;
-                min-width: 200px;
-                pointer-events: auto;
-            }
-            
-            .onboarding-btn-center:hover {
-                background: linear-gradient(135deg, #0056CC, #004499);
-                transform: translate(-50%, -50%) scale(1.05);
-                box-shadow: 
-                    0 12px 40px rgba(0, 122, 204, 0.4),
-                    0 6px 20px rgba(0, 122, 204, 0.3);
-            }
-            
-            .onboarding-btn-center .btn-content {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 4px;
-            }
-            
-            .onboarding-btn-center .btn-icon {
-                font-size: 24px;
-                line-height: 1;
-            }
-            
-            .onboarding-btn-center .btn-text {
-                font-size: 16px;
-                font-weight: 600;
-                line-height: 1.2;
-            }
-            
-            .onboarding-btn-center .btn-subtitle {
-                font-size: 12px;
-                opacity: 0.9;
-                line-height: 1.2;
-            }
-            
-            .onboarding-btn-center.hidden {
-                display: none;
-            }
+
 
             /* --- Windows-Specific Enhancements --- */
             body.windows {
@@ -3929,7 +4007,12 @@ export class WebviewHtmlGenerator {
             sendBtn.onclick = () => {
                 const text = requirementInput.value.trim();
                 if (text) {
-                    vscode.postMessage({ command: 'sendRequirement', text: text, diagramType: document.getElementById('diagramType').value });
+                    vscode.postMessage({ 
+                        command: 'sendRequirement', 
+                        text: text, 
+                        diagramType: document.getElementById('diagramType').value,
+                        engineType: document.getElementById('engineType').value
+                    });
                     requirementInput.value = '';
                     // Reset height and counter after sending
                     requirementInput.style.height = '80px';
@@ -3991,6 +4074,17 @@ export class WebviewHtmlGenerator {
                 vscode.postMessage({ command: 'importChat' });
             };
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });
+            
+            // Test prompt button functionality
+            const testPromptBtn = document.getElementById('testPromptBtn');
+            testPromptBtn.onclick = () => {
+                const testPrompt = "Design a secure payment processing system sequence diagram including user authentication, payment gateway integration, fraud detection, bank communication, and transaction settlement";
+                requirementInput.value = testPrompt;
+                requirementInput.style.height = '80px';
+                autoResizeTextarea();
+                updateCharCounter();
+                requirementInput.focus();
+            };
             
             expandBtn.onclick = () => {
                 const isFullscreen = leftPanel.classList.toggle('fullscreen');
@@ -4260,7 +4354,23 @@ export class WebviewHtmlGenerator {
                         
                         console.log('Button clicked:', action);
                         
-                        const svgEl = document.querySelector('#svgPreview svg');
+                        // Check if we're in PlantUML or Mermaid mode
+                        const plantUMLContainer = document.getElementById('plantUMLContainer');
+                        const mermaidContainer = document.getElementById('mermaidContainer');
+                        
+                        let svgEl = null;
+                        let isMermaidMode = false;
+                        
+                        if (plantUMLContainer && plantUMLContainer.style.display !== 'none') {
+                            // PlantUML mode
+                            svgEl = document.querySelector('#svgPreview svg');
+                            isMermaidMode = false;
+                        } else if (mermaidContainer && mermaidContainer.style.display !== 'none') {
+                            // Mermaid mode
+                            svgEl = document.querySelector('#mermaidPreview svg');
+                            isMermaidMode = true;
+                        }
+                        
                         if (!svgEl) {
                             console.log('No SVG element found');
                             return false;
@@ -4268,7 +4378,32 @@ export class WebviewHtmlGenerator {
                         
                         let success = false;
                         
-                        // Try svg-pan-zoom first if available
+                        if (isMermaidMode) {
+                            // Mermaid mode - use Mermaid-specific zoom functions
+                            try {
+                                switch(action) {
+                                    case 'zoomIn':
+                                        mermaidZoomIn();
+                                        success = true;
+                                        console.log('Mermaid zoomIn succeeded');
+                                        break;
+                                    case 'zoomOut':
+                                        mermaidZoomOut();
+                                        success = true;
+                                        console.log('Mermaid zoomOut succeeded');
+                                        break;
+                                    case 'zoomReset':
+                                        mermaidResetZoom();
+                                        success = true;
+                                        console.log('Mermaid zoomReset succeeded');
+                                        break;
+                                }
+                            } catch (error) {
+                                console.warn('Mermaid zoom operation failed:', error);
+                                success = false;
+                            }
+                        } else {
+                            // PlantUML mode - try svg-pan-zoom first if available
                         if (panZoomInstance && hasSvgPanZoom) {
                             try {
                                 switch(action) {
@@ -4297,6 +4432,7 @@ export class WebviewHtmlGenerator {
                             } catch (error) {
                                 console.warn('svg-pan-zoom operation failed:', error);
                                 success = false;
+                                }
                             }
                         }
                         
@@ -4349,6 +4485,137 @@ export class WebviewHtmlGenerator {
                         console.log('Initial zoom test completed');
                     }
                 }, 500);
+            }
+            
+            // --- Mermaid Rendering Function ---
+            let mermaidInitialized = false;
+            let currentMermaidZoom = 1;
+            const mermaidZoomStep = 0.2;
+            const mermaidMinZoom = 0.3;
+            const mermaidMaxZoom = 3;
+            
+            async function renderMermaidDiagram(mermaidCode) {
+                const mermaidPreview = document.getElementById('mermaidPreview');
+                if (!mermaidPreview) {
+                    console.error('Mermaid preview container not found');
+                    return;
+                }
+                
+                try {
+                    mermaidPreview.innerHTML = '<div class="loading">Loading Mermaid diagram...</div>';
+                    
+                    // Load Mermaid library if not already loaded
+                    if (typeof mermaid === 'undefined') {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js';
+                        script.onload = async () => {
+                            await initializeMermaid();
+                            await renderMermaid();
+                        };
+                        script.onerror = () => {
+                            mermaidPreview.innerHTML = '<div class="error">Failed to load Mermaid library</div>';
+                        };
+                        document.head.appendChild(script);
+                    } else {
+                        await initializeMermaid();
+                        await renderMermaid();
+                    }
+                } catch (error) {
+                    console.error('Mermaid rendering error:', error);
+                    mermaidPreview.innerHTML = '<div class="error">Failed to render Mermaid diagram: ' + error.message + '</div>';
+                }
+                
+                async function initializeMermaid() {
+                    try {
+                        if (typeof mermaid === 'undefined') {
+                            throw new Error('Mermaid library not loaded');
+                        }
+                        
+                        mermaid.initialize({
+                            startOnLoad: false,
+                            theme: 'default',
+                            securityLevel: 'loose',
+                            fontFamily: 'Arial, sans-serif',
+                            fontSize: 14,
+                            flowchart: {
+                                useMaxWidth: true,
+                                htmlLabels: true
+                            },
+                            sequence: {
+                                useMaxWidth: true,
+                                diagramMarginX: 50,
+                                diagramMarginY: 10
+                            },
+                            class: {
+                                useMaxWidth: true
+                            }
+                        });
+                        mermaidInitialized = true;
+                        console.log('Mermaid initialized successfully');
+                    } catch (error) {
+                        console.error('Failed to initialize Mermaid:', error);
+                        throw error;
+                    }
+                }
+                
+                async function renderMermaid() {
+                    try {
+                        const { svg } = await mermaid.render('mermaid-diagram', mermaidCode);
+                        mermaidPreview.innerHTML = svg;
+                        
+                        // Apply initial zoom
+                        applyMermaidZoom(currentMermaidZoom);
+                        
+                        console.log('Mermaid diagram rendered successfully');
+                    } catch (error) {
+                        console.error('Mermaid rendering error:', error);
+                        mermaidPreview.innerHTML = '<div class="error">Failed to render Mermaid diagram: ' + error.message + '</div>';
+                    }
+                }
+            }
+            
+            function applyMermaidZoom(zoom) {
+                const mermaidPreview = document.getElementById('mermaidPreview');
+                const svg = mermaidPreview.querySelector('svg');
+                if (svg) {
+                    svg.style.transform = \`scale(\${zoom})\`;
+                    svg.style.transformOrigin = 'center center';
+                    svg.style.transition = 'transform 0.3s ease';
+                }
+            }
+            
+            function mermaidZoomIn() {
+                if (currentMermaidZoom < mermaidMaxZoom) {
+                    currentMermaidZoom = Math.min(mermaidMaxZoom, currentMermaidZoom + mermaidZoomStep);
+                    applyMermaidZoom(currentMermaidZoom);
+                    updateMermaidZoomButtons();
+                }
+            }
+            
+            function mermaidZoomOut() {
+                if (currentMermaidZoom > mermaidMinZoom) {
+                    currentMermaidZoom = Math.max(mermaidMinZoom, currentMermaidZoom - mermaidZoomStep);
+                    applyMermaidZoom(currentMermaidZoom);
+                    updateMermaidZoomButtons();
+                }
+            }
+            
+            function mermaidResetZoom() {
+                currentMermaidZoom = 1;
+                applyMermaidZoom(currentMermaidZoom);
+                updateMermaidZoomButtons();
+            }
+            
+            function updateMermaidZoomButtons() {
+                const zoomInBtn = document.getElementById('zoomInBtn');
+                const zoomOutBtn = document.getElementById('zoomOutBtn');
+                const zoomResetBtn = document.getElementById('zoomResetBtn');
+                
+                if (zoomInBtn && zoomOutBtn && zoomResetBtn) {
+                    zoomInBtn.disabled = currentMermaidZoom >= mermaidMaxZoom;
+                    zoomOutBtn.disabled = currentMermaidZoom <= mermaidMinZoom;
+                    zoomResetBtn.disabled = currentMermaidZoom === 1;
+                }
             }
 
             // --- Pan and Pinch-to-Zoom Setup ---
@@ -4766,6 +5033,72 @@ export class WebviewHtmlGenerator {
                     if (chatDiv) {
                         chatDiv.scrollTop = chatDiv.scrollHeight;
                     }
+                } else if (message.command === 'hidePreview') {
+                    // Hide the main preview area when Mermaid preview is opened
+                    const svgContainer = document.getElementById('svgPreview');
+                    if (svgContainer) {
+                        svgContainer.style.display = 'none';
+                    }
+                } else if (message.command === 'showMermaid') {
+                    // Show Mermaid diagram in unified panel
+                    const plantUMLContainer = document.getElementById('plantUMLContainer');
+                    const mermaidContainer = document.getElementById('mermaidContainer');
+                    
+                    if (plantUMLContainer && mermaidContainer) {
+                        // Hide PlantUML container
+                        plantUMLContainer.style.display = 'none';
+                        
+                        // Show Mermaid container
+                        mermaidContainer.style.display = 'block';
+                        
+                        // Render Mermaid diagram
+                        renderMermaidDiagram(message.mermaidCode);
+                    }
+                } else if (message.command === 'showPlantUML') {
+                    // Show PlantUML diagram in unified panel
+                    const plantUMLContainer = document.getElementById('plantUMLContainer');
+                    const mermaidContainer = document.getElementById('mermaidContainer');
+                    
+                    if (plantUMLContainer && mermaidContainer) {
+                        // Hide Mermaid container
+                        mermaidContainer.style.display = 'none';
+                        
+                        // Show PlantUML container
+                        plantUMLContainer.style.display = 'block';
+                        
+                        // Update PlantUML diagram
+                        const svgContainer = document.getElementById('svgPreview');
+                        if (svgContainer) {
+                            svgContainer.innerHTML = message.svgContent;
+                            setTimeout(() => {
+                                enablePanZoom();
+                                setupZoomControls();
+                            }, 100);
+                        }
+                    }
+                } else if (message.command === 'showError') {
+                    // Show error in unified panel
+                    const plantUMLContainer = document.getElementById('plantUMLContainer');
+                    const mermaidContainer = document.getElementById('mermaidContainer');
+                    
+                    if (plantUMLContainer && mermaidContainer) {
+                        // Hide both containers
+                        plantUMLContainer.style.display = 'none';
+                        mermaidContainer.style.display = 'none';
+                        
+                        // Show error in PlantUML container
+                        plantUMLContainer.style.display = 'block';
+                        const svgContainer = document.getElementById('svgPreview');
+                        if (svgContainer) {
+                            svgContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #d73a49; font-family: Arial, sans-serif;">Error: ' + (message.error || 'Unknown error') + '</div>';
+                        }
+                    }
+                } else if (message.command === 'showPreview') {
+                    // Show the main preview area for PlantUML
+                    const svgContainer = document.getElementById('svgPreview');
+                    if (svgContainer) {
+                        svgContainer.style.display = 'block';
+                    }
                 } else if (message.command === 'error') {
                     console.error('Extension error:', message.error);
                     const svgContainer = document.getElementById('svgPreview');
@@ -5020,68 +5353,151 @@ export class WebviewHtmlGenerator {
                 if (activeDot) {
                     activeDot.classList.add('active');
                 }
+                
+                // Update navigation button states
+                updateNavigationButtons(step);
             }
             
-            // Onboarding button functionality
-            onboardingBtn.addEventListener('click', () => {
-                onboardingModal.style.display = 'block';
-                currentOnboardingStep = 1;
-                showOnboardingStep(currentOnboardingStep);
-                isOnboardingActive = true;
-                tutorialButtonState.setOnboardingActive(true);
-            });
+            function updateNavigationButtons(step) {
+                // Handle previous buttons
+                document.querySelectorAll('.prev-btn').forEach(btn => {
+                    if (step === 1) {
+                        btn.style.display = 'none';
+                        btn.disabled = true;
+                    } else {
+                        btn.style.display = 'inline-flex';
+                        btn.disabled = false;
+                    }
+                });
+                
+                // Handle next buttons
+                document.querySelectorAll('.next-btn').forEach(btn => {
+                    if (step === totalOnboardingSteps) {
+                        btn.textContent = 'Get Started';
+                        btn.innerHTML = 'Get Started <span class="arrow">→</span>';
+                    } else {
+                        btn.innerHTML = 'Next <span class="arrow">→</span>';
+                    }
+                });
+            }
             
 
             
-            // Center onboarding button functionality
-            const onboardingBtnCenter = document.getElementById('onboardingBtnCenter');
-            if (onboardingBtnCenter) {
-                console.log('[DEBUG] Center button found, adding click handler');
-                onboardingBtnCenter.addEventListener('click', (e) => {
-                    console.log('[DEBUG] Center button clicked!', e);
+            // Fixed tutorial button functionality
+            const tutorialBtn = document.getElementById('tutorialBtn');
+            if (tutorialBtn) {
+                tutorialBtn.addEventListener('click', () => {
+                    console.log('[TUTORIAL] Fixed tutorial button clicked');
                     onboardingModal.style.display = 'block';
                     currentOnboardingStep = 1;
                     showOnboardingStep(currentOnboardingStep);
                     isOnboardingActive = true;
                     tutorialButtonState.setOnboardingActive(true);
-                    // Hide the center button when onboarding is active
-                    onboardingBtnCenter.classList.add('hidden');
-                    console.log('[DEBUG] Center button hidden during onboarding');
                 });
-                
-                // Add debugging for button state
-                console.log('[DEBUG] Center button details:', {
-                    id: onboardingBtnCenter.id,
-                    className: onboardingBtnCenter.className,
-                    style: onboardingBtnCenter.style.cssText,
-                    visible: onboardingBtnCenter.offsetParent !== null,
-                    clickable: onboardingBtnCenter.style.pointerEvents !== 'none'
-                });
-            } else {
-                console.warn('[DEBUG] Center button not found!');
             }
             
-            // Next button functionality
+
+            
+
+            
+            // Enhanced navigation button functionality
             document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('next-btn')) {
+                // Next button navigation
+                if (e.target.classList.contains('next-btn') || e.target.closest('.next-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     if (currentOnboardingStep < totalOnboardingSteps) {
                         currentOnboardingStep++;
                         showOnboardingStep(currentOnboardingStep);
+                        console.log('[TUTORIAL] Navigated to step ' + currentOnboardingStep);
+                    } else {
+                        // Last step - close tutorial
+                        console.log('[TUTORIAL] Tutorial completed, closing modal');
+                        onboardingModal.style.display = 'none';
+                        isOnboardingActive = false;
+                        tutorialButtonState.setOnboardingActive(false);
                     }
                 }
-            });
-            
-            // Previous button functionality
-            document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('prev-btn')) {
+                
+                // Previous button navigation
+                if (e.target.classList.contains('prev-btn') || e.target.closest('.prev-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     if (currentOnboardingStep > 1) {
                         currentOnboardingStep--;
                         showOnboardingStep(currentOnboardingStep);
+                        console.log('[TUTORIAL] Navigated back to step ' + currentOnboardingStep);
                     }
+                }
+                
+                // Progress dot navigation
+                if (e.target.classList.contains('progress-dot')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const targetStep = parseInt(e.target.getAttribute('data-step'));
+                    if (targetStep && targetStep >= 1 && targetStep <= totalOnboardingSteps) {
+                        currentOnboardingStep = targetStep;
+                        showOnboardingStep(currentOnboardingStep);
+                        console.log('[TUTORIAL] Jumped to step ' + currentOnboardingStep);
+                    }
+                }
+                
+                // Close button functionality
+                if (e.target.id === 'onboardingCloseBtn' || e.target.closest('#onboardingCloseBtn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[TUTORIAL] Tutorial closed by user');
+                    onboardingModal.style.display = 'none';
+                    isOnboardingActive = false;
+                    tutorialButtonState.setOnboardingActive(false);
                 }
             });
             
 
+            
+            // Keyboard navigation support
+            document.addEventListener('keydown', (e) => {
+                if (!isOnboardingActive) return;
+                
+                switch(e.key) {
+                    case 'Escape':
+                        // Close tutorial
+                        console.log('[TUTORIAL] Tutorial closed via Escape key');
+                        onboardingModal.style.display = 'none';
+                        isOnboardingActive = false;
+                        tutorialButtonState.setOnboardingActive(false);
+                        break;
+                    case 'ArrowLeft':
+                        // Previous step
+                        if (currentOnboardingStep > 1) {
+                            currentOnboardingStep--;
+                            showOnboardingStep(currentOnboardingStep);
+                            console.log('[TUTORIAL] Navigated back to step ' + currentOnboardingStep);
+                        }
+                        break;
+                    case 'ArrowRight':
+                        // Next step
+                        if (currentOnboardingStep < totalOnboardingSteps) {
+                            currentOnboardingStep++;
+                            showOnboardingStep(currentOnboardingStep);
+                            console.log('[TUTORIAL] Navigated to step ' + currentOnboardingStep);
+                        } else {
+                            // Last step - close tutorial
+                            console.log('[TUTORIAL] Tutorial completed, closing modal');
+                            onboardingModal.style.display = 'none';
+                            isOnboardingActive = false;
+                            tutorialButtonState.setOnboardingActive(false);
+                        }
+                        break;
+                }
+            });
+            
+            // Initialize navigation state
+            updateNavigationButtons(1);
             
             // Scenario card functionality
             document.addEventListener('click', (e) => {
@@ -5098,51 +5514,46 @@ export class WebviewHtmlGenerator {
                         onboardingModal.style.display = 'none';
                         isOnboardingActive = false;
                         tutorialButtonState.setOnboardingActive(false);
-                        // Show the center button again when onboarding is closed
-                        const centerBtn = document.getElementById('onboardingBtnCenter');
-                        if (centerBtn) {
-                            centerBtn.classList.remove('hidden');
-                            console.log('[DEBUG] Center button shown after onboarding closed');
-                        }
+
                     }
                 }
             });
             
             // Finish button functionality
             document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('finish-btn')) {
+                if (e.target.classList.contains('finish-btn') || e.target.closest('.finish-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[TUTORIAL] Finish button clicked');
                     onboardingModal.style.display = 'none';
                     isOnboardingActive = false;
                     tutorialButtonState.setOnboardingActive(false);
-                    // Show the center button again when onboarding is closed
-                    const centerBtn = document.getElementById('onboardingBtnCenter');
-                    if (centerBtn) {
-                        centerBtn.classList.remove('hidden');
-                        console.log('[DEBUG] Center button shown after onboarding finished');
-                    }
                     vscode.postMessage({ command: 'onboardingComplete' });
                 }
             });
             
             // Skip button functionality
             document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('skip-btn')) {
+                if (e.target.classList.contains('skip-btn') || e.target.closest('.skip-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[TUTORIAL] Skip button clicked');
                     onboardingModal.style.display = 'none';
                     isOnboardingActive = false;
                     tutorialButtonState.setOnboardingActive(false);
-                    // Show the center button again when onboarding is closed
-                    const centerBtn = document.getElementById('onboardingBtnCenter');
-                    if (centerBtn) {
-                        centerBtn.classList.remove('hidden');
-                        console.log('[DEBUG] Center button shown after onboarding skipped');
-                    }
                     vscode.postMessage({ command: 'onboardingSkip' });
                 }
             });
             
-            // Close button functionality
+            // Close button functionality (duplicate - main logic is in navigation section)
             document.addEventListener('click', (e) => {
-                if (e.target.id === 'onboardingCloseBtn') {
+                if (e.target.id === 'onboardingCloseBtn' || e.target.closest('#onboardingCloseBtn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('[TUTORIAL] Close button clicked');
                     onboardingModal.style.display = 'none';
                     isOnboardingActive = false;
                     tutorialButtonState.setOnboardingActive(false);
@@ -5203,6 +5614,7 @@ export class WebviewHtmlGenerator {
                 
                 // Computed property: should button be visible?
                 shouldShowButton() {
+                    // Simple logic: show button when no real diagram and not in onboarding
                     return !this.state.hasSvg && !this.state.isOnboardingActive;
                 }
                 
@@ -5214,6 +5626,8 @@ export class WebviewHtmlGenerator {
                 setOnboardingActive(isActive) {
                     this.updateState({ isOnboardingActive: isActive });
                 }
+                
+
                 
                 // Initialize with current DOM state
                 initialize() {
@@ -5318,28 +5732,6 @@ export class WebviewHtmlGenerator {
                 
                 // Update button visibility in DOM
                 updateButtonVisibility() {
-                    const tutorialBtn = document.getElementById('onboardingBtn');
-                    const tutorialBtnCenter = document.getElementById('onboardingBtnCenter');
-                    const shouldShow = this.shouldShowButton();
-                    
-                    // Always show chat area tutorial button
-                    if (tutorialBtn) {
-                        tutorialBtn.classList.remove('hidden');
-                    }
-                    
-                    // Show/hide center button based on state
-                    if (tutorialBtnCenter) {
-                        if (shouldShow) {
-                            tutorialBtnCenter.classList.remove('hidden');
-                            console.log('[REACTIVE] ✅ Showing center tutorial button');
-                } else {
-                            tutorialBtnCenter.classList.add('hidden');
-                            console.log('[REACTIVE] ❌ Hiding center tutorial button');
-                        }
-                    } else {
-                        console.warn('[REACTIVE] ⚠️ Center button not found in DOM');
-                    }
-                    
                     // Hide empty state display
                     if (emptyState) {
                     emptyState.style.display = 'none';
@@ -5398,12 +5790,15 @@ export class WebviewHtmlGenerator {
                 const message = event.data;
                 switch (message.command) {
                     case 'showOnboarding':
+                        console.log('[ONBOARDING] Received showOnboarding command');
                         onboardingModal.style.display = 'block';
                         currentOnboardingStep = 1;
                         showOnboardingStep(currentOnboardingStep);
                         isOnboardingActive = true;
                         tutorialButtonState.setOnboardingActive(true);
                         break;
+
+
 
                     case 'fillExample':
                         if (message.example) {

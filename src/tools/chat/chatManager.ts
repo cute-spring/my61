@@ -4,11 +4,13 @@
 
 import { ChatMessage, SessionData, DiagramType } from '../uml/types';
 import { UML_TEMPLATES } from '../uml/constants';
+import { EngineType } from '../uml/generatorFactory';
 
 export class ChatManager {
     private chatHistory: ChatMessage[] = [];
     private currentPlantUML: string = UML_TEMPLATES.DEFAULT_PLANTUML;
     private lastDiagramType: DiagramType = '';
+    private currentEngine: EngineType = 'plantuml';
 
     /**
      * Add a user message to chat history
@@ -145,6 +147,7 @@ export class ChatManager {
         this.chatHistory = [];
         this.currentPlantUML = UML_TEMPLATES.DEFAULT_PLANTUML;
         this.lastDiagramType = '';
+        this.currentEngine = 'plantuml'; // Reset to default engine
     }
 
     /**
@@ -190,6 +193,20 @@ export class ChatManager {
     }
 
     /**
+     * Get current engine type
+     */
+    getCurrentEngine(): EngineType {
+        return this.currentEngine;
+    }
+
+    /**
+     * Update current engine type
+     */
+    updateEngine(engine: EngineType): void {
+        this.currentEngine = engine;
+    }
+
+    /**
      * Get all user messages for context building
      */
     getUserMessages(): string[] {
@@ -206,7 +223,8 @@ export class ChatManager {
             version: 1,
             chatHistory: this.getChatHistory(),
             currentPlantUML: this.currentPlantUML,
-            lastDiagramType: this.lastDiagramType
+            lastDiagramType: this.lastDiagramType,
+            currentEngine: this.currentEngine
         };
     }
 
@@ -291,6 +309,7 @@ export class ChatManager {
             }));
             this.currentPlantUML = data.currentPlantUML;
             this.lastDiagramType = (data.lastDiagramType as DiagramType) || '';
+            this.currentEngine = (data.currentEngine as EngineType) || 'plantuml';
         } else {
             throw new Error('Invalid session data format');
         }

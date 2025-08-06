@@ -1,0 +1,150 @@
+@startuml UML Chat Designer - Deployment Diagram
+!theme blueprint
+title UML Chat Designer - Deployment Architecture
+
+node "VS Code Extension Host" {
+  node "Extension Process" {
+    [Extension Main] as Main
+    [Core Infrastructure] as Core
+    [Plugin System] as Plugins
+    [Engine Strategy] as Engines
+    [UI Components] as UI
+    [Analytics] as Analytics
+  }
+  
+  node "Webview Process" {
+    [Chat Panel Webview] as Webview
+    [SVG Renderer] as SVGRenderer
+    [JavaScript Runtime] as JSRuntime
+  }
+  
+  node "File System" {
+    [Extension Storage] as ExtStorage
+    [Workspace Files] as Workspace
+    [User Settings] as Settings
+  }
+}
+
+node "External Services" {
+  node "Language Model API" {
+    [Copilot API] as Copilot
+    [GPT-4o Model] as GPT4o
+  }
+  
+  node "PlantUML Services" {
+    [PlantUML Server] as PlantUMLServer
+    [DOT Engine] as DOTEngine
+    [Smetana Engine] as SmetanaEngine
+  }
+  
+  node "Analytics Services" {
+    [Usage Tracking] as UsageTracking
+    [Performance Monitoring] as PerfMonitoring
+    [Error Reporting] as ErrorReporting
+  }
+}
+
+node "Plugin Ecosystem" {
+  node "Plugin Repository" {
+    [Plugin Registry] as PluginRegistry
+    [Plugin Updates] as PluginUpdates
+  }
+  
+  node "Plugin Runtime" {
+    [Plugin Sandbox] as PluginSandbox
+    [Plugin Security] as PluginSecurity
+  }
+}
+
+' Internal Communication
+Main --> Core : manages
+Main --> Plugins : loads
+Main --> Engines : configures
+Main --> UI : creates
+Main --> Analytics : initializes
+
+Core --> Webview : communicates
+UI --> Webview : updates
+Webview --> SVGRenderer : renders
+Webview --> JSRuntime : executes
+
+' File System Access
+Main --> ExtStorage : reads/writes
+Main --> Workspace : accesses
+Main --> Settings : reads
+
+' External Service Communication
+Main --> Copilot : API calls
+Copilot --> GPT4o : model requests
+Main --> PlantUMLServer : diagram rendering
+PlantUMLServer --> DOTEngine : layout processing
+PlantUMLServer --> SmetanaEngine : fallback rendering
+
+Main --> UsageTracking : usage data
+Main --> PerfMonitoring : performance metrics
+Main --> ErrorReporting : error logs
+
+' Plugin System Communication
+Main --> PluginRegistry : discovers plugins
+Main --> PluginSandbox : executes plugins
+PluginSandbox --> PluginSecurity : validates
+Main --> PluginUpdates : checks for updates
+
+' Network Communication
+note right of Copilot
+  HTTPS/2
+  Authentication required
+  Rate limiting applied
+end note
+
+note right of PlantUMLServer
+  Local/Remote
+  Java-based
+  Multiple engines
+end note
+
+note right of PluginRegistry
+  HTTPS
+  Plugin validation
+  Version management
+end note
+
+' Security Boundaries
+package "Trusted Zone" {
+  Main
+  Core
+  UI
+  Webview
+}
+
+package "Sandboxed Zone" {
+  Plugins
+  PluginSandbox
+}
+
+package "External Zone" {
+  Copilot
+  PlantUMLServer
+  PluginRegistry
+}
+
+' Performance Characteristics
+note top of Main
+  Startup: < 1s
+  Memory: ~50MB
+  CPU: Low
+end note
+
+note top of Webview
+  Responsive UI
+  Real-time updates
+  SVG rendering
+end note
+
+note top of Copilot
+  Latency: 200-500ms
+  Throughput: High
+  Reliability: 99.9%
+end note
+
+@enduml 

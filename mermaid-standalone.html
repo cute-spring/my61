@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Diagram Renderer</title>
+         <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/@plantuml/plantuml-encoder@1.4.0/dist/plantuml-encoder.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .input-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .output-section {
+            padding: 30px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .textarea-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 400px;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+                 .btn:disabled {
+             opacity: 0.6;
+             cursor: not-allowed;
+             transform: none;
+         }
+         
+         .engine-selector {
+             margin-bottom: 20px;
+             display: flex;
+             align-items: center;
+             gap: 12px;
+         }
+         
+         .engine-label {
+             font-weight: 500;
+             color: #495057;
+             font-size: 14px;
+         }
+         
+         .engine-dropdown {
+             padding: 8px 12px;
+             border: 2px solid #e9ecef;
+             border-radius: 6px;
+             font-size: 14px;
+             background: white;
+             cursor: pointer;
+             transition: border-color 0.3s ease;
+         }
+         
+         .engine-dropdown:focus {
+             outline: none;
+             border-color: #667eea;
+             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+         }
+
+        .diagram-container {
+            flex: 1;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        .diagram-container.empty {
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .diagram-container.error {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .diagram-container svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .examples {
+            margin-top: 20px;
+        }
+
+        .example-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .example-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .input-section {
+                border-right: none;
+                border-bottom: 1px solid #e9ecef;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Mermaid Diagram Renderer</h1>
+            <p>输入 Mermaid 代码，实时渲染图表</p>
+        </div>
+        
+        <div class="content">
+            <div class="input-section">
+                <div class="section-title">输入代码</div>
+                
+                <div class="textarea-container">
+                    <textarea id="mermaidCode" placeholder="在此输入 Mermaid 代码...&#10;&#10;示例:&#10;graph TD&#10;    A[开始] --> B{判断}&#10;    B -->|是| C[处理]&#10;    B -->|否| D[结束]&#10;    C --> D"></textarea>
+                </div>
+                
+                <div class="engine-selector">
+                    <label for="engineSelect" class="engine-label">Diagram Engine:</label>
+                    <select id="engineSelect" class="engine-dropdown">
+                        <option value="mermaid" selected>Mermaid</option>
+                        <option value="plantuml">PlantUML</option>
+                    </select>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" id="renderBtn">
+                        <span>🚀</span>
+                        渲染图表
+                    </button>
+                    <button class="btn btn-secondary" id="clearBtn">
+                        <span>🗑️</span>
+                        清空
+                    </button>
+                </div>
+                
+                <div class="examples">
+                    <div style="margin-bottom: 10px; font-weight: 500; color: #495057;">快速示例:</div>
+                    <button class="example-btn" data-example="flowchart">流程图</button>
+                    <button class="example-btn" data-example="sequence">时序图</button>
+                    <button class="example-btn" data-example="class">类图</button>
+                    <button class="example-btn" data-example="state">状态图</button>
+                    <button class="example-btn" data-example="gantt">甘特图</button>
+                    <button class="example-btn" data-example="pie">饼图</button>
+                </div>
+                
+                <div id="status" class="status" style="display: none;"></div>
+            </div>
+            
+            <div class="output-section">
+                <div class="section-title">渲染结果</div>
+                <div class="diagram-container empty" id="diagramContainer">
+                    图表将在此显示
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化 Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            },
+            securityLevel: 'loose'
+        });
+
+                 // DOM 元素
+         const mermaidCode = document.getElementById('mermaidCode');
+         const renderBtn = document.getElementById('renderBtn');
+         const clearBtn = document.getElementById('clearBtn');
+         const diagramContainer = document.getElementById('diagramContainer');
+         const status = document.getElementById('status');
+         const engineSelect = document.getElementById('engineSelect');
+
+                 // 示例代码
+         const examples = {
+             mermaid: {
+                 flowchart: `graph TD
+     A[开始] --> B{判断条件}
+     B -->|是| C[处理数据]
+     B -->|否| D[结束]
+     C --> E[保存结果]
+     E --> D`,
+                 
+                 sequence: `sequenceDiagram
+     participant 用户
+     participant 系统
+     participant 数据库
+     
+     用户->>系统: 登录请求
+     系统->>数据库: 验证用户
+     数据库-->>系统: 返回结果
+     系统-->>用户: 登录成功`,
+                 
+                 class: `classDiagram
+     class Animal {
+         +String name
+         +int age
+         +makeSound()
+     }
+     
+     class Dog {
+         +bark()
+     }
+     
+     class Cat {
+         +meow()
+     }
+     
+     Animal <|-- Dog
+     Animal <|-- Cat`,
+                 
+                 state: `stateDiagram-v2
+     [*] --> 待处理
+     待处理 --> 处理中: 开始处理
+     处理中 --> 已完成: 处理完成
+     处理中 --> 失败: 处理出错
+     失败 --> 待处理: 重试
+     已完成 --> [*]`,
+                 
+                 gantt: `gantt
+     title 项目计划
+     dateFormat  YYYY-MM-DD
+     section 设计阶段
+     需求分析    :done, des1, 2024-01-01, 2024-01-15
+     系统设计    :active, des2, 2024-01-16, 2024-02-01
+     section 开发阶段
+     编码实现    :dev1, 2024-02-01, 2024-03-15
+     测试调试    :dev2, 2024-03-16, 2024-04-01`,
+                 
+                 pie: `pie title 市场份额
+     "苹果" : 45
+     "三星" : 25
+     "华为" : 15
+     "其他" : 15`
+             },
+             plantuml: {
+                 flowchart: `@startuml
+!theme plain
+start
+:开始;
+if (判断条件?) then (是)
+  :处理数据;
+  :保存结果;
+else (否)
+endif
+:结束;
+stop
+@enduml`,
+                 
+                 sequence: `@startuml
+!theme plain
+actor 用户
+participant 系统
+participant 数据库
+
+用户 -> 系统: 登录请求
+系统 -> 数据库: 验证用户
+数据库 --> 系统: 返回结果
+系统 --> 用户: 登录成功
+@enduml`,
+                 
+                 class: `@startuml
+!theme plain
+class Animal {
+  +String name
+  +int age
+  +makeSound()
+}
+
+class Dog {
+  +bark()
+}
+
+class Cat {
+  +meow()
+}
+
+Animal <|-- Dog
+Animal <|-- Cat
+@enduml`,
+                 
+                 state: `@startuml
+!theme plain
+[*] --> 待处理
+待处理 --> 处理中: 开始处理
+处理中 --> 已完成: 处理完成
+处理中 --> 失败: 处理出错
+失败 --> 待处理: 重试
+已完成 --> [*]
+@enduml`,
+                 
+                 gantt: `@startuml
+!theme plain
+title 项目计划
+dateFormat yyyy-MM-dd
+
+[需求分析] happens 2024-01-01 to 2024-01-15
+[系统设计] happens 2024-01-16 to 2024-02-01
+[编码实现] happens 2024-02-01 to 2024-03-15
+[测试调试] happens 2024-03-16 to 2024-04-01
+@enduml`,
+                 
+                 pie: `@startuml
+!theme plain
+pie title 市场份额
+"苹果" : 45
+"三星" : 25
+"华为" : 15
+"其他" : 15
+@enduml`
+             }
+         };
+
+        // 渲染图表
+        async function renderDiagram() {
+            const code = mermaidCode.value.trim();
+            
+            if (!code) {
+                showStatus('请输入 Mermaid 代码', 'info');
+                return;
+            }
+
+            renderBtn.disabled = true;
+            renderBtn.innerHTML = '<span>⏳</span> 渲染中...';
+            
+            try {
+                // 清空容器
+                diagramContainer.innerHTML = '';
+                diagramContainer.className = 'diagram-container';
+                
+                // 渲染图表
+                const { svg } = await mermaid.render('mermaid-diagram', code);
+                diagramContainer.innerHTML = svg;
+                diagramContainer.className = 'diagram-container';
+                
+                showStatus('图表渲染成功！', 'success');
+            } catch (error) {
+                diagramContainer.innerHTML = `渲染错误: ${error.message}`;
+                diagramContainer.className = 'diagram-container error';
+                showStatus(`渲染失败: ${error.message}`, 'error');
+            } finally {
+                renderBtn.disabled = false;
+                renderBtn.innerHTML = '<span>🚀</span> 渲染图表';
+            }
+        }
+
+        // 显示状态信息
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        // 清空代码
+        function clearCode() {
+            mermaidCode.value = '';
+            diagramContainer.innerHTML = '图表将在此显示';
+            diagramContainer.className = 'diagram-container empty';
+            status.style.display = 'none';
+        }
+
+        // 加载示例
+        function loadExample(exampleType) {
+            if (examples[exampleType]) {
+                mermaidCode.value = examples[exampleType];
+                renderDiagram();
+            }
+        }
+
+        // 事件监听
+        renderBtn.addEventListener('click', renderDiagram);
+        clearBtn.addEventListener('click', clearCode);
+
+        // 示例按钮事件
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const exampleType = btn.dataset.example;
+                loadExample(exampleType);
+            });
+        });
+
+        // 键盘快捷键
+        mermaidCode.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                renderDiagram();
+            }
+        });
+
+        // 自动调整文本框高度
+        mermaidCode.addEventListener('input', () => {
+            mermaidCode.style.height = 'auto';
+            mermaidCode.style.height = Math.min(mermaidCode.scrollHeight, 400) + 'px';
+        });
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 加载默认示例
+            mermaidCode.value = examples.flowchart;
+        });
+    </script>
+</body>
+</html>

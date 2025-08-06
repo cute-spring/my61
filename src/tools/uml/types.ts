@@ -20,6 +20,7 @@ export interface SessionData {
     chatHistory: ChatMessage[];
     currentPlantUML: string;
     lastDiagramType?: string;
+    currentEngine?: string;
 }
 
 export type DiagramType = '' | 'activity' | 'sequence' | 'usecase' | 'class' | 'component';

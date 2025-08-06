@@ -1,0 +1,123 @@
+@startuml UML Chat Designer - Component Diagram
+!theme blueprint
+title UML Chat Designer - Component Architecture
+
+package "VS Code Extension" {
+  [Extension Main] as Main
+  [Tool Manager] as ToolManager
+  [Settings Webview] as Settings
+}
+
+package "Core Infrastructure (Phase 3)" {
+  [Dependency Injection Container] as DI
+  [Advanced Event Bus] as EventBus
+  [Lazy Loading Manager] as LazyLoading
+  [Configuration Manager] as Config
+}
+
+package "Plugin System" {
+  [Plugin Manager] as PluginManager
+  [Plugin Loader] as PluginLoader
+  [Plugin Context] as PluginContext
+  [Plugin Security] as PluginSecurity
+}
+
+package "Engine Strategy System" {
+  [Engine Manager] as EngineManager
+  [Strategy Selector] as StrategySelector
+  [Performance Monitor] as PerfMonitor
+  [Engine Registry] as EngineRegistry
+}
+
+package "UML Processing" {
+  [UML Generator] as UMLGen
+  [Chat Manager] as ChatMgr
+  [PlantUML Preview Tool] as PlantUML
+  [Diagram Type Detector] as TypeDetector
+}
+
+package "UI Components" {
+  [UML Chat Panel] as ChatPanel
+  [Webview HTML Generator] as HTMLGen
+  [SVG Pan Zoom] as PanZoom
+  [Onboarding Modal] as Onboarding
+}
+
+package "Analytics & Monitoring" {
+  [Usage Analytics] as Analytics
+  [Analytics Dashboard] as Dashboard
+  [Performance Tracker] as PerfTracker
+  [Error Logger] as ErrorLogger
+}
+
+package "External Services" {
+  [Language Model API] as LLM
+  [PlantUML Server] as PlantUMLServer
+  [File System] as FileSystem
+  [VS Code API] as VSCodeAPI
+}
+
+' Core Infrastructure Dependencies
+Main --> DI : uses
+Main --> EventBus : uses
+Main --> LazyLoading : uses
+Main --> Config : uses
+
+' Plugin System Dependencies
+Main --> PluginManager : manages
+PluginManager --> PluginLoader : uses
+PluginManager --> PluginContext : creates
+PluginManager --> PluginSecurity : enforces
+
+' Engine Strategy Dependencies
+Main --> EngineManager : manages
+EngineManager --> StrategySelector : uses
+EngineManager --> PerfMonitor : tracks
+EngineManager --> EngineRegistry : stores
+
+' UML Processing Dependencies
+ChatPanel --> UMLGen : uses
+ChatPanel --> ChatMgr : manages
+ChatPanel --> PlantUML : renders
+UMLGen --> TypeDetector : uses
+
+' UI Dependencies
+Main --> ChatPanel : creates
+ChatPanel --> HTMLGen : uses
+ChatPanel --> PanZoom : integrates
+ChatPanel --> Onboarding : shows
+
+' Analytics Dependencies
+Main --> Analytics : initializes
+ChatPanel --> Analytics : tracks usage
+PlantUML --> Analytics : tracks performance
+PluginManager --> Analytics : tracks plugins
+
+' External Service Dependencies
+UMLGen --> LLM : calls
+PlantUML --> PlantUMLServer : renders
+ChatMgr --> FileSystem : saves sessions
+Main --> VSCodeAPI : integrates
+
+' Event Bus Connections
+EventBus --> Analytics : events
+EventBus --> PerfTracker : performance events
+EventBus --> ErrorLogger : error events
+EventBus --> PluginManager : plugin events
+
+' Lazy Loading Connections
+LazyLoading --> UMLGen : loads on demand
+LazyLoading --> PlantUML : loads on demand
+LazyLoading --> Dashboard : loads on demand
+
+' Configuration Connections
+Config --> PluginManager : plugin settings
+Config --> EngineManager : engine settings
+Config --> Analytics : analytics settings
+
+' Security Connections
+PluginSecurity --> PluginContext : validates
+PluginSecurity --> FileSystem : restricts access
+PluginSecurity --> VSCodeAPI : restricts permissions
+
+@enduml 

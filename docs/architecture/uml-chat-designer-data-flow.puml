@@ -1,0 +1,154 @@
+@startuml UML Chat Designer - Data Flow Diagram
+!theme blueprint
+title UML Chat Designer - Data Flow Architecture
+
+!define RECTANGLE class
+
+' Data Stores
+database "User Input" as UserInput
+database "Chat History" as ChatHistory
+database "Configuration" as Config
+database "Plugin Registry" as PluginRegistry
+database "Engine Cache" as EngineCache
+database "Analytics Data" as AnalyticsData
+database "Session Storage" as SessionStorage
+
+' External Entities
+actor "User" as User
+actor "Language Model" as LLM
+actor "PlantUML Server" as PlantUMLServer
+actor "File System" as FileSystem
+
+' Processes
+rectangle "Input Processing" as InputProc {
+  [Text Validation] as TextValidation
+  [Requirement Analysis] as ReqAnalysis
+  [Context Extraction] as ContextExtraction
+}
+
+rectangle "UML Generation" as UMLGen {
+  [Prompt Builder] as PromptBuilder
+  [LLM Communication] as LLMComm
+  [Response Parser] as ResponseParser
+  [Diagram Type Detector] as TypeDetector
+}
+
+rectangle "Engine Management" as EngineMgr {
+  [Engine Selector] as EngineSelector
+  [Performance Monitor] as PerfMonitor
+  [Fallback Handler] as FallbackHandler
+}
+
+rectangle "Rendering Pipeline" as RenderPipeline {
+  [PlantUML Processor] as PlantUMLProc
+  [SVG Generator] as SVGGen
+  [Layout Engine] as LayoutEngine
+  [Output Validator] as OutputValidator
+}
+
+rectangle "UI Management" as UIMgr {
+  [Chat Panel Controller] as ChatController
+  [Preview Updater] as PreviewUpdater
+  [History Manager] as HistoryManager
+  [Export Handler] as ExportHandler
+}
+
+rectangle "Plugin System" as PluginSys {
+  [Plugin Loader] as PluginLoader
+  [Plugin Executor] as PluginExecutor
+  [Security Validator] as SecurityValidator
+}
+
+rectangle "Analytics & Monitoring" as Analytics {
+  [Usage Tracker] as UsageTracker
+  [Performance Tracker] as PerfTracker
+  [Error Logger] as ErrorLogger
+  [Data Aggregator] as DataAggregator
+}
+
+' Data Flows
+
+' User Input Flow
+User --> UserInput : enters requirement
+UserInput --> InputProc : raw text
+InputProc --> TextValidation : validates input
+TextValidation --> ReqAnalysis : valid text
+ReqAnalysis --> ContextExtraction : extracts context
+ContextExtraction --> ChatHistory : stores context
+
+' UML Generation Flow
+ChatHistory --> UMLGen : provides context
+Config --> PromptBuilder : configuration
+PromptBuilder --> LLMComm : builds prompt
+LLMComm --> LLM : sends request
+LLM --> LLMComm : returns response
+LLMComm --> ResponseParser : parses response
+ResponseParser --> TypeDetector : detects type
+TypeDetector --> EngineMgr : diagram type
+
+' Engine Management Flow
+EngineMgr --> EngineSelector : selects engine
+EngineSelector --> EngineCache : checks cache
+EngineCache --> EngineSelector : cached engines
+EngineSelector --> PerfMonitor : tracks performance
+PerfMonitor --> AnalyticsData : stores metrics
+
+' Rendering Flow
+EngineMgr --> RenderPipeline : selected engine
+RenderPipeline --> PlantUMLProc : processes PlantUML
+PlantUMLProc --> PlantUMLServer : sends to server
+PlantUMLServer --> SVGGen : returns SVG
+SVGGen --> LayoutEngine : applies layout
+LayoutEngine --> OutputValidator : validates output
+OutputValidator --> UIMgr : valid result
+
+' UI Management Flow
+UIMgr --> ChatController : manages chat
+ChatController --> PreviewUpdater : updates preview
+PreviewUpdater --> HistoryManager : updates history
+HistoryManager --> SessionStorage : saves session
+ExportHandler --> FileSystem : exports data
+
+' Plugin Integration Flow
+PluginRegistry --> PluginSys : available plugins
+PluginSys --> PluginLoader : loads plugins
+PluginLoader --> SecurityValidator : validates security
+SecurityValidator --> PluginExecutor : executes plugins
+PluginExecutor --> UMLGen : enhances generation
+
+' Analytics Flow
+UIMgr --> Analytics : usage events
+EngineMgr --> Analytics : performance events
+PluginSys --> Analytics : plugin events
+Analytics --> UsageTracker : tracks usage
+Analytics --> PerfTracker : tracks performance
+Analytics --> ErrorLogger : logs errors
+Analytics --> DataAggregator : aggregates data
+DataAggregator --> AnalyticsData : stores analytics
+
+' Error Handling Flow
+alt Error in Generation
+  UMLGen --> ErrorLogger : logs error
+  ErrorLogger --> FallbackHandler : triggers fallback
+  FallbackHandler --> EngineMgr : tries alternative
+end
+
+alt Error in Rendering
+  RenderPipeline --> ErrorLogger : logs error
+  ErrorLogger --> FallbackHandler : triggers fallback
+  FallbackHandler --> RenderPipeline : retries with different engine
+end
+
+' Configuration Flow
+Config --> InputProc : input settings
+Config --> UMLGen : generation settings
+Config --> EngineMgr : engine settings
+Config --> UIMgr : UI settings
+Config --> Analytics : analytics settings
+
+' Session Management Flow
+SessionStorage --> ChatHistory : loads history
+SessionStorage --> Config : loads settings
+SessionStorage --> AnalyticsData : loads analytics
+
+@enduml 
