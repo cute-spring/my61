@@ -17,10 +17,7 @@ export class MermaidGenerator {
         const prompt = this.buildPrompt(requirement, history, diagramType);
         
         try {
-            const [model] = await vscode.lm.selectChatModels({ 
-                vendor: 'copilot', 
-                family: 'gpt-4o' 
-            });
+            const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
             
             if (!model) {
                 throw new Error('No Copilot model available.');
@@ -203,10 +200,7 @@ Diagram Type: <EXACTLY one of: flowchart, sequence, class, state, gantt, pie>
         const prompt = this.buildFilenamePrompt(userMessages, diagramType);
         
         try {
-            const [model] = await vscode.lm.selectChatModels({ 
-                vendor: 'copilot', 
-                family: 'gpt-4o' 
-            });
+            const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
             
             if (!model) {
                 throw new Error('No Copilot model available for filename generation.');
