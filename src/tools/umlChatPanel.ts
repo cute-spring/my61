@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { selectCopilotLLMModel } from '../llm';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -113,7 +114,7 @@ ${codeBlockEnd}`
     ];
     
     try {
-        const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+        const model = await selectCopilotLLMModel();
         if (!model) { throw new Error('No Copilot model available.'); }
         const token = new vscode.CancellationTokenSource().token;
         const chatResponse = await model.sendRequest(prompt, {}, token);

@@ -3,6 +3,7 @@
  */
 
 import * as vscode from 'vscode';
+import { selectCopilotLLMModel } from '../../llm';
 import { DiagramType, UMLGenerationRequest, UMLGenerationResponse } from './types';
 
 export class UMLGenerator {
@@ -17,7 +18,7 @@ export class UMLGenerator {
         const prompt = this.buildPrompt(requirement, history, diagramType);
         
         try {
-            const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const model = await selectCopilotLLMModel();
             
             if (!model) {
                 throw new Error('No Copilot model available.');
@@ -144,7 +145,7 @@ Diagram Type: <EXACTLY one of: activity, sequence, usecase, class, component>
         const prompt = this.buildFilenamePrompt(userMessages, diagramType);
         
         try {
-            const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const model = await selectCopilotLLMModel();
             
             if (!model) {
                 throw new Error('No Copilot model available for filename generation.');

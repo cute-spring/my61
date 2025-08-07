@@ -1,7 +1,14 @@
+/**
+ * Selects the default Copilot LLM model.
+ */
+export async function selectCopilotLLMModel(): Promise<vscode.LanguageModelChat | undefined> {
+  const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+  return model;
+}
 import * as vscode from 'vscode';
 
 export async function getLLMResponse(prompt: string): Promise<string | undefined> {
-  const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+  const model = await selectCopilotLLMModel();
   if (!model) {
     vscode.window.showErrorMessage('No Copilot LLM model available.');
     return;
