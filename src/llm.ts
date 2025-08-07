@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 export async function getLLMResponse(prompt: string): Promise<string | undefined> {
-  const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
+  const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
   if (!model) {
     vscode.window.showErrorMessage('No Copilot LLM model available.');
     return;

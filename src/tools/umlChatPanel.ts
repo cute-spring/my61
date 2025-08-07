@@ -113,7 +113,7 @@ ${codeBlockEnd}`
     ];
     
     try {
-        const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
+        const [model] = await vscode.lm.selectChatModels({ vendor: 'copilot' });
         if (!model) { throw new Error('No Copilot model available.'); }
         const token = new vscode.CancellationTokenSource().token;
         const chatResponse = await model.sendRequest(prompt, {}, token);
