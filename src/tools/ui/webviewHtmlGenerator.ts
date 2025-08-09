@@ -4490,6 +4490,8 @@ export class WebviewHtmlGenerator {
             // --- Mermaid Rendering Function ---
             let mermaidInitialized = false;
             let currentMermaidZoom = 1;
+            let currentMermaidPanX = 0;
+            let currentMermaidPanY = 0;
             const mermaidZoomStep = 0.2;
             const mermaidMinZoom = 0.3;
             const mermaidMaxZoom = 3;
@@ -4578,12 +4580,18 @@ export class WebviewHtmlGenerator {
                 const mermaidPreview = document.getElementById('mermaidPreview');
                 const svg = mermaidPreview.querySelector('svg');
                 if (svg) {
-                    // Apply both zoom and pan (if any) when zooming
+                    // Apply both zoom and pan (if any) when zooming with performance optimizations
                     const panX = currentMermaidPanX || 0;
                     const panY = currentMermaidPanY || 0;
-                    svg.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + zoom + ')';
+                    
+                    // Use transform3d for hardware acceleration
+                    svg.style.transform = 'translate3d(' + panX + 'px, ' + panY + 'px, 0) scale(' + zoom + ')';
                     svg.style.transformOrigin = 'center center';
                     svg.style.transition = 'transform 0.3s ease';
+                    
+                    // Optimize for smooth animations
+                    svg.style.willChange = 'transform';
+                    svg.style.backfaceVisibility = 'hidden';
                 }
             }
             
@@ -4627,6 +4635,20 @@ export class WebviewHtmlGenerator {
             function setupPanAndPinch() {
                 console.log('Setting up pan and pinch-to-zoom...');
                 
+                // Throttle function for smoother performance
+                function throttle(func, limit) {
+                    let inThrottle;
+                    return function() {
+                        const args = arguments;
+                        const context = this;
+                        if (!inThrottle) {
+                            func.apply(context, args);
+                            inThrottle = true;
+                            setTimeout(() => inThrottle = false, limit);
+                        }
+                    }
+                }
+                
                 // Set up pan/zoom for both PlantUML and Mermaid containers
                 const svgContainer = document.getElementById('svgPreview');
                 const mermaidContainer = document.getElementById('mermaidContainer');
@@ -4642,8 +4664,6 @@ export class WebviewHtmlGenerator {
                 let lastPanY = 0;
                 let currentPanX = 0;
                 let currentPanY = 0;
-                let currentMermaidPanX = 0;
-                let currentMermaidPanY = 0;
                 
                 // Touch/pinch state
                 let lastTouchDistance = 0;
@@ -4679,10 +4699,20 @@ export class WebviewHtmlGenerator {
                         
                         const mermaidSvg = document.querySelector('#mermaidPreview svg');
                         if (mermaidSvg) {
-                            // Apply both zoom and pan transforms for Mermaid
+                            // Apply both zoom and pan transforms for Mermaid with performance optimizations
                             const currentScale = currentMermaidZoom || 1;
-                            mermaidSvg.style.transform = 'translate(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px) scale(' + currentScale + ')';
+                            
+                            // Disable transition during panning for immediate response
+                            mermaidSvg.style.transition = 'none';
+                            
+                            // Use transform3d for hardware acceleration and better performance
+                            mermaidSvg.style.transform = 'translate3d(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px, 0) scale(' + currentScale + ')';
                             mermaidSvg.style.transformOrigin = 'center center';
+                            
+                            // Optimize for smooth animations
+                            mermaidSvg.style.willChange = 'transform';
+                            mermaidSvg.style.backfaceVisibility = 'hidden';
+                            
                             console.log('Mermaid pan applied:', currentMermaidPanX, currentMermaidPanY, 'scale:', currentScale);
                         }
                     } else if (isPlantUMLActive) {
@@ -4806,10 +4836,15 @@ export class WebviewHtmlGenerator {
                     e.preventDefault();
                     
                     if (e.touches.length === 1 && isPanning) {
-                        // One finger - continue panning
+                        // One finger - continue panning with smooth updates
                         const deltaX = e.touches[0].clientX - lastPanX;
                         const deltaY = e.touches[0].clientY - lastPanY;
-                        applyPanToSvg(deltaX, deltaY);
+                        
+                        // Use requestAnimationFrame for smooth updates
+                        requestAnimationFrame(() => {
+                            applyPanToSvg(deltaX, deltaY);
+                        });
+                        
                         lastPanX = e.touches[0].clientX;
                         lastPanY = e.touches[0].clientY;
                     } else if (e.touches.length === 2) {
@@ -4835,9 +4870,16 @@ export class WebviewHtmlGenerator {
                                     const newZoom = Math.max(mermaidMinZoom, Math.min(mermaidMaxZoom, (currentMermaidZoom || 1) * zoomFactor));
                                     currentMermaidZoom = newZoom;
                                     
-                                    // Apply zoom with current pan
-                                    mermaidSvg.style.transform = 'translate(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px) scale(' + newZoom + ')';
+                                    // Disable transition during pinch for immediate response
+                                    mermaidSvg.style.transition = 'none';
+                                    
+                                    // Apply zoom with current pan using hardware acceleration
+                                    mermaidSvg.style.transform = 'translate3d(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px, 0) scale(' + newZoom + ')';
                                     mermaidSvg.style.transformOrigin = 'center center';
+                                    
+                                    // Optimize for smooth animations
+                                    mermaidSvg.style.willChange = 'transform';
+                                    mermaidSvg.style.backfaceVisibility = 'hidden';
                                     
                                     // Update zoom buttons
                                     updateMermaidZoomButtons();
@@ -4929,9 +4971,16 @@ export class WebviewHtmlGenerator {
                             const newZoom = Math.max(mermaidMinZoom, Math.min(mermaidMaxZoom, (currentMermaidZoom || 1) * zoomFactor));
                             currentMermaidZoom = newZoom;
                             
-                            // Apply zoom with current pan
-                            mermaidSvg.style.transform = 'translate(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px) scale(' + newZoom + ')';
+                            // Use smooth transition for wheel zoom (slower input)
+                            mermaidSvg.style.transition = 'transform 0.1s ease-out';
+                            
+                            // Apply zoom with current pan using hardware acceleration
+                            mermaidSvg.style.transform = 'translate3d(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px, 0) scale(' + newZoom + ')';
                             mermaidSvg.style.transformOrigin = 'center center';
+                            
+                            // Optimize for smooth animations
+                            mermaidSvg.style.willChange = 'transform';
+                            mermaidSvg.style.backfaceVisibility = 'hidden';
                             
                             // Update zoom buttons
                             updateMermaidZoomButtons();
