@@ -173,6 +173,16 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     })
   );
+
+  registerLLMModelSelection(context);
+  // Initialize LLM status bar after registration
+  llmStatusBar = new LLMStatusBarManager();
+  llmStatusBar.bind(context);
+  context.subscriptions.push(llmStatusBar);
+}
+
+function registerLLMModelSelection(context: vscode.ExtensionContext) {
+  // Removed command palette registration; switching handled via status bar
 }
 
 async function getPlantumlJar(context: vscode.ExtensionContext): Promise<string | null> {
@@ -754,6 +764,100 @@ class PlantUMLStatusBarManager {
 
 let plantUMLStatusBar: PlantUMLStatusBarManager | undefined;
 
+class LLMStatusBarManager {
+  private item: vscode.StatusBarItem;
+  private disposed = false;
+  constructor() {
+    this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 995);
+    this.item.tooltip = 'Click to switch preferred LLM model';
+    this.item.command = undefined; // we'll handle click via command we register internally
+    this.registerClickHandler();
+    this.refresh();
+  }
+  private registerClickHandler() {
+    // Create an internal command id (not contributed) so StatusBarItem can invoke it
+    const commandId = 'copilotTools.internal.switchLLMModel';
+    this.item.command = commandId;
+    const disposable = vscode.commands.registerCommand(commandId, async () => {
+      await this.showSwitcher();
+    });
+    // store disposable
+    (this as any)._disposable = disposable;
+  }
+  private async showSwitcher() {
+    const cfg = vscode.workspace.getConfiguration('copilotTools.llm');
+    const preferred = cfg.get<string[]>('preferredModels', ['copilot']);
+    let allModels: vscode.LanguageModelChat[] = [];
+    try { allModels = await vscode.lm.selectChatModels(); } catch { /* ignore */ }
+    if (!allModels.length) {
+      vscode.window.showWarningMessage('No chat models available.');
+      return;
+    }
+    const items = allModels.map(m => ({
+      label: m.id,
+      description: `${m.vendor}${m.family ? ' · ' + m.family : ''}${m.version ? ' · v' + m.version : ''}`,
+      picked: preferred[0] === m.id || (preferred[0] === 'copilot' && m.vendor === 'copilot')
+    }));
+
+    const selection = await vscode.window.showQuickPick(items, { placeHolder: 'Select primary model (others kept as fallback)', canPickMany: false });
+    if (!selection) { return; }
+
+    // Rebuild preference list: chosen first, then keep any existing order minus new first, then add remaining unseen models
+    const newPrimary = selection.label;
+    const existing = preferred.filter(p => p !== newPrimary);
+    const remaining = allModels.map(m => m.id).filter(id => id !== newPrimary && !existing.includes(id));
+    const updated = [newPrimary, ...existing, ...remaining];
+    await cfg.update('preferredModels', updated, vscode.ConfigurationTarget.Global);
+    await this.refresh();
+    vscode.window.showInformationMessage(`Active LLM model switched to: ${newPrimary}`);
+  }
+  public async refresh() {
+    if (this.disposed) { return; }
+    const info = await this.resolveActiveModel();
+    this.item.text = info.available ? `$(symbol-keyword) LLM: ${info.label}` : `$(warning) LLM: ${info.label}`;
+    this.item.tooltip = (info.available ? 'Active model: ' : 'Unavailable preferred model: ') + info.label + '\n' + info.details + '\nClick to change.';
+    this.item.show();
+  }
+  private async resolveActiveModel(): Promise<{ label: string; available: boolean; details: string }> {
+    const cfg = vscode.workspace.getConfiguration('copilotTools.llm');
+    const preferred = cfg.get<string[]>('preferredModels', ['copilot']);
+    let allModels: vscode.LanguageModelChat[] = [];
+    try { allModels = await vscode.lm.selectChatModels(); } catch { /* ignore */ }
+    const availableIds = new Set(allModels.map(m => m.id));
+    for (const name of preferred) {
+      if (name === 'copilot') {
+        // Treat vendor aggregate: show first copilot model id if present
+        const copilotModels = allModels.filter(m => m.vendor === 'copilot');
+        if (copilotModels.length) {
+          return { label: copilotModels[0].id, available: true, details: `Preferred order: ${preferred.join(' > ')}` };
+        }
+        // fall through to mark unavailable but still first preference
+        return { label: 'copilot', available: false, details: `Preferred order: ${preferred.join(' > ')}` };
+      }
+      if (availableIds.has(name)) {
+        return { label: name, available: true, details: `Preferred order: ${preferred.join(' > ')}` };
+      }
+    }
+    // None available – show first preferred
+    return { label: preferred[0] || 'N/A', available: false, details: `Preferred order: ${preferred.join(' > ')}` };
+  }
+  public bind(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration('copilotTools.llm.preferredModels')) {
+          this.refresh();
+        }
+      }),
+      vscode.lm.onDidChangeChatModels(() => this.refresh())
+    );
+  }
+  public dispose() {
+    this.disposed = true; this.item.dispose();
+    const d = (this as any)._disposable; if (d) { try { d.dispose(); } catch { /* ignore */ } }
+  }
+}
+let llmStatusBar: LLMStatusBarManager | undefined;
+
 export function deactivate() {
   // Flush any pending analytics data before deactivation
   try {
@@ -771,6 +875,7 @@ export function deactivate() {
   if (plantUMLStatusBar) {
     plantUMLStatusBar.dispose();
   }
+  if (llmStatusBar) { llmStatusBar.dispose(); }
 }
 
 export async function showPlantUMLStatus() {
@@ -1066,10 +1171,10 @@ export async function runAutoDetection() {
         }
       });
     }
-    
+
     // Refresh status bar
     plantUMLStatusBar?.refresh();
-    
+
   } catch (error) {
     vscode.window.showErrorMessage(`Auto-detection failed: ${error}`);
   }

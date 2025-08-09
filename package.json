@@ -210,6 +210,12 @@
           "type": "boolean",
           "default": false,
           "description": "Enable analytics for Mermaid feature usage"
+        },
+        "copilotTools.llm.preferredModels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["copilot"],
+          "description": "Ordered model preference list. First available will be used; falls back automatically."
         }
       }
     }
