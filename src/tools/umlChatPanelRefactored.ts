@@ -543,7 +543,7 @@ async function handleEditAndResend(
     updateChat: () => void,
     updatePreview: () => void
 ) {
-    const { index, newText, diagramType } = message;
+    const { index, newText, diagramType, engineType } = message;
     
     // Validate input
     const validation = InputValidator.validateRequirement(newText);
@@ -560,10 +560,10 @@ async function handleEditAndResend(
         // Use the selected diagram type if provided, otherwise use the last diagram type
         const selectedDiagramType = diagramType || chatManager.getLastDiagramType();
         
-        // Regenerate from edited message using current engine
-        const currentEngine = chatManager.getCurrentEngine();
+        // Regenerate from edited message using chosen engine (fallback to current if not provided)
+        const engineForEdit = engineType ? factory.validateEngineType(engineType) : chatManager.getCurrentEngine();
         const response = await factory.generateDiagram(
-            currentEngine,
+            engineForEdit,
             newText,
             chatManager.getUserMessages(),
             selectedDiagramType
@@ -574,6 +574,7 @@ async function handleEditAndResend(
         chatManager.addBotMessage(response.plantUML, { stats: response.stats });
         chatManager.updatePlantUML(response.plantUML);
         chatManager.updateDiagramType(response.diagramType);
+        chatManager.updateEngine(engineForEdit);
 
         // Update UI
         updateChat();
