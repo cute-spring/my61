@@ -4578,7 +4578,10 @@ export class WebviewHtmlGenerator {
                 const mermaidPreview = document.getElementById('mermaidPreview');
                 const svg = mermaidPreview.querySelector('svg');
                 if (svg) {
-                    svg.style.transform = \`scale(\${zoom})\`;
+                    // Apply both zoom and pan (if any) when zooming
+                    const panX = currentMermaidPanX || 0;
+                    const panY = currentMermaidPanY || 0;
+                    svg.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + zoom + ')';
                     svg.style.transformOrigin = 'center center';
                     svg.style.transition = 'transform 0.3s ease';
                 }
@@ -4602,6 +4605,8 @@ export class WebviewHtmlGenerator {
             
             function mermaidResetZoom() {
                 currentMermaidZoom = 1;
+                currentMermaidPanX = 0;
+                currentMermaidPanY = 0;
                 applyMermaidZoom(currentMermaidZoom);
                 updateMermaidZoomButtons();
             }
@@ -4622,18 +4627,23 @@ export class WebviewHtmlGenerator {
             function setupPanAndPinch() {
                 console.log('Setting up pan and pinch-to-zoom...');
                 
-                const container = document.getElementById('svgPreview');
-                if (!container) {
-                    console.warn('SVG preview container not found for pan/pinch setup');
+                // Set up pan/zoom for both PlantUML and Mermaid containers
+                const svgContainer = document.getElementById('svgPreview');
+                const mermaidContainer = document.getElementById('mermaidContainer');
+                
+                if (!svgContainer && !mermaidContainer) {
+                    console.warn('No diagram containers found for pan/pinch setup');
                     return;
                 }
                 
-                // Pan and zoom state
+                // Pan and zoom state for both containers
                 let isPanning = false;
                 let lastPanX = 0;
                 let lastPanY = 0;
                 let currentPanX = 0;
                 let currentPanY = 0;
+                let currentMermaidPanX = 0;
+                let currentMermaidPanY = 0;
                 
                 // Touch/pinch state
                 let lastTouchDistance = 0;
@@ -4655,39 +4665,62 @@ export class WebviewHtmlGenerator {
                 }
                 
                 function applyPanToSvg(deltaX, deltaY) {
-                    currentPanX += deltaX;
-                    currentPanY += deltaY;
+                    // Detect which container is currently visible
+                    const mermaidContainer = document.getElementById('mermaidContainer');
+                    const svgContainer = document.getElementById('svgPreview');
                     
-                    const svgEl = document.querySelector('#svgPreview svg');
-                    if (!svgEl) return;
+                    const isMermaidActive = mermaidContainer && mermaidContainer.style.display !== 'none';
+                    const isPlantUMLActive = svgContainer && svgContainer.style.display !== 'none';
                     
-                    // Try svg-pan-zoom first if available
-                    if (panZoomInstance && hasSvgPanZoom) {
-                        try {
-                            if (typeof panZoomInstance.panBy === 'function') {
-                                panZoomInstance.panBy({x: deltaX, y: deltaY});
-                                console.log('svg-pan-zoom pan applied:', deltaX, deltaY);
-                                return;
-                            }
-                        } catch (error) {
-                            console.warn('svg-pan-zoom pan failed:', error);
+                    if (isMermaidActive) {
+                        // Handle Mermaid pan
+                        currentMermaidPanX += deltaX;
+                        currentMermaidPanY += deltaY;
+                        
+                        const mermaidSvg = document.querySelector('#mermaidPreview svg');
+                        if (mermaidSvg) {
+                            // Apply both zoom and pan transforms for Mermaid
+                            const currentScale = currentMermaidZoom || 1;
+                            mermaidSvg.style.transform = 'translate(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px) scale(' + currentScale + ')';
+                            mermaidSvg.style.transformOrigin = 'center center';
+                            console.log('Mermaid pan applied:', currentMermaidPanX, currentMermaidPanY, 'scale:', currentScale);
                         }
+                    } else if (isPlantUMLActive) {
+                        // Handle PlantUML pan (existing logic)
+                        currentPanX += deltaX;
+                        currentPanY += deltaY;
+                        
+                        const svgEl = document.querySelector('#svgPreview svg');
+                        if (!svgEl) return;
+                        
+                        // Try svg-pan-zoom first if available
+                        if (panZoomInstance && hasSvgPanZoom) {
+                            try {
+                                if (typeof panZoomInstance.panBy === 'function') {
+                                    panZoomInstance.panBy({x: deltaX, y: deltaY});
+                                    console.log('svg-pan-zoom pan applied:', deltaX, deltaY);
+                                    return;
+                                }
+                            } catch (error) {
+                                console.warn('svg-pan-zoom pan failed:', error);
+                            }
+                        }
+                        
+                        // Fallback: apply manual transform
+                        const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+                        const currentZoom = getCurrentZoomLevel();
+                        
+                        if (isWindows && svgEl.style.zoom) {
+                            // Windows: use separate transform for pan
+                            svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px)';
+                        } else {
+                            // Other platforms: combine zoom and pan
+                            svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + currentZoom + ')';
+                            svgEl.style.transformOrigin = 'center center';
+                        }
+                        
+                        console.log('Manual pan applied:', currentPanX, currentPanY);
                     }
-                    
-                    // Fallback: apply manual transform
-                    const isWindows = navigator.userAgent.toLowerCase().includes('windows');
-                    const currentZoom = getCurrentZoomLevel();
-                    
-                    if (isWindows && svgEl.style.zoom) {
-                        // Windows: use separate transform for pan
-                        svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px)';
-                    } else {
-                        // Other platforms: combine zoom and pan
-                        svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + currentZoom + ')';
-                        svgEl.style.transformOrigin = 'center center';
-                    }
-                    
-                    console.log('Manual pan applied:', currentPanX, currentPanY);
                 }
                 
                 function getCurrentZoomLevel() {
@@ -4703,48 +4736,52 @@ export class WebviewHtmlGenerator {
                     return currentZoomLevel || 1.0;
                 }
                 
-                // Mouse events for panning
-                container.addEventListener('mousedown', function(e) {
-                    if (e.button === 0) { // Left mouse button
-                        isPanning = true;
-                        lastPanX = e.clientX;
-                        lastPanY = e.clientY;
-                        container.style.cursor = 'grabbing';
+                // Function to add event listeners to a container
+                function addPanZoomEvents(container) {
+                    if (!container) return;
+                    
+                    // Mouse events for panning
+                    container.addEventListener('mousedown', function(e) {
+                        if (e.button === 0) { // Left mouse button
+                            isPanning = true;
+                            lastPanX = e.clientX;
+                            lastPanY = e.clientY;
+                            container.style.cursor = 'grabbing';
+                            e.preventDefault();
+                            console.log('Mouse pan started');
+                        }
+                    });
+                    
+                    container.addEventListener('mousemove', function(e) {
+                        if (isPanning) {
+                            const deltaX = e.clientX - lastPanX;
+                            const deltaY = e.clientY - lastPanY;
+                            applyPanToSvg(deltaX, deltaY);
+                            lastPanX = e.clientX;
+                            lastPanY = e.clientY;
+                            e.preventDefault();
+                        }
+                    });
+                    
+                    container.addEventListener('mouseup', function(e) {
+                        if (isPanning) {
+                            isPanning = false;
+                            container.style.cursor = 'grab';
+                            console.log('Mouse pan ended');
+                        }
+                    });
+                    
+                    container.addEventListener('mouseleave', function(e) {
+                        if (isPanning) {
+                            isPanning = false;
+                            container.style.cursor = 'grab';
+                            console.log('Mouse pan ended (leave)');
+                        }
+                    });
+                    
+                    // Touch events for one finger pan and two finger pinch-to-zoom
+                    container.addEventListener('touchstart', function(e) {
                         e.preventDefault();
-                        console.log('Mouse pan started');
-                    }
-                });
-                
-                container.addEventListener('mousemove', function(e) {
-                    if (isPanning) {
-                        const deltaX = e.clientX - lastPanX;
-                        const deltaY = e.clientY - lastPanY;
-                        applyPanToSvg(deltaX, deltaY);
-                        lastPanX = e.clientX;
-                        lastPanY = e.clientY;
-                        e.preventDefault();
-                    }
-                });
-                
-                container.addEventListener('mouseup', function(e) {
-                    if (isPanning) {
-                        isPanning = false;
-                        container.style.cursor = 'grab';
-                        console.log('Mouse pan ended');
-                    }
-                });
-                
-                container.addEventListener('mouseleave', function(e) {
-                    if (isPanning) {
-                        isPanning = false;
-                        container.style.cursor = 'grab';
-                        console.log('Mouse pan ended (leave)');
-                    }
-                });
-                
-                // Touch events for one finger pan and two finger pinch-to-zoom
-                container.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
                     
                     if (e.touches.length === 1) {
                         // One finger - start panning
@@ -4785,38 +4822,61 @@ export class WebviewHtmlGenerator {
                         if (lastTouchDistance > 0) {
                             const zoomFactor = currentDistance / lastTouchDistance;
                             
-                            // Try svg-pan-zoom first
-                            let zoomSuccess = false;
-                            if (panZoomInstance && hasSvgPanZoom) {
-                                try {
-                                    if (typeof panZoomInstance.zoomAtPoint === 'function') {
-                                        const currentZoom = panZoomInstance.getZoom();
-                                        const newZoom = currentZoom * zoomFactor;
-                                        panZoomInstance.zoomAtPoint(newZoom, {x: center.x, y: center.y});
-                                        zoomSuccess = true;
-                                        console.log('svg-pan-zoom pinch zoom:', newZoom);
-                                    }
-                                } catch (error) {
-                                    console.warn('svg-pan-zoom pinch zoom failed:', error);
-                                }
-                            }
+                            // Detect which container is active for zoom
+                            const mermaidContainer = document.getElementById('mermaidContainer');
+                            const isMermaidActive = mermaidContainer && mermaidContainer.style.display !== 'none';
                             
-                            // Fallback zoom
-                            if (!zoomSuccess) {
-                                const svgEl = document.querySelector('#svgPreview svg');
-                                if (svgEl) {
-                                    const currentZoom = getCurrentZoomLevel();
-                                    const newZoom = Math.max(0.1, Math.min(5.0, currentZoom * zoomFactor));
+                            let zoomSuccess = false;
+                            
+                            if (isMermaidActive) {
+                                // Handle Mermaid pinch zoom
+                                const mermaidSvg = document.querySelector('#mermaidPreview svg');
+                                if (mermaidSvg) {
+                                    const newZoom = Math.max(mermaidMinZoom, Math.min(mermaidMaxZoom, (currentMermaidZoom || 1) * zoomFactor));
+                                    currentMermaidZoom = newZoom;
                                     
-                                    const isWindows = navigator.userAgent.toLowerCase().includes('windows');
-                                    if (isWindows) {
-                                        svgEl.style.zoom = newZoom.toString();
-                                    } else {
-                                        svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + newZoom + ')';
-                                        svgEl.style.transformOrigin = 'center center';
+                                    // Apply zoom with current pan
+                                    mermaidSvg.style.transform = 'translate(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px) scale(' + newZoom + ')';
+                                    mermaidSvg.style.transformOrigin = 'center center';
+                                    
+                                    // Update zoom buttons
+                                    updateMermaidZoomButtons();
+                                    zoomSuccess = true;
+                                    console.log('Mermaid pinch zoom:', newZoom);
+                                }
+                            } else {
+                                // Try svg-pan-zoom first for PlantUML
+                                if (panZoomInstance && hasSvgPanZoom) {
+                                    try {
+                                        if (typeof panZoomInstance.zoomAtPoint === 'function') {
+                                            const currentZoom = panZoomInstance.getZoom();
+                                            const newZoom = currentZoom * zoomFactor;
+                                            panZoomInstance.zoomAtPoint(newZoom, {x: center.x, y: center.y});
+                                            zoomSuccess = true;
+                                            console.log('svg-pan-zoom pinch zoom:', newZoom);
+                                        }
+                                    } catch (error) {
+                                        console.warn('svg-pan-zoom pinch zoom failed:', error);
                                     }
-                                    
-                                    console.log('Manual pinch zoom:', newZoom);
+                                }
+                                
+                                // Fallback zoom for PlantUML
+                                if (!zoomSuccess) {
+                                    const svgEl = document.querySelector('#svgPreview svg');
+                                    if (svgEl) {
+                                        const currentZoom = getCurrentZoomLevel();
+                                        const newZoom = Math.max(0.1, Math.min(5.0, currentZoom * zoomFactor));
+                                        
+                                        const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+                                        if (isWindows) {
+                                            svgEl.style.zoom = newZoom.toString();
+                                        } else {
+                                            svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + newZoom + ')';
+                                            svgEl.style.transformOrigin = 'center center';
+                                        }
+                                        
+                                        console.log('Manual pinch zoom:', newZoom);
+                                    }
                                 }
                             }
                         }
@@ -4856,43 +4916,71 @@ export class WebviewHtmlGenerator {
                     
                     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
                     
-                    // Try svg-pan-zoom first
-                    let zoomSuccess = false;
-                    if (panZoomInstance && hasSvgPanZoom) {
-                        try {
-                            if (typeof panZoomInstance.zoomAtPoint === 'function') {
-                                const currentZoom = panZoomInstance.getZoom();
-                                const newZoom = currentZoom * zoomFactor;
-                                panZoomInstance.zoomAtPoint(newZoom, {x: centerX, y: centerY});
-                                zoomSuccess = true;
-                                console.log('svg-pan-zoom wheel zoom:', newZoom);
-                            }
-                        } catch (error) {
-                            console.warn('svg-pan-zoom wheel zoom failed:', error);
-                        }
-                    }
+                    // Detect which container is active for zoom
+                    const mermaidContainer = document.getElementById('mermaidContainer');
+                    const isMermaidActive = mermaidContainer && mermaidContainer.style.display !== 'none';
                     
-                    // Fallback zoom
-                    if (!zoomSuccess) {
-                        const svgEl = document.querySelector('#svgPreview svg');
-                        if (svgEl) {
-                            const currentZoom = getCurrentZoomLevel();
-                            const newZoom = Math.max(0.1, Math.min(5.0, currentZoom * zoomFactor));
+                    let zoomSuccess = false;
+                    
+                    if (isMermaidActive) {
+                        // Handle Mermaid wheel zoom
+                        const mermaidSvg = document.querySelector('#mermaidPreview svg');
+                        if (mermaidSvg) {
+                            const newZoom = Math.max(mermaidMinZoom, Math.min(mermaidMaxZoom, (currentMermaidZoom || 1) * zoomFactor));
+                            currentMermaidZoom = newZoom;
                             
-                            const isWindows = navigator.userAgent.toLowerCase().includes('windows');
-                            if (isWindows) {
-                                svgEl.style.zoom = newZoom.toString();
-                            } else {
-                                svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + newZoom + ')';
-                                svgEl.style.transformOrigin = 'center center';
+                            // Apply zoom with current pan
+                            mermaidSvg.style.transform = 'translate(' + currentMermaidPanX + 'px, ' + currentMermaidPanY + 'px) scale(' + newZoom + ')';
+                            mermaidSvg.style.transformOrigin = 'center center';
+                            
+                            // Update zoom buttons
+                            updateMermaidZoomButtons();
+                            zoomSuccess = true;
+                            console.log('Mermaid wheel zoom:', newZoom);
+                        }
+                    } else {
+                        // Try svg-pan-zoom first for PlantUML
+                        if (panZoomInstance && hasSvgPanZoom) {
+                            try {
+                                if (typeof panZoomInstance.zoomAtPoint === 'function') {
+                                    const currentZoom = panZoomInstance.getZoom();
+                                    const newZoom = currentZoom * zoomFactor;
+                                    panZoomInstance.zoomAtPoint(newZoom, {x: centerX, y: centerY});
+                                    zoomSuccess = true;
+                                    console.log('svg-pan-zoom wheel zoom:', newZoom);
+                                }
+                            } catch (error) {
+                                console.warn('svg-pan-zoom wheel zoom failed:', error);
                             }
-                            
-                            console.log('Manual wheel zoom:', newZoom);
+                        }
+                        
+                        // Fallback zoom for PlantUML
+                        if (!zoomSuccess) {
+                            const svgEl = document.querySelector('#svgPreview svg');
+                            if (svgEl) {
+                                const currentZoom = getCurrentZoomLevel();
+                                const newZoom = Math.max(0.1, Math.min(5.0, currentZoom * zoomFactor));
+                                
+                                const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+                                if (isWindows) {
+                                    svgEl.style.zoom = newZoom.toString();
+                                } else {
+                                    svgEl.style.transform = 'translate(' + currentPanX + 'px, ' + currentPanY + 'px) scale(' + newZoom + ')';
+                                    svgEl.style.transformOrigin = 'center center';
+                                }
+                                
+                                console.log('Manual wheel zoom:', newZoom);
+                            }
                         }
                     }
                 }, { passive: false });
+                }
                 
-                console.log('Pan and pinch-to-zoom setup completed');
+                // Set up events for both containers
+                addPanZoomEvents(svgContainer);
+                addPanZoomEvents(mermaidContainer);
+                
+                console.log('Pan and pinch-to-zoom setup completed for both containers');
             }
 
             // Initial setup only if SVG exists
