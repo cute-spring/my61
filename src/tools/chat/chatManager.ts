@@ -27,12 +27,13 @@ export class ChatManager {
     /**
      * Add a bot message to chat history
      */
-    addBotMessage(message: string): void {
+    addBotMessage(message: string, meta?: { stats?: any }): void {
         this.chatHistory.push({ 
             role: 'bot', 
             message, 
             timestamp: Date.now(),
-            id: this.generateId()
+            id: this.generateId(),
+            meta
         });
     }
 

@@ -45,7 +45,8 @@ function getCurrentPlantUMLConfig(): { layoutEngine: string, dotPath: string | n
 
 
 // Use Copilot API to generate diagram code from requirement, history, and diagram type
-async function generateDiagramFromRequirement(requirement: string, history: string[], diagramType?: string, engine?: string): Promise<string> {
+interface DiagramGenerationResult { code: string; modelId?: string; }
+async function generateDiagramFromRequirement(requirement: string, history: string[], diagramType?: string, engine?: string, onStreamFragment?: (chunk: string) => void): Promise<DiagramGenerationResult> {
     const selectedEngine = engine || 'mermaid';
     console.debug(`Generating ${selectedEngine} diagram from requirement with engine ${selectedEngine}`);
     let typeInstruction = '';
@@ -116,13 +117,15 @@ ${codeBlockEnd}`
     try {
         const model = await selectCopilotLLMModel();
         if (!model) { throw new Error('No Copilot model available.'); }
-        const token = new vscode.CancellationTokenSource().token;
-        const chatResponse = await model.sendRequest(prompt, {}, token);
+        const tokenSource = new vscode.CancellationTokenSource();
+        const startTs = Date.now();
+        const chatResponse = await model.sendRequest(prompt, {}, tokenSource.token);
         let diagramCode = '';
         for await (const fragment of chatResponse.text) {
             diagramCode += fragment;
+            if (onStreamFragment) { onStreamFragment(fragment); }
         }
-        return diagramCode;
+        return { code: diagramCode, modelId: (model as any).id || (model as any).name };
     } catch (err: any) {
         throw new Error('Copilot API error: ' + (err.message || String(err)));
     }
@@ -256,37 +259,68 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         chatHistory.push({ role: 'bot', message: 'Generating diagram, please wait...' });
                         updateChatInWebview();
                         try {
-                            const plantumlResponse = await generateDiagramFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, selectedEngine);
-                            // Remove the loading message
-                            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
-                                chatHistory.pop();
-                            }
+                            const startTs = Date.now();
+                            let firstFragmentTs: number | undefined;
+                            let lastFragmentTs: number = startTs;
+                            let fragmentCount = 0;
+                            let accumulated = '';
+                            const result = await generateDiagramFromRequirement(userInput, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, selectedEngine, (frag) => {
+                                const now = Date.now();
+                                if (firstFragmentTs === undefined) { firstFragmentTs = now; }
+                                lastFragmentTs = now;
+                                fragmentCount++;
+                                if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') { chatHistory[chatHistory.length - 1].message = frag; } else {
+                                    const lastIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
+                                    if (lastIndex !== -1) { chatHistory[lastIndex].message += frag; }
+                                }
+                                accumulated += frag;
+                                updateChatInWebview();
+                            });
+                            const plantumlResponse = result.code;
+                            // Remove loading message if still present
+                            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') { chatHistory.pop(); }
                             currentPlantUML = plantumlResponse;
-                            // Extract the diagram type from the LLM response
                             const llmDiagramType = extractDiagramTypeFromResponse(plantumlResponse);
                             let diagramTypeLabel = '';
-                            
                             if (lastDiagramType) {
-                                // User selected a specific type
                                 diagramTypeLabel = `[${lastDiagramType.charAt(0).toUpperCase() + lastDiagramType.slice(1)} Diagram]\n\n`;
                             } else {
-                                // Auto-detection mode - use LLM-provided type
-                                if (llmDiagramType !== 'unknown') {
-                                    diagramTypeLabel = `[Auto-detected: ${llmDiagramType.charAt(0).toUpperCase() + llmDiagramType.slice(1)} Diagram]\n\n`;
-                                } else {
-                                    // This should not happen with the new strict prompt
-                                    diagramTypeLabel = `[Auto-detected Diagram]\n\n`;
-                                }
+                                diagramTypeLabel = llmDiagramType !== 'unknown' ? `[Auto-detected: ${llmDiagramType.charAt(0).toUpperCase() + llmDiagramType.slice(1)} Diagram]\n\n` : `[Auto-detected Diagram]\n\n`;
                             }
-                            
-                            chatHistory.push({ role: 'bot', message: diagramTypeLabel + plantumlResponse });
+                            // Metrics footer
+                            const endTs = Date.now();
+                            const firstByteMs = firstFragmentTs ? (firstFragmentTs - startTs) : (endTs - startTs);
+                            const totalMs = endTs - startTs;
+                            const avgGapMs = (fragmentCount > 1 && firstFragmentTs) ? Math.round((lastFragmentTs - firstFragmentTs) / (fragmentCount - 1)) : 0;
+                            const responseChars = plantumlResponse.length;
+                            // Token estimate heuristic (chars/4)
+                            const estTokens = Math.ceil(responseChars / 4);
+                            // Extract code for stats (engine specific)
+                            let codeBody = '';
+                            if (selectedEngine === 'mermaid') {
+                                const m = plantumlResponse.match(/```mermaid\n([\s\S]*?)\n```/);
+                                if (m && m[1]) { codeBody = m[1].trim(); }
+                            } else {
+                                const m = plantumlResponse.match(/@startuml([\s\S]*?)@enduml/);
+                                if (m && m[1]) { codeBody = m[1].trim(); }
+                            }
+                            const codeLines = codeBody ? codeBody.split(/\r?\n/).length : 0;
+                            const codeChars = codeBody.length;
+                            const modelId = result.modelId || 'unknown-model';
+                            const effectiveType = lastDiagramType || llmDiagramType || 'unknown';
+                            const footer = `\n\n---\nLatency: firstByte ${firstByteMs} ms | total ${totalMs} ms\nFragments: ${fragmentCount} ${fragmentCount>1?`(avg gap ${avgGapMs} ms)`:''}\nChars: ${responseChars} | est tokens: ${estTokens}\nModel: ${modelId} | Engine: ${selectedEngine} | Type: ${effectiveType}\nCode: ${codeLines} lines (${codeChars} chars)\nStreaming: yes`;
+                            // Replace streaming content with final labeled + footer (but keep currentPlantUML raw for rendering)
+                            const lastBotIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
+                            if (lastBotIndex !== -1) {
+                                chatHistory[lastBotIndex].message = diagramTypeLabel + plantumlResponse + footer;
+                            } else {
+                                chatHistory.push({ role: 'bot', message: diagramTypeLabel + plantumlResponse + footer });
+                            }
                             updateChatInWebview();
-                            debouncedRender(currentPlantUML, selectedEngine); // Pass the selected engine
+                            debouncedRender(currentPlantUML, selectedEngine);
                             setTimeout(() => updateChatInWebview(), 200);
                         } catch (err: any) {
-                            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
-                                chatHistory.pop();
-                            }
+                            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') { chatHistory.pop(); }
                             panel.webview.postMessage({ command: 'error', error: err.message || String(err) });
                             updateChatInWebview();
                             setTimeout(() => updateChatInWebview(), 200);
@@ -378,37 +412,43 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                             chatHistory.push({ role: 'bot', message: 'Generating diagram, please wait...' });
                             updateChatInWebview();
                             try {
-                                // Use lastDiagramType for follow-up requests and default to mermaid engine
-                                const plantumlResponse = await generateDiagramFromRequirement(newText, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, 'mermaid');
-                                if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
-                                    chatHistory.pop();
-                                }
+                                const startTs = Date.now();
+                                let firstFragmentTs: number | undefined; let lastFragmentTs = startTs; let fragmentCount = 0;
+                                const result = await generateDiagramFromRequirement(newText, chatHistory.filter(h => h.role === 'user').map(h => h.message), lastDiagramType, 'mermaid', (frag) => {
+                                    const now = Date.now();
+                                    if (firstFragmentTs === undefined) { firstFragmentTs = now; }
+                                    lastFragmentTs = now; fragmentCount++;
+                                    if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') { chatHistory[chatHistory.length - 1].message = frag; } else {
+                                        const li = chatHistory.map(h => h.role).lastIndexOf('bot'); if (li !== -1) { chatHistory[li].message += frag; }
+                                    }
+                                    updateChatInWebview();
+                                });
+                                const plantumlResponse = result.code;
+                                if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') { chatHistory.pop(); }
                                 currentPlantUML = plantumlResponse;
-                                // Extract the diagram type from the LLM response for edited messages too
                                 const llmDiagramType = extractDiagramTypeFromResponse(plantumlResponse);
                                 let diagramTypeLabel = '';
-                                
-                                if (lastDiagramType) {
-                                    // User selected a specific type
-                                    diagramTypeLabel = `[${lastDiagramType.charAt(0).toUpperCase() + lastDiagramType.slice(1)} Diagram]\n\n`;
-                                } else {
-                                    // Auto-detection mode - use LLM-provided type
-                                    if (llmDiagramType !== 'unknown') {
-                                        diagramTypeLabel = `[Auto-detected: ${llmDiagramType.charAt(0).toUpperCase() + llmDiagramType.slice(1)} Diagram]\n\n`;
-                                    } else {
-                                        // This should not happen with the new strict prompt
-                                        diagramTypeLabel = `[Auto-detected Diagram]\n\n`;
-                                    }
-                                }
-                                
-                                chatHistory.push({ role: 'bot', message: diagramTypeLabel + plantumlResponse });
+                                if (lastDiagramType) { diagramTypeLabel = `[${lastDiagramType.charAt(0).toUpperCase() + lastDiagramType.slice(1)} Diagram]\n\n`; } else { diagramTypeLabel = llmDiagramType !== 'unknown' ? `[Auto-detected: ${llmDiagramType.charAt(0).toUpperCase() + llmDiagramType.slice(1)} Diagram]\n\n` : `[Auto-detected Diagram]\n\n`; }
+                                const endTs = Date.now();
+                                const firstByteMs = firstFragmentTs ? (firstFragmentTs - startTs) : (endTs - startTs);
+                                const totalMs = endTs - startTs;
+                                const avgGapMs = (fragmentCount > 1 && firstFragmentTs) ? Math.round((lastFragmentTs - firstFragmentTs) / (fragmentCount - 1)) : 0;
+                                const responseChars = plantumlResponse.length;
+                                const estTokens = Math.ceil(responseChars / 4);
+                                let codeBody = '';
+                                const m = plantumlResponse.match(/```mermaid\n([\s\S]*?)\n```/);
+                                if (m && m[1]) { codeBody = m[1].trim(); }
+                                const codeLines = codeBody ? codeBody.split(/\r?\n/).length : 0;
+                                const codeChars = codeBody.length;
+                                const modelId = result.modelId || 'unknown-model';
+                                const effectiveType = lastDiagramType || llmDiagramType || 'unknown';
+                                const footer = `\n\n---\nLatency: firstByte ${firstByteMs} ms | total ${totalMs} ms\nFragments: ${fragmentCount} ${fragmentCount>1?`(avg gap ${avgGapMs} ms)`:''}\nChars: ${responseChars} | est tokens: ${estTokens}\nModel: ${modelId} | Engine: mermaid | Type: ${effectiveType}\nCode: ${codeLines} lines (${codeChars} chars)\nStreaming: yes`;
+                                chatHistory.push({ role: 'bot', message: diagramTypeLabel + plantumlResponse + footer });
                                 updateChatInWebview();
                                 debouncedRender(currentPlantUML);
                                 setTimeout(() => updateChatInWebview(), 200);
                             } catch (err: any) {
-                                if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') {
-                                    chatHistory.pop();
-                                }
+                                if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].message === 'Generating diagram, please wait...') { chatHistory.pop(); }
                                 panel.webview.postMessage({ command: 'error', error: err.message || String(err) });
                                 updateChatInWebview();
                                 setTimeout(() => updateChatInWebview(), 200);
