@@ -6,6 +6,8 @@ import { UMLGenerator } from './generator';
 import { MermaidGenerator } from './mermaidGenerator';
 import { UMLRenderer } from './renderer';
 import { MermaidRenderer } from './mermaidRenderer';
+import { CachedDiagramRenderer, DiagramCache } from '../../core/diagram/cache';
+import { DiagramRenderer, DiagramRenderResult } from '../../core/diagram/diagramRenderer';
 import { DiagramType, UMLGenerationResponse } from './types';
 
 export type EngineType = 'plantuml' | 'mermaid';
@@ -32,6 +34,9 @@ export class GeneratorFactory {
     private static instance: GeneratorFactory;
     private generators: Map<EngineType, IGenerator> = new Map();
     private renderers: Map<EngineType, IRenderer> = new Map();
+    // New abstraction cache & adapters
+    private diagramCache = new DiagramCache(120);
+    private adapterRenderers = new Map<EngineType, DiagramRenderer>();
 
     private constructor() {
         this.initializeGenerators();
@@ -53,11 +58,29 @@ export class GeneratorFactory {
     private initializeGenerators(): void {
         // Initialize PlantUML generator and renderer
         this.generators.set('plantuml', new UMLGenerator());
-        this.renderers.set('plantuml', new UMLRenderer());
+        const plantRenderer = new UMLRenderer();
+        this.renderers.set('plantuml', plantRenderer);
+        this.adapterRenderers.set('plantuml', new CachedDiagramRenderer({
+            engine: () => 'plantuml',
+            render: async (code: string): Promise<DiagramRenderResult> => {
+                const start = Date.now();
+                const svg = await plantRenderer.renderToSVG(code);
+                return { svg, engine: 'plantuml', durationMs: Date.now() - start };
+            }
+        }, this.diagramCache));
 
         // Initialize Mermaid generator and renderer
         this.generators.set('mermaid', new MermaidGenerator());
-        this.renderers.set('mermaid', new MermaidRenderer());
+        const mermaidRenderer = new MermaidRenderer();
+        this.renderers.set('mermaid', mermaidRenderer);
+        this.adapterRenderers.set('mermaid', new CachedDiagramRenderer({
+            engine: () => 'mermaid',
+            render: async (code: string): Promise<DiagramRenderResult> => {
+                const start = Date.now();
+                const svg = await mermaidRenderer.renderToSVG(code);
+                return { svg, engine: 'mermaid', durationMs: Date.now() - start };
+            }
+        }, this.diagramCache));
     }
 
     /**
@@ -102,6 +125,12 @@ export class GeneratorFactory {
         engineType: EngineType,
         code: string
     ): Promise<string> {
+        // Prefer new abstraction (with cache) then fallback
+        const adapter = this.adapterRenderers.get(engineType);
+        if (adapter) {
+            const r = await adapter.render(code);
+            return r.svg;
+        }
         const renderer = this.getRenderer(engineType);
         return await renderer.renderToSVG(code);
     }
@@ -133,6 +162,9 @@ export class GeneratorFactory {
         return Array.from(this.generators.keys());
     }
 
+    /** Expose cache stats for diagnostics */
+    getCacheStats() { return this.diagramCache.stats(); }
+
     /**
      * Check if engine type is supported
      */
@@ -157,4 +189,4 @@ export class GeneratorFactory {
         console.warn(`Unsupported engine type: ${engineType}, falling back to default`);
         return this.getDefaultEngine();
     }
-} 
+}
