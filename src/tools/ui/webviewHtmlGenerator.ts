@@ -5350,11 +5350,16 @@ export class WebviewHtmlGenerator {
                             const diagramTypeSelect = document.getElementById('diagramType');
                             const selectedDiagramType = diagramTypeSelect ? diagramTypeSelect.value : '';
                             
+                            // Get the current engine type selection
+                            const engineTypeSelect = document.getElementById('engineType');
+                            const selectedEngineType = engineTypeSelect ? engineTypeSelect.value : 'plantuml';
+                            
                             vscode.postMessage({ 
                                 command: 'editAndResendUserMsg', 
                                 index: idx, 
                                 newText: newText,
-                                diagramType: selectedDiagramType
+                                diagramType: selectedDiagramType,
+                                engineType: selectedEngineType
                             });
                         }
                     };
