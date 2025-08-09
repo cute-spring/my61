@@ -5260,13 +5260,17 @@ export class WebviewHtmlGenerator {
                         if (newText) {
                             // Get the current diagram type selection
                             const diagramTypeSelect = document.getElementById('diagramType');
-                            const selectedDiagramType = diagramTypeSelect ? diagramTypeSelect.value : '';
+                            const selectedDiagramType = diagramTypeSelect ? (diagramTypeSelect as HTMLSelectElement).value : '';
+                            // Get current engine selection
+                            const engineTypeSelect = document.getElementById('engineType');
+                            const selectedEngineType = engineTypeSelect ? (engineTypeSelect as HTMLSelectElement).value : '';
                             
                             vscode.postMessage({ 
                                 command: 'editAndResendUserMsg', 
                                 index: idx, 
                                 newText: newText,
-                                diagramType: selectedDiagramType
+                                diagramType: selectedDiagramType,
+                                engineType: selectedEngineType
                             });
                         }
                     };
