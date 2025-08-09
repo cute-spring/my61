@@ -5,6 +5,8 @@
 import * as vscode from 'vscode';
 import { localRender } from '../preview';
 import { UML_TEMPLATES } from './constants';
+import { ErrorHandler } from '../../core/errorHandler';
+import { createError, ErrorCode } from '../../core/errors';
 
 export class UMLRenderer {
     /**
@@ -33,14 +35,17 @@ export class UMLRenderer {
         } catch (err: any) {
             const errorMessage = err.message || String(err);
             console.error('UML rendering error:', errorMessage);
-            
-            // Provide better error messages for common issues
             if (errorMessage.includes('PlantUML JAR not found')) {
+                ErrorHandler.handle(createError(ErrorCode.RENDER_JAVA_MISSING, errorMessage));
                 return this.createSetupInstructionsSVG();
             } else if (errorMessage.includes('Java executable not found')) {
+                ErrorHandler.handle(createError(ErrorCode.RENDER_JAVA_MISSING, errorMessage));
                 return this.createJavaRequiredSVG();
+            } else if (/syntax|parse/i.test(errorMessage)) {
+                ErrorHandler.handle(createError(ErrorCode.RENDER_SYNTAX, errorMessage));
+            } else {
+                ErrorHandler.handle(createError(ErrorCode.RENDER_FAILURE, errorMessage));
             }
-            
             return UML_TEMPLATES.ERROR_SVG.replace('{message}', errorMessage);
         }
     }
@@ -116,12 +121,7 @@ export class UMLRenderer {
      */
     private createJavaRequiredSVG(): string {
         return `<svg width="500" height="300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 300">
-            <rect width="500" height="300" fill="#f8f8f8" stroke="#ccc"/>
-            <text x="250" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#d73027">Java Required</text>
-            <text x="250" y="80" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#333">Java is required for PlantUML diagram generation.</text>
-            <text x="250" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">Please install Java and ensure it's in your PATH:</text>
-            <text x="250" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666">• Download from https://adoptium.net/</text>
-            <text x="250" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666">• Or use your system package manager</text>
+            <rect width="500"
             <text x="250" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#999">For now, you can still chat about UML concepts</text>
         </svg>`;
     }

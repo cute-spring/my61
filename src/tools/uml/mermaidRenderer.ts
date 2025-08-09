@@ -4,6 +4,8 @@
 
 import * as vscode from 'vscode';
 import { UML_TEMPLATES } from './constants';
+import { ErrorHandler } from '../../core/errorHandler';
+import { createError, ErrorCode } from '../../core/errors';
 
 export class MermaidRenderer {
     private mermaid: any = null;
@@ -67,6 +69,7 @@ export class MermaidRenderer {
             const cleanMermaidCode = this.extractMermaidCode(mermaidCode);
             
             if (!cleanMermaidCode) {
+                ErrorHandler.handle(createError(ErrorCode.RENDER_SYNTAX, 'No valid Mermaid code found'));
                 return this.createErrorSVG('No valid Mermaid code found');
             }
 
@@ -79,6 +82,7 @@ export class MermaidRenderer {
             
         } catch (err: any) {
             const errorMessage = err.message || String(err);
+            ErrorHandler.handle(createError(ErrorCode.RENDER_FAILURE, errorMessage));
             console.error('Mermaid rendering error:', errorMessage);
             return this.createMermaidCodeFallback(mermaidCode);
         }
@@ -717,4 +721,4 @@ ${escapedCode}
             return 'Not available';
         }
     }
-} 
+}
