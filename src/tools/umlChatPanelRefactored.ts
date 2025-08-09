@@ -263,7 +263,7 @@ async function handleSendRequirement(
 
         // Update state
         chatManager.removeLoadingMessage();
-        chatManager.addBotMessage(response.plantUML);
+        chatManager.addBotMessage(response.plantUML, { stats: response.stats });
         chatManager.updatePlantUML(response.plantUML);
         chatManager.updateDiagramType(response.diagramType);
         chatManager.updateEngine(validatedEngineType);
@@ -485,7 +485,7 @@ async function handleExportChat(chatManager: ChatManager, factory: GeneratorFact
         }
     } catch (error) {
         console.warn('Smart filename generation failed, using default:', error);
-        // Fallback to local filename generation
+       
         suggestedFilename = `${chatManager.generateSmartFilename()}.umlchat`;
     }
     
@@ -571,7 +571,7 @@ async function handleEditAndResend(
 
         // Update state
         chatManager.removeLoadingMessage();
-        chatManager.addBotMessage(response.plantUML);
+        chatManager.addBotMessage(response.plantUML, { stats: response.stats });
         chatManager.updatePlantUML(response.plantUML);
         chatManager.updateDiagramType(response.diagramType);
 
@@ -629,15 +629,34 @@ async function handleDeleteUserMessage(
 function generateChatHtml(chatHistory: any[]): string {
     const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
 
+    function formatStats(stats: any): string {
+        if (!stats) { return ''; }
+        const msToS = (ms?: number) => ms === undefined || ms === null ? undefined : (ms >= 1000 ? (ms/1000).toFixed(ms >= 10000 ? 0 : 2) + 's' : ms + 'ms');
+        const badges: string[] = [];
+        const badge = (icon: string, label: string, value?: string, title?: string) => {
+            if (!value) { return; }
+            badges.push(`<span class=\"stat-badge\" title=\"${title || label}\">${icon} <b>${label}</b> ${value}</span>`);
+        };
+        // Timing
+        badge('⏱', 'T', msToS(stats.totalMs), 'Total time');
+        if (stats.firstByteMs !== undefined) { badge('↘', 'W', msToS(stats.firstByteMs), 'Wait (time to first byte)'); }
+        if (stats.generationMs !== undefined) { badge('⚙', 'G', msToS(stats.generationMs), 'Generation time after first byte'); }
+        // Model / engine
+        if (stats.modelId) { badge('🤖', 'M', stats.modelId, 'Model'); }
+        if (stats.engine) { badge('🔧', 'E', stats.engine, 'Engine'); }
+        const style = 'display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;font-size:10.5px;font-family:var(--vscode-editor-font-family,monospace);color:#555;';
+        const badgeStyle = `.stat-badge{background:var(--vscode-input-border,rgba(0,0,0,0.06));padding:2px 8px;border-radius:14px;line-height:1.2;border:1px solid var(--vscode-editorWidget-border,rgba(0,0,0,0.12));display:inline-flex;align-items:center;gap:4px;}`;
+        return `<div class=\"llm-stats\" style=\"${style}\"><style>${badgeStyle}</style>${badges.join('')}</div>`;
+    }
+
     return chatHistory.map((h, index) => {
         const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;">${h.message}</pre>`;
-        
+        const statsFooter = h.role === 'bot' && h.meta?.stats ? formatStats(h.meta.stats) : '';
         if (h.role === 'bot') {
             const isActive = index === lastBotMessageIndex;
             const isLoading = h.message === 'Generating diagram, please wait...';
-            return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
+            return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}${statsFooter}\n                </div>`;
         }
-        
         // User message with edit button
         return `<div class="user" data-index="${index}">
                     <div class="user-message-content"><b>You:</b> ${messageContent}</div>

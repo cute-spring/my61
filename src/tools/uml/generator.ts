@@ -25,15 +25,49 @@ export class UMLGenerator {
             }
 
             const token = new vscode.CancellationTokenSource().token;
+            const startIso = new Date().toISOString();
+            const start = Date.now();
+            let firstByte: number | undefined;
             const chatResponse = await model.sendRequest(prompt, {}, token);
-            
-            const responseText = await this.extractResponseText(chatResponse);
+            let responseText = '';
+            for await (const fragment of chatResponse.text) {
+                if (firstByte === undefined) { firstByte = Date.now() - start; }
+                responseText += fragment;
+            }
+            const end = Date.now();
+            const totalMs = end - start;
+            const promptChars = prompt.reduce((acc, m) => acc + (m.content?.length || 0), 0);
+            const responseChars = responseText.length;
+            const responseLines = responseText.split(/\r?\n/).length;
+            const diagramBlockMatch = responseText.match(/@startuml[\s\S]*?@enduml/);
+            const diagramBlock = diagramBlockMatch ? diagramBlockMatch[0] : undefined;
+            const diagramLines = diagramBlock ? diagramBlock.split(/\r?\n/).length : undefined;
+            const stats = {
+                engine: 'plantuml',
+                modelId: (model as any).id || (model as any).name,
+                startTimestamp: startIso,
+                endTimestamp: new Date().toISOString(),
+                firstByteMs: firstByte,
+                waitingMs: firstByte,
+                totalMs,
+                generationMs: firstByte !== undefined && firstByte !== null ? totalMs - firstByte : undefined,
+                promptChars,
+                responseChars,
+                responseLines,
+                diagramLines,
+                diagramSizeChars: diagramBlock?.length,
+                promptMessages: prompt.length,
+                historyDepth: prompt.length - 2,
+                timestamp: startIso,
+                diagramType: undefined as DiagramType | undefined
+            };
             const extractedDiagramType = this.extractDiagramType(responseText);
-            
+            stats.diagramType = extractedDiagramType;
             return {
                 plantUML: responseText,
                 diagramType: extractedDiagramType,
-                explanation: this.extractExplanation(responseText)
+                explanation: this.extractExplanation(responseText),
+                stats
             };
         } catch (err: any) {
             throw new Error(`Copilot API error: ${err.message || String(err)}`);

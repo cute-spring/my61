@@ -10,9 +10,12 @@ export interface LLMResponse {
   raw?: any;
 }
 
+// Added optional streaming method for incremental output
 export interface LLMClient {
   name(): string;
   send(req: LLMRequest): Promise<LLMResponse>;
+  // Returns async iterator of text fragments. If not implemented, callers should fallback to send().
+  sendStream?(req: LLMRequest): AsyncIterable<string>;
 }
 
 export class LLMRegistry {
