@@ -110,10 +110,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('copilotTools.configurePlantUML', () => configurePlantUML()),
-    vscode.commands.registerCommand('copilotTools.showPlantUMLStatus', () => showPlantUMLStatus()),
-    vscode.commands.registerCommand('copilotTools.runAutoDetection', () => runAutoDetection()),
-    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context)),
-    vscode.commands.registerCommand('copilotTools.resetOnboardingState', () => resetOnboardingState(context))
+    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context))
   );
 
   // Auto-configure PlantUML layout engine on first activation
@@ -251,7 +248,7 @@ async function downloadPlantumlJar(storagePath: string): Promise<string | null> 
   });
 }
 
-export async function configurePlantUML() {
+async function configurePlantUML() {
   trackUsage('plantuml', 'configure');
   
   const config = vscode.workspace.getConfiguration('plantuml');
@@ -294,7 +291,7 @@ export async function configurePlantUML() {
       await config.update('dotPath', undefined, vscode.ConfigurationTarget.Global);
     }
     
-    await runAutoDetection();
+    await runAutoDetectionInternal();
     return;
   }
 
@@ -453,7 +450,7 @@ export async function configurePlantUML() {
   if (testConfig === 'Test with UML Chat Designer') {
     vscode.commands.executeCommand('extension.umlChatPanel');
   } else if (testConfig === 'Show Status') {
-    vscode.commands.executeCommand('copilotTools.showPlantUMLStatus');
+    await showPlantUMLStatusModal();
   }
 }
 
@@ -878,7 +875,8 @@ export function deactivate() {
   if (llmStatusBar) { llmStatusBar.dispose(); }
 }
 
-export async function showPlantUMLStatus() {
+// Internal helper (formerly showPlantUMLStatus command)
+async function showPlantUMLStatusModal() {
   trackUsage('plantuml', 'showStatus');
   
   const config = vscode.workspace.getConfiguration('plantuml');
@@ -927,158 +925,12 @@ export async function showPlantUMLStatus() {
   } else if (choice === 'Refresh Status') {
     // Refresh status bar to re-verify
     await plantUMLStatusBar?.refresh(false);
-    await showPlantUMLStatus(); // Show updated status
+    await showPlantUMLStatusModal(); // Show updated status
   }
 }
 
-export async function testDotDetection() {
-  trackUsage('plantuml', 'testDotDetection');
-  
-  try {
-    vscode.window.showInformationMessage('🔍 Testing DOT auto-detection...', { modal: false });
-    
-    const { DotPathDetector } = await import('./tools/utils/dotPathDetector.js');
-    const detection = await DotPathDetector.detectDotPath();
-    
-    let message = '**DOT Detection Results:**\n\n';
-    
-    if (detection.found && detection.path) {
-      message += `✅ **Found:** ${detection.path}\n`;
-      message += `📋 **Version:** ${detection.version || 'unknown'}\n`;
-      message += `🔍 **Method:** ${detection.method}\n`;
-      
-      // Test actual execution capability
-      vscode.window.showInformationMessage('🔬 Testing DOT execution with complex diagram...', { modal: false });
-      const isExecutable = await DotPathDetector.validateDotExecutable(detection.path);
-      
-      if (isExecutable) {
-        message += `✅ **Execution Test:** Passed - Can process complex diagrams with DOT-specific features\n`;
-        message += `🎯 **Enterprise Ready:** DOT is fully functional and not blocked by security policies\n`;
-      } else {
-        message += `❌ **Execution Test:** Failed - Found but cannot execute complex diagrams\n`;
-        message += `⚠️ **Possible Cause:** Security policy blocking DOT execution or missing dependencies\n`;
-        message += `💡 **Note:** Will fall back to Smetana (Pure Java) layout engine\n`;
-      }
-    } else {
-      message += `❌ **Not Found**\n`;
-      message += `🔍 **Method:** ${detection.method}\n`;
-    }
-    
-    if (detection.searchedPaths && detection.searchedPaths.length > 0) {
-      message += `\n📂 **Searched ${detection.searchedPaths.length} locations:**\n`;
-      message += detection.searchedPaths.slice(0, 5).map(p => `• ${p}`).join('\n');
-      if (detection.searchedPaths.length > 5) {
-        message += `\n• ... and ${detection.searchedPaths.length - 5} more`;
-      }
-    }
-    
-    message += '\n\n*Note: Auto-detection now includes execution validation for security-restricted environments.*';
-    
-    const choice = await vscode.window.showInformationMessage(
-      message,
-      { modal: true },
-      'Run Auto-Config',
-      'Manual Config',
-      'Show All Paths',
-      'Close'
-    );
-    
-    if (choice === 'Run Auto-Config') {
-      await runAutoDetection();
-    } else if (choice === 'Manual Config') {
-      await configurePlantUML();
-    } else if (choice === 'Show All Paths' && detection.searchedPaths) {
-      const allPaths = detection.searchedPaths.join('\n');
-      vscode.window.showInformationMessage(
-        `**All ${detection.searchedPaths.length} searched paths:**\n\n${allPaths}`,
-        { modal: true }
-      );
-    }
-    
-  } catch (error) {
-    vscode.window.showErrorMessage(`DOT detection test failed: ${error}`);
-  }
-}
-
-/**
- * Show analytics dashboard
- */
-async function showAnalytics(context: vscode.ExtensionContext): Promise<void> {
-  trackUsage('analytics.dashboard.show');
-  try {
-    const dashboard = AnalyticsDashboard.getInstance(context);
-    await dashboard.show();
-  } catch (error) {
-    console.error('Error showing analytics dashboard:', error);
-    vscode.window.showErrorMessage('Failed to open analytics dashboard');
-  }
-}
-
-/**
- * Reset onboarding state for debugging
- */
-async function resetOnboardingState(context: vscode.ExtensionContext): Promise<void> {
-  try {
-    await context.globalState.update('umlChatOnboardingState', undefined);
-    vscode.window.showInformationMessage('Onboarding state has been reset. The tutorial will show again when you open UML Chat Designer.');
-    console.log('Onboarding state reset successfully');
-  } catch (error) {
-    vscode.window.showErrorMessage(`Failed to reset onboarding state: ${error}`);
-    console.error('Failed to reset onboarding state:', error);
-  }
-}
-
-/**
- * Export analytics data
- */
-async function exportAnalytics(): Promise<void> {
-  trackUsage('analytics.export');
-  try {
-    const analytics = UsageAnalytics.getInstance();
-    const data = analytics.exportUsageData();
-    
-    const uri = await vscode.window.showSaveDialog({
-      defaultUri: vscode.Uri.file(`analytics-export-${new Date().toISOString().split('T')[0]}.json`),
-      filters: {
-        'JSON Files': ['json']
-      }
-    });
-    
-    if (uri) {
-      await vscode.workspace.fs.writeFile(uri, Buffer.from(data, 'utf8'));
-      vscode.window.showInformationMessage(`Analytics data exported to ${uri.fsPath}`);
-    }
-  } catch (error) {
-    console.error('Error exporting analytics:', error);
-    vscode.window.showErrorMessage('Failed to export analytics data');
-  }
-}
-
-/**
- * Sync analytics with server
- */
-async function syncAnalytics(): Promise<void> {
-  trackUsage('analytics.sync.manual');
-  try {
-    const analytics = UsageAnalytics.getInstance();
-    const result = await analytics.syncWithServer();
-    
-    if (result.success) {
-      vscode.window.showInformationMessage(`Analytics sync successful: ${result.message}`);
-    } else {
-      vscode.window.showWarningMessage(`Analytics sync failed: ${result.message}`);
-    }
-  } catch (error) {
-    console.error('Error syncing analytics:', error);
-    vscode.window.showErrorMessage('Failed to sync analytics data');
-  }
-}
-
-/**
- * Test and run auto-detection manually (for troubleshooting or re-detection)
- * Includes comprehensive DOT detection testing
- */
-export async function runAutoDetection() {
+// convert runAutoDetection to internal helper (not exported)
+async function runAutoDetectionInternal() {
   trackUsage('plantuml', 'runAutoDetection');
   
   try {
@@ -1159,7 +1011,7 @@ export async function runAutoDetection() {
       if (choice === 'Test UML Chat') {
         vscode.commands.executeCommand('extension.umlChatPanel');
       } else if (choice === 'Show Status') {
-        vscode.commands.executeCommand('copilotTools.showPlantUMLStatus');
+        await showPlantUMLStatusModal();
       }
     } else {
       vscode.window.showInformationMessage(
@@ -1177,5 +1029,17 @@ export async function runAutoDetection() {
 
   } catch (error) {
     vscode.window.showErrorMessage(`Auto-detection failed: ${error}`);
+  }
+}
+
+// Re-introduced analytics dashboard function (still exposed via command)
+async function showAnalytics(context: vscode.ExtensionContext): Promise<void> {
+  trackUsage('analytics.dashboard.show');
+  try {
+    const dashboard = AnalyticsDashboard.getInstance(context);
+    await dashboard.show();
+  } catch (error) {
+    console.error('Error showing analytics dashboard:', error);
+    vscode.window.showErrorMessage('Failed to open analytics dashboard');
   }
 }
