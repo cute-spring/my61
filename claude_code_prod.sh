@@ -2,10 +2,24 @@
 
 set -euo pipefail
 
+# Cleanup function for temporary files and sensitive data
+cleanup() {
+    local exit_code=$?
+    # Clean up any temporary files
+    rm -f /tmp/claude_test_$$ /tmp/claude_test_$$.exit 2>/dev/null || true
+    # Clear sensitive variables
+    unset api_key confirm_key effective_api_key 2>/dev/null || true
+    exit $exit_code
+}
+
+# Set up signal handlers for cleanup
+trap cleanup EXIT INT TERM
+
 # ========================
 #       常量定义
 # ========================
 SCRIPT_NAME=$(basename "$0")
+SCRIPT_VERSION="1.0.0"
 NODE_MIN_VERSION=18
 NODE_INSTALL_VERSION=22
 NVM_VERSION="v0.40.3"
@@ -36,24 +50,50 @@ API_TIMEOUT_MS=3000000
 # ========================
 
 log_info() {
-    echo "🔹 $*"
+    echo "🔹 $*" >&2
 }
 
 log_success() {
-    echo "✅ $*"
+    echo "✅ $*" >&2
 }
 
 log_error() {
     echo "❌ $*" >&2
 }
 
+log_warning() {
+    echo "⚠️  $*" >&2
+}
+
+log_debug() {
+    if [[ "${DEBUG:-}" == "1" ]]; then
+        echo "🐛 DEBUG: $*" >&2
+    fi
+}
+
 ensure_dir_exists() {
     local dir="$1"
     if [ ! -d "$dir" ]; then
+        log_debug "Creating directory: $dir"
         mkdir -p "$dir" || {
             log_error "Failed to create directory: $dir"
-            exit 1
+            return 1
         }
+    fi
+}
+
+# Check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Validate URL format
+validate_url() {
+    local url="$1"
+    if [[ "$url" =~ ^https?:// ]]; then
+        return 0
+    else
+        return 1
     fi
 }
 
@@ -105,8 +145,10 @@ install_nodejs() {
 check_nodejs() {
     log_info "Checking Node.js installation..."
     
-    if command -v node &>/dev/null; then
+    if command_exists node; then
+        local current_version
         current_version=$(node -v | sed 's/v//')
+        local major_version
         major_version=$(echo "$current_version" | cut -d. -f1)
 
         if [ "$major_version" -ge "$NODE_MIN_VERSION" ]; then
@@ -179,7 +221,8 @@ check_system_dependencies() {
 check_claude_installation() {
     log_info "Checking Claude Code installation..."
     
-    if command -v claude &>/dev/null; then
+    if command_exists claude; then
+        local claude_version
         claude_version=$(claude --version 2>/dev/null || echo "unknown")
         log_success "Claude Code is already installed: $claude_version (✓)"
         return 0
@@ -336,21 +379,20 @@ EOF
     fi
 }
 
-# Function to list available models
-list_models() {
+# Simple list function for command line usage
+list_models_simple() {
     init_models_config
-    local models_file="$CLAUDE_CONFIG_DIR/models.json"
     local current_model=$(get_current_model)
     
     echo "🤖 Available Models"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
-    if [ -f "$models_file" ]; then
+    if [ -f "$MODELS_CONFIG_FILE" ]; then
         local models
         models=$(node -e "
 const fs = require('fs');
 try {
-    const data = JSON.parse(fs.readFileSync('$models_file', 'utf-8'));
+    const data = JSON.parse(fs.readFileSync('$MODELS_CONFIG_FILE', 'utf-8'));
     Object.entries(data.models || {}).forEach(([modelId, model]) => {
         const status = modelId === '$current_model' ? ' (current)' : '';
         console.log(\`   \${modelId.padEnd(12)} - \${model.name || 'Unknown'}\${status}\`);
@@ -364,11 +406,12 @@ try {
             echo "$models"
         else
             log_error "Failed to read models configuration"
-            echo "   Available: zhipu, anthropic"
+            echo "   Available: zhipu, anthropic, k2"
         fi
     else
         echo "   zhipu        - ZHIPU AI (default)"
         echo "   anthropic    - Anthropic Claude"
+        echo "   k2           - Kimi K2"
     fi
     
     echo ""
@@ -664,9 +707,6 @@ configure_model() {
     if [[ ! "$switch_now" =~ ^[Nn]$ ]]; then
         switch_model "$model_key"
     fi
-    
-    # Clear sensitive variables
-    unset api_key confirm_key
 }
 
 # ========================
@@ -978,6 +1018,19 @@ add_custom_model() {
         return 1
     fi
     
+    # Check if model key already exists
+    local model_exists
+    model_exists=$(node -e "
+        const fs = require('fs');
+        const config = JSON.parse(fs.readFileSync('$MODELS_CONFIG_FILE', 'utf-8'));
+        console.log(config.models['$model_key'] ? 'true' : 'false');
+    " 2>/dev/null)
+    
+    if [ "$model_exists" = "true" ]; then
+        log_error "Model key '$model_key' already exists. Use --edit to modify existing models."
+        return 1
+    fi
+    
     read -p "📝 Enter model name (e.g., 'OpenAI GPT-4'): " model_name
     if [ -z "$model_name" ]; then
         log_error "Model name cannot be empty"
@@ -988,6 +1041,16 @@ add_custom_model() {
     if [ -z "$base_url" ]; then
         log_error "Base URL cannot be empty"
         return 1
+    fi
+    
+    # Validate URL format
+    if ! validate_url "$base_url"; then
+        log_warning "Base URL does not appear to be a valid HTTP/HTTPS URL"
+        read -p "Continue anyway? (y/N): " continue_anyway
+        if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+            log_info "Cancelled by user"
+            return 1
+        fi
     fi
     
     read -p "🔑 Enter API key URL (for documentation): " api_key_url
@@ -1506,18 +1569,22 @@ main() {
     # Check for command line arguments
     case "${1:-}" in
         --help|-h)
-            echo "🚀 Claude Code Installation & Configuration Script"
+            echo "🚀 Claude Code Installation & Configuration Script v$SCRIPT_VERSION"
             echo ""
             echo "Usage: $0 [options]"
             echo ""
             echo "Options:"
             echo "  --help, -h         Show this help message"
+            echo "  --version, -v      Show script version"
             echo "  --info, -i         Show API key information"
             echo "  --config, -c       Open configuration management"
             echo "  --test, -t         Test Claude configuration"
             echo "  --models, -m       List available models"
             echo "  --switch MODEL     Switch to specified model"
             echo "  --configure MODEL  Configure API key for specified model"
+            echo ""
+            echo "Environment Variables:"
+            echo "  DEBUG=1            Enable debug logging"
             echo ""
             echo "Examples:"
             echo "  $0                    # Run full installation/check"
@@ -1528,6 +1595,10 @@ main() {
             echo "  $0 --switch anthropic # Switch to Anthropic model"
             echo "  $0 --switch k2        # Switch to Kimi K2 model"
             echo "  $0 --configure zhipu  # Configure ZHIPU API key"
+            exit 0
+            ;;
+        --version|-v)
+            echo "Claude Code Installation Script v$SCRIPT_VERSION"
             exit 0
             ;;
         --info|-i)
@@ -1564,7 +1635,7 @@ main() {
             ;;
     esac
 
-    echo "🚀 Claude Code Installation & Configuration Script"
+    echo "🚀 Claude Code Installation & Configuration Script v$SCRIPT_VERSION"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "   Script: $SCRIPT_NAME"
     echo "   Target: Claude Code v$CLAUDE_PACKAGE"
