@@ -44,25 +44,62 @@ export class EmailRefineTool extends BaseTool {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Refined Email</title>
         <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; background: #f6f8fa; margin: 0; padding: 0; }
-          .container { max-width: 800px; margin: 32px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px #0001; padding: 32px; }
-          h2 { margin-top: 0; color: #0066cc; }
+          body { 
+            font-family: var(--vscode-font-family, 'Segoe UI', Arial, sans-serif); 
+            background: var(--vscode-editor-background, #f6f8fa); 
+            color: var(--vscode-editor-foreground, #333);
+            margin: 0; 
+            padding: 0; 
+          }
+          .container { 
+            max-width: 800px; 
+            margin: 32px auto; 
+            background: var(--vscode-panel-background, #fff); 
+            border-radius: 12px; 
+            box-shadow: 0 2px 16px rgba(0,0,0,0.1); 
+            padding: 32px; 
+            border: 1px solid var(--vscode-panel-border, #e1e8ed);
+          }
+          h2 { 
+            margin-top: 0; 
+            color: var(--vscode-textLink-foreground, #0066cc); 
+            font-weight: 600;
+          }
           .section { margin-bottom: 24px; }
-          .label { font-size: 0.95em; color: #888; margin-bottom: 4px; }
+          .label { 
+            font-size: 0.95em; 
+            color: var(--vscode-descriptionForeground, #888); 
+            margin-bottom: 4px; 
+            font-weight: 500;
+          }
           .original, .refined {
-            background: #f3f3f3;
+            background: var(--vscode-input-background, #f3f3f3);
+            color: var(--vscode-input-foreground, #333);
             border-radius: 6px;
             padding: 16px;
             font-size: 1.08em;
             white-space: pre-wrap;
             margin-bottom: 8px;
+            border: 1px solid var(--vscode-input-border, #d1d5db);
           }
-          .refined { background: #e6f7ff; border-left: 4px solid #1890ff; }
-          .refined-markdown { background: #e6f7ff; border-left: 4px solid #1890ff; border-radius: 6px; padding: 16px; font-size: 1.08em; margin-bottom: 8px; }
+          .refined { 
+            background: var(--vscode-inputValidation-infoBackground, rgba(30, 144, 255, 0.1)); 
+            border-left: 4px solid var(--vscode-inputValidation-infoBorder, #1890ff); 
+            border-color: var(--vscode-inputValidation-infoBorder, #1890ff);
+          }
+          .refined-markdown { 
+            background: var(--vscode-inputValidation-infoBackground, rgba(30, 144, 255, 0.1)); 
+            border-left: 4px solid var(--vscode-inputValidation-infoBorder, #1890ff); 
+            border-radius: 6px; 
+            padding: 16px; 
+            font-size: 1.08em; 
+            margin-bottom: 8px; 
+            border-color: var(--vscode-inputValidation-infoBorder, #1890ff);
+          }
           .subjects { margin: 16px 0; }
           .subject-btn {
-            background: #1890ff;
-            color: #fff;
+            background: var(--vscode-button-background, #1890ff);
+            color: var(--vscode-button-foreground, #fff);
             border: none;
             border-radius: 4px;
             padding: 8px 16px;
@@ -72,10 +109,12 @@ export class EmailRefineTool extends BaseTool {
             margin-bottom: 8px;
             transition: background 0.2s;
           }
-          .subject-btn:hover { background: #40a9ff; }
+          .subject-btn:hover { 
+            background: var(--vscode-button-hoverBackground, #40a9ff); 
+          }
           .copy-btn {
-            background: #52c41a;
-            color: #fff;
+            background: var(--vscode-button-background, #52c41a);
+            color: var(--vscode-button-foreground, #fff);
             border: none;
             border-radius: 4px;
             padding: 8px 16px;
@@ -84,6 +123,46 @@ export class EmailRefineTool extends BaseTool {
             margin-top: 8px;
             transition: background 0.2s;
           }
+          .copy-btn:hover { 
+            background: var(--vscode-button-hoverBackground, #73d13d); 
+          }
+          button.refine-again {
+            background: var(--vscode-button-background, #ffc107);
+            color: var(--vscode-button-foreground, #fff);
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s;
+          }
+          button.refine-again:hover { 
+            background: var(--vscode-button-hoverBackground, #ffca2c); 
+          }
+          
+          /* Theme-specific overrides for better contrast */
+          body.vscode-dark .refined,
+          body.vscode-dark .refined-markdown {
+            background: rgba(30, 144, 255, 0.15);
+            border-left-color: #40a9ff;
+            color: var(--vscode-editor-foreground, #cccccc);
+          }
+          
+          body.vscode-light .refined,
+          body.vscode-light .refined-markdown {
+            background: #e6f7ff;
+            border-left-color: #1890ff;
+            color: var(--vscode-editor-foreground, #333333);
+          }
+          
+          body.vscode-high-contrast .refined,
+          body.vscode-high-contrast .refined-markdown {
+            background: transparent;
+            border: 2px solid var(--vscode-contrastBorder, #ffff00);
+            border-left-width: 4px;
+          }
+        </style>
           .copy-btn:hover { background: #73d13d; }
           button.refine-again {
             background: #ffc107;
