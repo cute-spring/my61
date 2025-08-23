@@ -195,43 +195,10 @@ export class EmailRefineTool extends BaseTool {
             border-left-width: 4px;
           }
         </style>
-          .copy-btn:hover { background: #73d13d; }
-          button.refine-again {
-            background: #ffc107;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
-            font-size: 1em;
-            cursor: pointer;
-            margin-top: 8px;
-            transition: background 0.2s;
-          }
-          button.refine-again:hover { background: #ffca2c; }
-        </style>
       </head>
       <body>
         <div class="container">
-          <h2>📧 Refined Email</h2>
-          
-          <!-- Quick Actions Bar - Prominently displayed at top -->
-          <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #1890ff; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-            <div style="color: #1890ff; font-weight: 600; margin-bottom: 12px; font-size: 0.95em;">
-              ⚡ Quick Actions
-            </div>
-            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-              <button class="copy-btn" onclick="copyText()" style="background: #52c41a;">
-                📋 Copy Rich Text
-              </button>
-              <button class="copy-btn" onclick="copyPlainText()" style="background: #888;">
-                📄 Copy Plain Text
-              </button>
-              <button class="refine-again" onclick="showRefineSection()" style="background: #ffc107;">
-                ✨ Refine Again
-              </button>
-            </div>
-          </div>
-
+          <h2>Refined Email</h2>
           <div class="section">
             <div class="label">Original:</div>
             <textarea id="originalText" class="original" style="min-height:80px;resize:vertical;width:100%;font-size:1.08em;padding:16px;border-radius:6px;background:#f3f3f3;margin-bottom:8px;">${original}</textarea>
@@ -268,33 +235,6 @@ export class EmailRefineTool extends BaseTool {
             const refinedDiv = document.getElementById('refinedText');
             const text = refinedDiv.innerText;
             navigator.clipboard.writeText(text);
-          }
-          
-          function showRefineSection() {
-            const refineSection = document.querySelector('[style*="margin-top:20px"]');
-            if (refineSection) {
-              refineSection.style.display = 'block';
-              refineSection.style.background = 'linear-gradient(135deg, #fff9e6 0%, #ffeaa7 100%)';
-              refineSection.style.border = '2px solid #ffc107';
-              refineSection.style.borderRadius = '8px';
-              refineSection.style.padding = '16px';
-              refineSection.style.marginTop = '16px';
-              
-              const textarea = document.getElementById('furtherComment');
-              if (textarea) {
-                textarea.focus();
-                textarea.placeholder = '✨ What would you like to improve? (e.g., make it more urgent, add deadline, more polite, etc.)';
-                textarea.style.border = '2px solid #ffc107';
-              }
-              
-              // Add visual indicator
-              const label = refineSection.querySelector('label');
-              if (label) {
-                label.innerHTML = '💡 Further comment/refinement:';
-                label.style.color = '#d68910';
-                label.style.fontWeight = '600';
-              }
-            }
           }
           
           function sendFurtherRefine() {
