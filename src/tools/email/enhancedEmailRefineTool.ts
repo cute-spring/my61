@@ -76,6 +76,38 @@ ${text}`;
         <title>Email Refine Pro</title>
         ${getModernStyles()}
         <style>
+          /* Primary Action Button Styles - Prominently positioned */
+          .copy-btn {
+            background: var(--vscode-button-background, #52c41a);
+            color: var(--vscode-button-foreground, #fff);
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s;
+          }
+          .copy-btn:hover { 
+            background: var(--vscode-button-hoverBackground, #73d13d); 
+          }
+          
+          button.refine-again {
+            background: #ffc107;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s;
+          }
+          button.refine-again:hover { 
+            background: #ffca2c; 
+          }
+
+          /* Tool Container and Enhanced Styles */
           .tone-selector {
             display: flex;
             gap: 8px;
@@ -264,6 +296,27 @@ ${text}`;
           </div>
           
           <div class="tool-content">
+            <!-- Quick Actions Bar - Prominently displayed at top -->
+            <div class="section-card" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #1890ff; margin-bottom: 24px;">
+              <div class="form-label" style="color: #1890ff; font-weight: 600; margin-bottom: 12px;">
+                ⚡ Quick Actions
+              </div>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                <button class="copy-btn" onclick="copyRefined()" style="background: #52c41a; flex: 0 0 auto;">
+                  📋 Copy Email
+                </button>
+                <button class="copy-btn" onclick="copyAsPlainText()" style="background: #888; flex: 0 0 auto;">
+                  📄 Copy Plain Text
+                </button>
+                <button class="copy-btn" onclick="replaceSelection()" style="background: #1890ff; flex: 0 0 auto;">
+                  🔄 Replace Original
+                </button>
+                <button class="refine-again" onclick="showRefineDialog()" style="flex: 0 0 auto;">
+                  ✨ Refine Again
+                </button>
+              </div>
+            </div>
+
             <!-- Tone Selector -->
             <div class="section-card">
               <div class="form-label">Email Tone</div>
@@ -444,6 +497,38 @@ ${text}`;
           }
           
           // Enhanced copy functions
+          async function copyRefined() {
+            const content = document.getElementById('refinedContent');
+            const text = content.innerText;
+            await copyWithFeedback(text, event.target);
+          }
+          
+          async function copyAsPlainText() {
+            const content = document.getElementById('refinedContent');
+            const text = content.innerText;
+            await copyWithFeedback(text, event.target);
+          }
+          
+          // Show prominent refine dialog
+          function showRefineDialog() {
+            const advancedSection = document.getElementById('advanced');
+            const toggle = advancedSection.previousElementSibling;
+            
+            // Auto-expand advanced section
+            if (!advancedSection.classList.contains('active')) {
+              toggleSection('advanced');
+            }
+            
+            // Focus on the instruction textarea
+            const textarea = document.getElementById('additionalInstructions');
+            textarea.focus();
+            textarea.placeholder = "✨ What would you like to improve? (e.g., make it more urgent, add deadline, more polite, etc.)";
+            
+            // Show toast to guide user
+            showToast('💡 Add your refinement instructions below and click "Refine Again"', 'info');
+          }
+          
+          // Refine again with instructions
           async function copyRefined() {
             const content = document.getElementById('refinedContent');
             const text = content.innerText;
