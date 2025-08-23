@@ -105,14 +105,14 @@ export class EmailRefineTool extends BaseTool {
             font-weight: 500;
           }
           .original, .refined {
-            background: var(--vscode-input-background, #f3f3f3);
-            color: var(--vscode-input-foreground, #333);
+            background: var(--vscode-input-background, #ffffff) !important;
+            color: var(--vscode-input-foreground, #333333) !important;
             border-radius: 6px;
             padding: 16px;
             font-size: 1.08em;
             white-space: pre-wrap;
             margin-bottom: 8px;
-            border: 1px solid var(--vscode-input-border, #d1d5db);
+            border: 1px solid var(--vscode-input-border, #d1d5db) !important;
           }
           .refined { 
             background: var(--vscode-inputValidation-infoBackground, rgba(30, 144, 255, 0.1)); 
@@ -174,6 +174,24 @@ export class EmailRefineTool extends BaseTool {
           }
           
           /* Theme-specific overrides for better contrast */
+          body.vscode-dark .original {
+            background: var(--vscode-input-background, #3c3c3c) !important;
+            color: var(--vscode-input-foreground, #cccccc) !important;
+            border-color: var(--vscode-input-border, #5a5a5a) !important;
+          }
+          
+          body.vscode-light .original {
+            background: var(--vscode-input-background, #ffffff) !important;
+            color: var(--vscode-input-foreground, #333333) !important;
+            border-color: var(--vscode-input-border, #d1d5db) !important;
+          }
+          
+          body.vscode-high-contrast .original {
+            background: var(--vscode-input-background, #000000) !important;
+            color: var(--vscode-input-foreground, #ffffff) !important;
+            border: 2px solid var(--vscode-contrastBorder, #ffff00) !important;
+          }
+          
           body.vscode-dark .refined,
           body.vscode-dark .refined-markdown {
             background: rgba(30, 144, 255, 0.15);
@@ -201,7 +219,7 @@ export class EmailRefineTool extends BaseTool {
           <h2>Refined Email</h2>
           <div class="section">
             <div class="label">Original:</div>
-            <textarea id="originalText" class="original" style="min-height:80px;resize:vertical;width:100%;font-size:1.08em;padding:16px;border-radius:6px;background:#f3f3f3;margin-bottom:8px;">${original}</textarea>
+            <textarea id="originalText" class="original" style="min-height:80px;resize:vertical;width:100%;font-size:1.08em;padding:16px;border-radius:6px;margin-bottom:8px;">${original}</textarea>
           </div>
           <div class="section">
             <div class="label">Translated:</div>
