@@ -11,6 +11,82 @@ import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios';
 
+// Custom editor provider for .umlchat files
+class UmlChatEditorProvider implements vscode.CustomTextEditorProvider {
+  constructor(private context: vscode.ExtensionContext) {}
+
+  public async resolveCustomTextEditor(
+    document: vscode.TextDocument,
+    webviewPanel: vscode.WebviewPanel,
+    _token: vscode.CancellationToken
+  ): Promise<void> {
+    // When a .umlchat file is opened, automatically import it and open the UML Chat Panel
+    try {
+      const content = document.getText();
+      const sessionData = JSON.parse(content);
+      
+      // Validate the session data structure
+      if (!sessionData || !sessionData.chatHistory || !sessionData.currentPlantUML) {
+        throw new Error('Invalid or corrupted UML chat session file.');
+      }
+      
+      // Store the session data temporarily
+      await this.context.globalState.update('pendingUmlChatImport', sessionData);
+      
+      // Open the UML Chat Panel which will automatically import the session
+      await vscode.commands.executeCommand('extension.umlChatPanel');
+      
+      // Safely dispose the webview panel after a short delay
+      setTimeout(() => {
+        try {
+          webviewPanel.dispose();
+        } catch (disposeError) {
+          // Ignore disposal errors as the panel might already be disposed
+          console.log('Webview panel already disposed:', disposeError);
+        }
+      }, 100);
+      
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to open UML chat session: ${error}`);
+      // Safely dispose the webview panel
+      try {
+        webviewPanel.dispose();
+      } catch (disposeError) {
+        // Ignore disposal errors
+        console.log('Webview panel disposal error:', disposeError);
+      }
+    }
+  }
+}
+
+// Function to open UML chat file
+async function openUmlChatFile(context: vscode.ExtensionContext, uri: vscode.Uri): Promise<void> {
+  try {
+    // Read the .umlchat file content
+    const fileContent = await vscode.workspace.fs.readFile(uri);
+    const sessionData = JSON.parse(fileContent.toString());
+    
+    // Validate the session data structure
+    if (!sessionData || !sessionData.chatHistory || !sessionData.currentPlantUML) {
+      throw new Error('Invalid or corrupted UML chat session file.');
+    }
+    
+    // Store the session data temporarily for the UML Chat Panel to pick up
+    context.globalState.update('pendingUmlChatImport', sessionData);
+    
+    // Open the UML Chat Panel which will automatically import the session
+    await vscode.commands.executeCommand('extension.umlChatPanel');
+    
+    // Clear the temporary data after a short delay
+    setTimeout(() => {
+      context.globalState.update('pendingUmlChatImport', undefined);
+    }, 1000);
+    
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to open UML chat file: ${error}`);
+  }
+}
+
 const PLANTUML_JAR_URL = 'https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar';
 const JAR_FILENAME = 'plantuml.jar';
 let plantumlJarPath: string | null = null;
@@ -110,7 +186,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('copilotTools.configurePlantUML', () => configurePlantUML()),
-    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context))
+    vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context)),
+    vscode.commands.registerCommand('extension.openUmlChatFile', (uri: vscode.Uri) => openUmlChatFile(context, uri))
+  );
+
+  // Register custom editor provider for .umlchat files
+  const umlChatEditorProvider = new UmlChatEditorProvider(context);
+  context.subscriptions.push(
+    vscode.window.registerCustomEditorProvider('umlChatDesigner.editor', umlChatEditorProvider)
   );
 
   // Auto-configure PlantUML layout engine on first activation

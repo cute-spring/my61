@@ -107,7 +107,7 @@ export class WebviewHtmlGenerator {
             <div id="rightPanel">
                 <div id="unifiedDiagramPanel">
                     <!-- PlantUML Diagram Container -->
-                    <div id="plantUMLContainer" class="diagram-container" style="display: none;">
+                    <div id="plantUMLContainer" class="diagram-container" style="display: none; opacity: 1; transition: opacity 0.2s ease-in-out;">
                 <div id="svgPreview">
                     <!-- Empty state display -->
                     <div id="emptyState" class="empty-state" style="display: none;">
@@ -137,7 +137,7 @@ export class WebviewHtmlGenerator {
                     </div>
                     
                     <!-- Mermaid Diagram Container -->
-                    <div id="mermaidContainer" class="diagram-container" style="display: none;">
+                    <div id="mermaidContainer" class="diagram-container" style="display: none; opacity: 1; transition: opacity 0.2s ease-in-out;">
                         <div id="mermaidPreview">
                             <div class="loading">Loading Mermaid diagram...</div>
                         </div>
@@ -5177,41 +5177,67 @@ export class WebviewHtmlGenerator {
                         svgContainer.style.display = 'none';
                     }
                 } else if (message.command === 'showMermaid') {
-                    // Show Mermaid diagram in unified panel
+                    // Show Mermaid diagram in unified panel with smooth transition
                     const plantUMLContainer = document.getElementById('plantUMLContainer');
                     const mermaidContainer = document.getElementById('mermaidContainer');
                     
                     if (plantUMLContainer && mermaidContainer) {
-                        // Hide PlantUML container
-                        plantUMLContainer.style.display = 'none';
+                        // Ensure containers have proper initial opacity
+                        if (!plantUMLContainer.style.opacity) plantUMLContainer.style.opacity = '1';
+                        if (!mermaidContainer.style.opacity) mermaidContainer.style.opacity = '1';
                         
-                        // Show Mermaid container
-                        mermaidContainer.style.display = 'block';
+                        // Fade out PlantUML container
+                        plantUMLContainer.style.opacity = '0';
                         
-                        // Render Mermaid diagram
-                        renderMermaidDiagram(message.mermaidCode);
+                        setTimeout(() => {
+                            // Hide PlantUML and show Mermaid
+                            plantUMLContainer.style.display = 'none';
+                            mermaidContainer.style.display = 'block';
+                            mermaidContainer.style.opacity = '0';
+                            
+                            // Render Mermaid diagram
+                            renderMermaidDiagram(message.mermaidCode);
+                            
+                            // Fade in Mermaid container
+                            setTimeout(() => {
+                                mermaidContainer.style.opacity = '1';
+                            }, 10);
+                        }, 200);
                     }
                 } else if (message.command === 'showPlantUML') {
-                    // Show PlantUML diagram in unified panel
+                    // Show PlantUML diagram in unified panel with smooth transition
                     const plantUMLContainer = document.getElementById('plantUMLContainer');
                     const mermaidContainer = document.getElementById('mermaidContainer');
                     
                     if (plantUMLContainer && mermaidContainer) {
-                        // Hide Mermaid container
-                        mermaidContainer.style.display = 'none';
+                        // Ensure containers have proper initial opacity
+                        if (!plantUMLContainer.style.opacity) plantUMLContainer.style.opacity = '1';
+                        if (!mermaidContainer.style.opacity) mermaidContainer.style.opacity = '1';
                         
-                        // Show PlantUML container
-                        plantUMLContainer.style.display = 'block';
+                        // Fade out Mermaid container
+                        mermaidContainer.style.opacity = '0';
                         
-                        // Update PlantUML diagram
-                        const svgContainer = document.getElementById('svgPreview');
-                        if (svgContainer) {
-                            svgContainer.innerHTML = message.svgContent;
+                        setTimeout(() => {
+                            // Hide Mermaid and show PlantUML
+                            mermaidContainer.style.display = 'none';
+                            plantUMLContainer.style.display = 'block';
+                            plantUMLContainer.style.opacity = '0';
+                            
+                            // Update PlantUML diagram
+                            const svgContainer = document.getElementById('svgPreview');
+                            if (svgContainer) {
+                                svgContainer.innerHTML = message.svgContent;
+                                setTimeout(() => {
+                                    enablePanZoom();
+                                    setupZoomControls();
+                                }, 50);
+                            }
+                            
+                            // Fade in PlantUML container
                             setTimeout(() => {
-                                enablePanZoom();
-                                setupZoomControls();
-                            }, 100);
-                        }
+                                plantUMLContainer.style.opacity = '1';
+                            }, 10);
+                        }, 200);
                     }
                 } else if (message.command === 'showError') {
                     // Show error in unified panel

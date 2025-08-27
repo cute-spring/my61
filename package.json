@@ -23,6 +23,26 @@
     "LICENSE"
   ],
   "contributes": {
+    "languages": [
+      {
+        "id": "umlchat",
+        "aliases": ["UML Chat Session", "umlchat"],
+        "extensions": [".umlchat"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "umlChatDesigner.editor",
+        "displayName": "UML Chat Designer",
+        "selector": [
+          {
+            "filenamePattern": "*.umlchat"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
     "commands": [
       {
         "command": "copilotTools.refineEmail",
@@ -47,6 +67,10 @@
       {
         "command": "extension.umlChatPanel",
         "title": "UML Chat Designer (AI-powered)"
+      },
+      {
+        "command": "extension.openUmlChatFile",
+        "title": "Open UML Chat Session"
       },
       {
         "command": "copilotTools.configurePlantUML",
@@ -74,6 +98,13 @@
         {
           "command": "copilotTools.previewAntUML",
           "when": "editorHasSelection"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "extension.openUmlChatFile",
+          "when": "resourceExtname == .umlchat",
+          "group": "navigation"
         }
       ]
     },

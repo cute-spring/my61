@@ -166,7 +166,23 @@ export class ChatService implements IChatService {
     }
 
     private parseAIResponse(content: string): { diagramCode?: string; content: string } {
-        // Look for code blocks in the response
+        // First, look for PlantUML format (@startuml...@enduml)
+        const plantumlMatch = content.match(/@startuml([\s\S]*?)@enduml/i);
+        if (plantumlMatch) {
+            const diagramCode = `@startuml${plantumlMatch[1]}@enduml`;
+            return { diagramCode, content };
+        }
+
+        // Then look for Mermaid code blocks with explicit mermaid language identifier
+        const mermaidMatch = content.match(/```mermaid\s*\n([\s\S]*?)\n```/gi);
+        if (mermaidMatch && mermaidMatch.length > 0) {
+            const diagramCode = mermaidMatch[0].match(/```mermaid\s*\n([\s\S]*?)\n```/i)?.[1]?.trim();
+            if (diagramCode) {
+                return { diagramCode, content };
+            }
+        }
+
+        // Finally, look for any code blocks (fallback)
         const codeBlockRegex = /```(?:plantuml|mermaid|puml)?\s*\n([\s\S]*?)\n```/gi;
         const matches = Array.from(content.matchAll(codeBlockRegex));
         
@@ -178,4 +194,4 @@ export class ChatService implements IChatService {
         // If no code block found, return the content as-is
         return { content };
     }
-} 
+}

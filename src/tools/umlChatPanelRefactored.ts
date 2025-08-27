@@ -46,6 +46,19 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
     const factory = GeneratorFactory.getInstance();
     const chatManager = new ChatManager();
     
+    // Check for pending import data (from file association)
+    const pendingImport = context.globalState.get<any>('pendingUmlChatImport');
+    if (pendingImport) {
+        try {
+            chatManager.importSession(pendingImport);
+            // Clear the pending import data immediately
+            context.globalState.update('pendingUmlChatImport', undefined);
+        } catch (error) {
+            console.error('Failed to import pending session:', error);
+            vscode.window.showErrorMessage(`Failed to import UML chat session: ${error}`);
+        }
+    }
+    
     // Create webview panel
     const panel = vscode.window.createWebviewPanel(
         'umlChatPanel',
@@ -122,7 +135,7 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
     }, 300);
 
     const debouncedUpdateChat = debounce(() => {
-        const chatHtml = generateChatHtml(chatManager.getChatHistory());
+        const chatHtml = generateChatHtml(chatManager.getChatHistory(), chatManager.getSelectedBotMessageIndex());
         panel.webview.postMessage({
             command: 'updateChat',
             chatHtml: chatHtml
@@ -363,6 +376,15 @@ async function handleRenderSpecificUML(
     
     try {
         chatManager.updatePlantUML(umlCode);
+        
+        // Find which bot message contains this UML code and set it as selected
+        const chatHistory = chatManager.getChatHistory();
+        const botMessageIndex = chatHistory.findIndex((msg, index) => 
+            msg.role === 'bot' && msg.message.includes(umlCode)
+        );
+        if (botMessageIndex >= 0) {
+            chatManager.setSelectedBotMessageIndex(botMessageIndex);
+        }
         
         if (currentEngine === 'mermaid') {
             // For Mermaid, render in the unified panel
@@ -627,8 +649,9 @@ async function handleDeleteUserMessage(
 /**
  * Generate HTML for chat messages
  */
-function generateChatHtml(chatHistory: any[]): string {
-    const lastBotMessageIndex = chatHistory.map(h => h.role).lastIndexOf('bot');
+function generateChatHtml(chatHistory: any[], selectedBotMessageIndex: number = -1): string {
+    // Use the provided selectedBotMessageIndex, or fall back to the last bot message if none selected
+    const activeBotMessageIndex = selectedBotMessageIndex >= 0 ? selectedBotMessageIndex : chatHistory.map(h => h.role).lastIndexOf('bot');
 
     function formatStats(stats: any): string {
         if (!stats) { return ''; }
@@ -654,7 +677,7 @@ function generateChatHtml(chatHistory: any[]): string {
         const messageContent = `<pre style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;">${h.message}</pre>`;
         const statsFooter = h.role === 'bot' && h.meta?.stats ? formatStats(h.meta.stats) : '';
         if (h.role === 'bot') {
-            const isActive = index === lastBotMessageIndex;
+            const isActive = index === activeBotMessageIndex;
             const isLoading = h.message === 'Generating diagram, please wait...';
             return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}${statsFooter}\n                </div>`;
         }
