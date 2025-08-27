@@ -11,6 +11,7 @@ export class ChatManager {
     private currentPlantUML: string = UML_TEMPLATES.DEFAULT_PLANTUML;
     private lastDiagramType: DiagramType = '';
     private currentEngine: EngineType = 'plantuml';
+    private selectedBotMessageIndex: number = -1; // Track which bot message is currently selected
 
     /**
      * Add a user message to chat history
@@ -35,6 +36,8 @@ export class ChatManager {
             id: this.generateId(),
             meta
         });
+        // Auto-select the newly added bot message
+        this.selectedBotMessageIndex = this.chatHistory.length - 1;
     }
 
     /**
@@ -149,6 +152,7 @@ export class ChatManager {
         this.currentPlantUML = UML_TEMPLATES.DEFAULT_PLANTUML;
         this.lastDiagramType = '';
         this.currentEngine = 'plantuml'; // Reset to default engine
+        this.selectedBotMessageIndex = -1; // Reset selected message
     }
 
     /**
@@ -205,6 +209,20 @@ export class ChatManager {
      */
     updateEngine(engine: EngineType): void {
         this.currentEngine = engine;
+    }
+
+    /**
+     * Get the selected bot message index
+     */
+    getSelectedBotMessageIndex(): number {
+        return this.selectedBotMessageIndex;
+    }
+
+    /**
+     * Set the selected bot message index
+     */
+    setSelectedBotMessageIndex(index: number): void {
+        this.selectedBotMessageIndex = index;
     }
 
     /**
@@ -311,6 +329,10 @@ export class ChatManager {
             this.currentPlantUML = data.currentPlantUML;
             this.lastDiagramType = (data.lastDiagramType as DiagramType) || '';
             this.currentEngine = (data.currentEngine as EngineType) || 'plantuml';
+            
+            // Set selected bot message to the last bot message in the imported session
+            const lastBotMessageIndex = this.chatHistory.map(h => h.role).lastIndexOf('bot');
+            this.selectedBotMessageIndex = lastBotMessageIndex;
         } else {
             throw new Error('Invalid session data format');
         }

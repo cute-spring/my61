@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "chatHistory": [
+    {
+      "id": "msg_1",
+      "role": "user",
+      "message": "Create a class diagram for a simple e-commerce system with User, Product, and Order classes"
+    },
+    {
+      "id": "msg_2",
+      "role": "bot",
+      "message": "I'll create a class diagram for a simple e-commerce system with the core entities you mentioned.",
+      "plantUML": "@startuml\nclass User {\n  -userId: String\n  -username: String\n  -email: String\n  -password: String\n  +login(): boolean\n  +logout(): void\n  +updateProfile(): void\n}\n\nclass Product {\n  -productId: String\n  -name: String\n  -description: String\n  -price: double\n  -stockQuantity: int\n  +updateStock(quantity: int): void\n  +getPrice(): double\n  +setPrice(price: double): void\n}\n\nclass Order {\n  -orderId: String\n  -orderDate: Date\n  -totalAmount: double\n  -status: OrderStatus\n  +calculateTotal(): double\n  +updateStatus(status: OrderStatus): void\n  +addProduct(product: Product, quantity: int): void\n}\n\nenum OrderStatus {\n  PENDING\n  CONFIRMED\n  SHIPPED\n  DELIVERED\n  CANCELLED\n}\n\nUser ||--o{ Order : places\nOrder }o--|| Product : contains\n\n@enduml"
+    }
+  ],
+  "currentPlantUML": "@startuml\nclass User {\n  -userId: String\n  -username: String\n  -email: String\n  -password: String\n  +login(): boolean\n  +logout(): void\n  +updateProfile(): void\n}\n\nclass Product {\n  -productId: String\n  -name: String\n  -description: String\n  -price: double\n  -stockQuantity: int\n  +updateStock(quantity: int): void\n  +getPrice(): double\n  +setPrice(price: double): void\n}\n\nclass Order {\n  -orderId: String\n  -orderDate: Date\n  -totalAmount: double\n  -status: OrderStatus\n  +calculateTotal(): double\n  +updateStatus(status: OrderStatus): void\n  +addProduct(product: Product, quantity: int): void\n}\n\nenum OrderStatus {\n  PENDING\n  CONFIRMED\n  SHIPPED\n  DELIVERED\n  CANCELLED\n}\n\nUser ||--o{ Order : places\nOrder }o--|| Product : contains\n\n@enduml",
+  "lastDiagramType": "class",
+  "currentEngine": "plantuml"
+}
