@@ -83,7 +83,9 @@ export class DiagramService {
      */
     private async exportSVG(plantUML: string, filePath: string): Promise<ExportResult> {
         try {
-            const svgContent = await this.renderer.renderToSVG(plantUML);
+            // Add size settings for larger SVG export
+            const largerSvgContent = this.addSvgSizeSettings(plantUML);
+            const svgContent = await this.renderer.renderToSVG(largerSvgContent);
             
             // Check if SVG contains error message
             if (svgContent.includes('Error:') || svgContent.includes('PlantUML Setup Required')) {
@@ -171,6 +173,27 @@ export class DiagramService {
         
         // If no @startuml found or other cases, add at the beginning
         return dpiSettings + content;
+    }
+
+    /**
+     * Add size settings for larger SVG export
+     */
+    private addSvgSizeSettings(content: string): string {
+        const sizeSettings = 'scale 2\nskinparam svgDimensionStyle false\n';
+        
+        // Check if content already starts with @startuml
+        if (content.trim().startsWith('@startuml')) {
+            // Insert size settings after @startuml line
+            const lines = content.split('\n');
+            const startumlIndex = lines.findIndex(line => line.trim().startsWith('@startuml'));
+            if (startumlIndex !== -1) {
+                lines.splice(startumlIndex + 1, 0, sizeSettings);
+                return lines.join('\n');
+            }
+        }
+        
+        // If no @startuml found or other cases, add at the beginning
+        return sizeSettings + content;
     }
 
     /**
