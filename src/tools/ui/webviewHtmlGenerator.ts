@@ -90,10 +90,7 @@ export class WebviewHtmlGenerator {
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                         <span>Import</span>
                                     </button>
-                                    <button id="exportSVGBtn" title="Export diagram as SVG" aria-label="Export SVG">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                        <span>Export SVG</span>
-                                    </button>
+
 
 
                                 </div>
@@ -168,6 +165,33 @@ export class WebviewHtmlGenerator {
                             <line x1="15" y1="9" x2="9" y2="15"/>
                         </svg>
                     </button>
+                    <div class="export-dropdown">
+                        <button class="zoom-btn export-btn" id="exportBtn" title="Export Diagram" aria-label="Export Diagram">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                        </button>
+                        <div class="export-dropdown-content" id="exportDropdown">
+                            <button class="export-option" data-format="svg" title="Export as SVG">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                Export SVG
+                            </button>
+                            <button class="export-option" data-format="png" title="Export as PNG">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                Export PNG
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1018,6 +1042,78 @@ export class WebviewHtmlGenerator {
                 box-shadow: 
                     0 6px 20px rgba(0, 122, 204, 0.18),
                     0 3px 10px rgba(0, 0, 0, 0.08) !important;
+            }
+            
+            /* Export button styles */
+            .export-dropdown {
+                position: relative;
+                display: inline-block;
+            }
+            
+            .zoom-btn.export-btn {
+                background: linear-gradient(135deg, rgba(34, 139, 34, 0.12), rgba(34, 139, 34, 0.06)) !important;
+                border-color: rgba(34, 139, 34, 0.25) !important;
+                color: #228B22 !important;
+            }
+            
+            .zoom-btn.export-btn:hover {
+                background: linear-gradient(135deg, rgba(34, 139, 34, 0.18), rgba(34, 139, 34, 0.1)) !important;
+                border-color: rgba(34, 139, 34, 0.45) !important;
+                color: #1F7A1F !important;
+                box-shadow: 
+                    0 6px 20px rgba(34, 139, 34, 0.18),
+                    0 3px 10px rgba(0, 0, 0, 0.08) !important;
+            }
+            
+            .export-dropdown-content {
+                display: none;
+                position: absolute;
+                bottom: 100%;
+                right: 0;
+                background-color: var(--vscode-dropdown-background);
+                border: 1px solid var(--vscode-dropdown-border);
+                border-radius: 8px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+                z-index: 1000;
+                min-width: 140px;
+                margin-bottom: 8px;
+            }
+            
+            .export-dropdown.show .export-dropdown-content {
+                display: block;
+            }
+            
+            .export-option {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                width: 100%;
+                padding: 10px 12px;
+                background: none;
+                border: none;
+                color: var(--vscode-foreground);
+                cursor: pointer;
+                font-size: 13px;
+                text-align: left;
+                transition: background-color 0.2s ease;
+            }
+            
+            .export-option:first-child {
+                border-radius: 8px 8px 0 0;
+            }
+            
+            .export-option:last-child {
+                border-radius: 0 0 8px 8px;
+            }
+            
+            .export-option:hover {
+                background-color: var(--vscode-list-hoverBackground);
+            }
+            
+            .export-option svg {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
             }
             
             /* Enterprise responsive adjustments */
@@ -3610,7 +3706,7 @@ export class WebviewHtmlGenerator {
             // --- Elements ---
             const requirementInput = document.getElementById('requirementInput');
             const sendBtn = document.getElementById('sendBtn');
-            const exportSVGBtn = document.getElementById('exportSVGBtn');
+
             const clearChatBtn = document.getElementById('clearChatBtn');
             const expandBtn = document.getElementById('expandChatBtn');
             const importBtn = document.getElementById('importBtn');
@@ -4068,7 +4164,7 @@ export class WebviewHtmlGenerator {
                 }
             });
 
-            exportSVGBtn.onclick = () => vscode.postMessage({ command: 'exportSVG', svgContent: document.getElementById('svgPreview').innerHTML });
+
             clearChatBtn.onclick = () => vscode.postMessage({ command: 'clearChat' });
             importBtn.onclick = () => {
                 vscode.postMessage({ command: 'importChat' });
@@ -4469,11 +4565,54 @@ export class WebviewHtmlGenerator {
                 const zoomOutButton = setupButton(document.getElementById('zoomOutBtn'), 'zoomOut');
                 const zoomResetButton = setupButton(document.getElementById('zoomResetBtn'), 'zoomReset');
                 
+                // Setup export functionality
+                const exportBtn = document.getElementById('exportBtn');
+                const exportDropdown = document.getElementById('exportDropdown');
+                const exportDropdownContainer = exportBtn?.parentElement;
+                
+                if (exportBtn && exportDropdown) {
+                    // Toggle dropdown on export button click
+                    exportBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        exportDropdownContainer.classList.toggle('show');
+                    });
+                    
+                    // Handle export option clicks
+                    const exportOptions = exportDropdown.querySelectorAll('.export-option');
+                    exportOptions.forEach(option => {
+                        option.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            const format = this.getAttribute('data-format');
+                            console.log('Export requested:', format);
+                            
+                            // Send export message to extension
+                            vscode.postMessage({
+                                command: 'exportDiagram',
+                                format: format
+                            });
+                            
+                            // Close dropdown
+                            exportDropdownContainer.classList.remove('show');
+                        });
+                    });
+                    
+                    // Close dropdown when clicking outside
+                    document.addEventListener('click', function(e) {
+                        if (!exportDropdownContainer.contains(e.target)) {
+                            exportDropdownContainer.classList.remove('show');
+                        }
+                    });
+                }
+                
                 console.log('Windows-optimized zoom controls setup completed');
                 console.log('Buttons configured:', {
                     zoomIn: !!zoomInButton,
                     zoomOut: !!zoomOutButton,
-                    zoomReset: !!zoomResetButton
+                    zoomReset: !!zoomResetButton,
+                    export: !!exportBtn
                 });
                 
                 // Test zoom functionality

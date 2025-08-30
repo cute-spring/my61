@@ -89,29 +89,7 @@ export class DiagramService implements IDiagramService {
         }
     }
 
-    public async exportDiagram(code: string, type: string, format: string): Promise<string> {
-        // For now, only support SVG export
-        if (format !== 'svg') {
-            throw new Error(`Export format '${format}' not supported. Only SVG export is currently available.`);
-        }
 
-        try {
-            const diagramType = type as DiagramType;
-            
-            // Get current engine preference
-            const state = this.stateManager.getState();
-            const preferredEngine = state.preferences.preferredDiagramEngine;
-
-            // Export as SVG using engine manager
-            const result = await this.engineManager.renderDiagram(code, preferredEngine);
-            return result;
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error('Diagram export error:', error);
-            throw new Error(`Failed to export diagram: ${errorMessage}`);
-        }
-    }
 
     public getSupportedTypes(): string[] {
         const engines = this.engineManager.getAllEngines();

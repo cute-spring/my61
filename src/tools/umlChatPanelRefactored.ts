@@ -12,6 +12,7 @@ import { InputValidator, ErrorHandler, debounce } from './utils/helpers';
 import { DiagramType, WebviewMessage } from './uml/types';
 import { trackUsage } from '../analytics';
 import { UserOnboardingState } from './uml/types';
+import { DiagramService } from './uml/DiagramService';
 
 /**
  * Main activation function for UML Chat Panel
@@ -154,10 +155,7 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
                     await handleRenderSpecificUML(message, chatManager, factory, panel);
                     break;
 
-                case 'exportSVG':
-                    trackUsage('uml.chatPanel', 'exportSVG');
-                    await handleExportSVG(message);
-                    break;
+
 
                 case 'clearChat':
                     trackUsage('uml.chatPanel', 'clearChat');
@@ -204,6 +202,11 @@ async function createUMLChatPanel(context: vscode.ExtensionContext) {
                 case 'generateExample':
                     trackUsage('uml.chatPanel', 'generateExample');
                     // This will be handled by the webview JavaScript
+                    break;
+
+                case 'exportDiagram':
+                    trackUsage('uml.chatPanel', 'exportDiagram');
+                    await handleExportDiagram(message, chatManager, factory);
                     break;
 
                 default:
@@ -437,22 +440,7 @@ async function handleRenderSpecificUML(
     }
 }
 
-/**
- * Handle SVG export
- */
-async function handleExportSVG(message: any) {
-    const { svgContent } = message;
-    
-    const saveUri = await vscode.window.showSaveDialog({
-        defaultUri: vscode.Uri.file('diagram.svg'),
-        filters: { 'SVG files': ['svg'] }
-    });
 
-    if (saveUri) {
-        await vscode.workspace.fs.writeFile(saveUri, Buffer.from(svgContent, 'utf8'));
-        vscode.window.showInformationMessage('SVG exported successfully!');
-    }
-}
 
 /**
  * Handle clearing chat
@@ -643,6 +631,40 @@ async function handleDeleteUserMessage(
             // Clear the preview for existing users
             updatePreview();
         }
+    }
+}
+
+/**
+ * Handle diagram export functionality
+ */
+async function handleExportDiagram(
+    message: any,
+    chatManager: ChatManager,
+    factory: GeneratorFactory
+) {
+    try {
+        const { format } = message;
+        const currentPlantUML = chatManager.getCurrentPlantUML();
+        
+        if (!currentPlantUML || currentPlantUML.trim() === '') {
+            vscode.window.showWarningMessage('No diagram to export. Please generate a diagram first.');
+            return;
+        }
+
+        const diagramService = new DiagramService();
+        const result = await diagramService.exportDiagram({
+            plantUML: currentPlantUML,
+            format: format
+        });
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Export failed');
+        }
+        
+        vscode.window.showInformationMessage(`Diagram exported successfully as ${format.toUpperCase()}.`);
+    } catch (error) {
+        console.error('Export diagram error:', error);
+        vscode.window.showErrorMessage(`Failed to export diagram: ${error}`);
     }
 }
 

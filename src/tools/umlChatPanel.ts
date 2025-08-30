@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import { promises as fsp } from 'fs';
 import { trackUsage } from '../analytics';
 import { UserOnboardingState } from './uml/types';
+import { DiagramService } from './uml/DiagramService';
 
 // THIS IS THE CORRECTED LINE.
 // It assumes you have a `preview.ts` file in the same directory with a `localRender` export.
@@ -332,17 +333,7 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                         panel.webview.postMessage({ command: 'updatePreview', svgContent: svg });
                         break;
                     }
-                    case 'exportSVG': {
-                        const fileUri = await vscode.window.showSaveDialog({
-                            filters: { 'SVG Image': ['svg'] },
-                            saveLabel: 'Export SVG'
-                        });
-                        if (fileUri) {
-                            fs.writeFileSync(fileUri.fsPath, message.svgContent, 'utf-8');
-                            vscode.window.showInformationMessage('SVG exported successfully!');
-                        }
-                        break;
-                    }
+
                     case 'clearChat': {
                         chatHistory = [];
                         currentPlantUML = '@startuml\n\n@enduml';
@@ -505,6 +496,36 @@ export function activateUMLChatPanel(context: vscode.ExtensionContext) {
                             updateChatInWebview();
                             currentPlantUML = '@startuml\n\n@enduml';
                             debouncedRender(currentPlantUML);
+                        }
+                        break;
+                    }
+                    case 'exportDiagram': {
+                        trackUsage('uml.chatPanel', 'exportDiagram');
+                        const { format } = message;
+                        
+                        // Check if there's a valid diagram to export
+                        if (!currentPlantUML || 
+                            currentPlantUML.trim() === '' || 
+                            currentPlantUML.trim() === '@startuml\n\n@enduml') {
+                            vscode.window.showWarningMessage('No diagram to export. Please generate a diagram first.');
+                            break;
+                        }
+
+                        try {
+                            const diagramService = new DiagramService();
+                            const result = await diagramService.exportDiagram({
+                                plantUML: currentPlantUML,
+                                format: format
+                            });
+                            
+                            if (!result.success) {
+                                throw new Error(result.error || 'Export failed');
+                            }
+                            
+                            vscode.window.showInformationMessage(`Diagram exported successfully as ${format.toUpperCase()}.`);
+                        } catch (error) {
+                            console.error('Export diagram error:', error);
+                            vscode.window.showErrorMessage(`Failed to export diagram: ${error}`);
                         }
                         break;
                     }
@@ -1209,10 +1230,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4"/><path d="M17 10V3h-10v7"/><path d="M15 3v4a2 2 0 0 0-2 2h-4a2 2 0 0 0-2-2V3"/></svg>
                                         <span>Load Session</span>
                                     </button>
-                                    <button id="exportSVGBtn" title="Export the current diagram as SVG" aria-label="Export SVG">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10V3h10v7"/><path d="M9 3v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3"/></svg>
-                                        <span>Export SVG</span>
-                                    </button>
+
                                     <button id="clearChatBtn" title="Clear the chat history" aria-label="Clear Chat">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z" fill="none"/><path d="M9 9l6 6M15 9l-6 6" fill="none" stroke-width="2"/></svg>
                                         <span>Clear Chat</span>
@@ -1244,7 +1262,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             // --- Elements ---
             const requirementInput = document.getElementById('requirementInput');
             const sendBtn = document.getElementById('sendBtn');
-            const exportSVGBtn = document.getElementById('exportSVGBtn');
+
             const clearChatBtn = document.getElementById('clearChatBtn');
             const expandBtn = document.getElementById('expandChatBtn');
             const importBtn = document.getElementById('importBtn');
@@ -1367,7 +1385,7 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
                     }
                 }
             });
-            exportSVGBtn.onclick = () => vscode.postMessage({ command: 'exportSVG', svgContent: document.getElementById('svgPreview').innerHTML });
+
             clearChatBtn.onclick = () => vscode.postMessage({ command: 'clearChat' });
             importBtn.onclick = () => vscode.postMessage({ command: 'importChat' });
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });

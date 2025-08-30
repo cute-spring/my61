@@ -46,10 +46,7 @@ export interface IDiagramService {
      */
     validateCode(code: string, type: string): Promise<IValidationResult>;
     
-    /**
-     * Export diagram
-     */
-    exportDiagram(code: string, type: string, format: string): Promise<string>;
+
     
     /**
      * Get supported diagram types

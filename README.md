@@ -9,7 +9,7 @@ A modular, extensible productivity extension for VS Code, powered by Copilot/LLM
 - **🎯 Refine Email**: Select email text, get a professional rewrite and subject suggestions. Diff/split view, quick pick for subject lines, accept/refine/copy options.
 - **🌏 Translate Text**: English ↔ Chinese (Simplified/Traditional, auto-detect). Popup/quick pick for output, configurable default, copy/replace/insert options.
 - **📋 Refine Jira**: Select Jira description, get a structured, concise version. Side-by-side diff, accept/refine/copy options.
-- **📊 Preview UML**: Generate PlantUML diagrams from selected text with live preview and export capabilities.
+- **📊 Preview UML**: Generate PlantUML diagrams from selected text with live preview.
 - **🤖 UML Designer**: AI-powered, chat-driven tool for creating and refining UML diagrams through natural language conversation.
 
 ### Additional Features
@@ -20,7 +20,7 @@ A modular, extensible productivity extension for VS Code, powered by Copilot/LLM
 
 ## UML Chat Designer
 
-The UML Chat Designer is an AI-powered, chat-driven tool for generating and refining UML diagrams directly in VS Code. Describe your requirements in natural language, and the tool will generate PlantUML code and a live diagram preview. Supports iterative design, diagram type selection, chat history, SVG export, and more.
+The UML Chat Designer is an AI-powered, chat-driven tool for generating and refining UML diagrams directly in VS Code. Describe your requirements in natural language, and the tool will generate PlantUML code and a live diagram preview. Supports iterative design, diagram type selection, chat history, and more.
 
 ### Prerequisites
 
@@ -96,8 +96,7 @@ You can also configure these settings manually in VS Code settings:
    - Edit any previous user message by clicking the ✏️ button, then resend to update the diagram.
    - Click on any bot message to preview the corresponding diagram version.
 
-6. **Export and Save**
-   - Export the current diagram as SVG for documentation or sharing.
+6. **Save and Load Sessions**
    - Save the chat session for future editing or collaboration.
    - Import a previous session to continue work.
 
@@ -109,7 +108,7 @@ You can also configure these settings manually in VS Code settings:
 - Be as clear and specific as possible in your requirements for best results.
 - Use the diagram type selector if you want a specific UML view.
 - Use the chat history to track changes and rationale for each diagram version.
-- Export diagrams for use in documentation, code reviews, or presentations.
+
 
 ### Example Scenarios
 
