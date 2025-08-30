@@ -109,15 +109,18 @@ export class DiagramService {
     }
 
     /**
-     * Export diagram as PNG
+     * Export diagram as PNG with high resolution
      */
     private async exportPNG(plantUML: string, filePath: string): Promise<ExportResult> {
         try {
+            // Add high DPI settings for better quality PNG export
+            const highDpiContent = this.addHighDpiSettings(plantUML);
+            
             const diagram = {
                 parentUri: vscode.Uri.file('inmemory'),
                 dir: '',
                 pageCount: 1,
-                content: plantUML,
+                content: highDpiContent,
                 path: '',
                 name: 'export.png'
             };
@@ -146,6 +149,28 @@ export class DiagramService {
                 error: `Failed to export PNG: ${error.message}`
             };
         }
+    }
+
+    /**
+     * Add high DPI settings to PlantUML content for better PNG quality
+     */
+    private addHighDpiSettings(content: string): string {
+        // High DPI settings for better PNG quality - using skinparam dpi 300
+        const dpiSettings = 'skinparam dpi 300\n';
+        
+        // Check if content already starts with @startuml
+        if (content.trim().startsWith('@startuml')) {
+            // Insert DPI settings after @startuml line
+            const lines = content.split('\n');
+            const startumlIndex = lines.findIndex(line => line.trim().startsWith('@startuml'));
+            if (startumlIndex !== -1) {
+                lines.splice(startumlIndex + 1, 0, dpiSettings);
+                return lines.join('\n');
+            }
+        }
+        
+        // If no @startuml found or other cases, add at the beginning
+        return dpiSettings + content;
     }
 
     /**

@@ -35,6 +35,9 @@ const config = {
         
         const args: string[] = [];
         
+        // Add high resolution support for PNG exports
+        args.push('-DPLANTUML_LIMIT_SIZE=16384');
+        
         // Add layout engine pragma - Smetana uses a different syntax
         if (layoutEngine === 'smetana') {
             // Use -P flag for Smetana layout engine
@@ -53,7 +56,7 @@ const config = {
         console.log('PlantUML command args:', args);
         return args;
     },
-    jarArgs: (_parentUri: vscode.Uri) => [],
+    jarArgs: (_parentUri: vscode.Uri) => []
 };
 
 function localize(_id: number, _defaultValue: any, ...args: any[]): string {
