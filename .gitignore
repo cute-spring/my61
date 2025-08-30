@@ -9,3 +9,4 @@ node_modules
 *.map
 .venv/
 .env
+vscode-plantuml-master/
