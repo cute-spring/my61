@@ -157,11 +157,12 @@ export class DiagramService {
      * Add high DPI settings to PlantUML content for better PNG quality
      */
     private addHighDpiSettings(content: string): string {
-        // Minimal settings for better PNG quality without conflicts
+        // Consistent settings for PNG export to match SVG size
         const dpiSettings = [
             '!option handwritten true',
             'skinparam dpi 300',
-            'skinparam backgroundColor #FFFFFF'
+            'skinparam backgroundColor #FFFFFF',
+            'skinparam svgDimensionStyle false'
         ].join('\n') + '\n';
         
         // Check if content already starts with @startuml
@@ -183,9 +184,10 @@ export class DiagramService {
      * Add size settings for larger SVG export with white background
      */
     private addSvgSizeSettings(content: string): string {
-        // Minimal settings for better SVG export without conflicts
+        // Consistent settings for SVG export to match PNG size
         const sizeSettings = [
             '!option handwritten true',
+            'skinparam dpi 300',
             'skinparam svgDimensionStyle false',
             'skinparam backgroundColor #FFFFFF'
         ].join('\n') + '\n';
