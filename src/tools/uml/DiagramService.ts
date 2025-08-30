@@ -176,10 +176,10 @@ export class DiagramService {
     }
 
     /**
-     * Add size settings for larger SVG export
+     * Add size settings for larger SVG export with white background
      */
     private addSvgSizeSettings(content: string): string {
-        const sizeSettings = 'scale 2\nskinparam svgDimensionStyle false\n';
+        const sizeSettings = 'scale 3\nskinparam svgDimensionStyle false\nskinparam backgroundColor white\n';
         
         // Check if content already starts with @startuml
         if (content.trim().startsWith('@startuml')) {
