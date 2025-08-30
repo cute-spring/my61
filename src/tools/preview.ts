@@ -35,8 +35,12 @@ const config = {
         
         const args: string[] = [];
         
-        // Add high resolution support for PNG exports
+        // Add high resolution support for both PNG and SVG exports
         args.push('-DPLANTUML_LIMIT_SIZE=16384');
+        
+        // Add SVG-specific quality settings
+        args.push('-Psvg.fontsize=14');
+        args.push('-Psvg.minlen=2');
         
         // Add layout engine pragma - Smetana uses a different syntax
         if (layoutEngine === 'smetana') {
