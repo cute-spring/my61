@@ -30,8 +30,8 @@ const config = {
     diagramsRoot: (_parentUri: vscode.Uri) => null,
     commandArgs: (_parentUri: vscode.Uri) => {
         const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
-        const layoutEngine = workspaceConfig.get<string>('layoutEngine', 'dot');
-        const dotPath = workspaceConfig.get<string>('dotPath');
+         const layoutEngine = workspaceConfig.get<string>('layoutEngine', 'dot');
+         const dotPath = workspaceConfig.get<string>('dotPath');
         
         const args: string[] = [];
         
@@ -104,7 +104,7 @@ function processWrapper(process: childProcess.ChildProcess, savePath?: string): 
                 
                 // Log information about which layout engine was actually used
                 const config = vscode.workspace.getConfiguration('plantuml');
-                const configuredEngine = config.get<string>('layoutEngine', 'dot');
+                 const configuredEngine = config.get<string>('layoutEngine', 'dot');
                 
                 // Analyze stderr for engine indicators
                 let actualEngineUsed = 'unknown';
@@ -181,14 +181,11 @@ class LocalRender {
         }
         
         const jarPath = this.getJarPath();
-        let javaExists = true;
-        try {
-            childProcess.spawnSync(config.java, ['-version']);
-        } catch (e) {
-            javaExists = false;
-        }
-        if (!javaExists) {
-            return { processes: [], promise: Promise.reject(new Error('Java executable not found in PATH. Please install Java 8 or higher.')) };
+        
+        // Enhanced Java detection and validation
+        const javaValidation = this.validateJavaInstallation();
+        if (!javaValidation.isValid) {
+            return { processes: [], promise: Promise.reject(new Error(javaValidation.errorMessage)) };
         }
 
         // Check if JAR exists, if not attempt automatic download
@@ -219,14 +216,60 @@ class LocalRender {
 
         let pms = [...Array(diagram.pageCount).keys()].reduce<Promise<void>>((pChain, index) => {
             return pChain.then(() => {
-                let params = [
+                // Get workspace configuration for PlantUML settings
+                const workspaceConfig = vscode.workspace.getConfiguration();
+                
+                // Enhanced command-line parameters for better SVG quality
+                const javaArgs = [
                     '-Djava.awt.headless=true',
-                    '-jar',
-                    jarPath
+                    '-DPLANTUML_LIMIT_SIZE=8192',
+                    '-Dfile.encoding=UTF-8',
+                    '-Duser.language=en',
+                    '-Duser.country=US'
                 ];
+
+                // Add Java heap size configuration
+                const heapSize = workspaceConfig.get<string>('java.heapSize', '1024m');
+                javaArgs.push(`-Xmx${heapSize}`);
+
+                // SVG-specific quality settings from configuration
+                const svgFontSize = workspaceConfig.get<number>('svg.fontsize', 14);
+                const svgMinLen = workspaceConfig.get<number>('svg.minlen', 1);
+                const svgDpi = workspaceConfig.get<number>('svg.dpi', 96);
+                
+                const svgQualityArgs = [
+                    `-Dsvg.fontsize=${svgFontSize}`,
+                    `-Dsvg.minlen=${svgMinLen}`,
+                    `-Dplantuml.svg.minlen=${svgMinLen}`,
+                    `-Dplantuml.dpi=${svgDpi}`
+                ];
+
+                // Layout engine configuration
+                const layoutEngine = this.getLayoutEngine();
+                const layoutArgs = [];
+                if (layoutEngine === 'dot') {
+                    const dotPath = this.getDotPath();
+                    if (dotPath) {
+                        layoutArgs.push(`-Dgraphviz.dot=${dotPath}`);
+                    }
+                } else {
+                    // Force Smetana for pure Java rendering
+                    layoutArgs.push('-Dsmetana=true');
+                }
+
+                // Add user-defined JAR arguments
+                const userJarArgs = workspaceConfig.get<string[]>('jarArgs', []);
+                
+                let params = [...javaArgs, ...svgQualityArgs, ...layoutArgs, ...userJarArgs];
+
+                params.push('-jar', jarPath);
 
                 // Add layout engine args after JAR but before other options
                 params.push(...config.commandArgs(diagram.parentUri));
+
+                // Add user-defined command arguments from workspace configuration
+                const userCommandArgs = workspaceConfig.get<string[]>('commandArgs', []);
+                params.push(...userCommandArgs);
 
                 params.push(
                     "-pipeimageindex",
@@ -284,6 +327,125 @@ class LocalRender {
                 pms.then(() => resolve(buffers)).catch((err: any) => reject(err));
             })
         };
+    }
+
+    private getLayoutEngine(): string {
+        const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
+         const configuredEngine = workspaceConfig.get<string>('layoutEngine', 'smetana');
+        
+        // Auto-detect and fallback logic
+        if (configuredEngine === 'dot') {
+            const dotPath = this.getDotPath();
+            if (!dotPath || !fs.existsSync(dotPath)) {
+                console.log('DOT executable not found, falling back to Smetana');
+                return 'smetana';
+            }
+        }
+        
+        return configuredEngine;
+    }
+
+    private getDotPath(): string | null {
+        const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
+         const configuredPath = workspaceConfig.get<string>('dotPath');
+        
+        if (configuredPath) {
+            return configuredPath;
+        }
+        
+        // Try common DOT installation paths
+        const commonPaths = [
+            '/usr/bin/dot',
+            '/usr/local/bin/dot',
+            '/opt/homebrew/bin/dot',
+            'C:\\Program Files\\Graphviz\\bin\\dot.exe',
+            'C:\\Program Files (x86)\\Graphviz\\bin\\dot.exe'
+        ];
+        
+        for (const dotPath of commonPaths) {
+            if (fs.existsSync(dotPath)) {
+                return dotPath;
+            }
+        }
+        
+        return null;
+    }
+
+    private validateJavaInstallation(): { isValid: boolean; errorMessage?: string; javaVersion?: string } {
+        try {
+            const result = childProcess.spawnSync(config.java, ['-version'], { 
+                encoding: 'utf8',
+                timeout: 5000 // 5 second timeout
+            });
+            
+            if (result.error) {
+                const error = result.error as any; // SpawnSyncError has code property
+                if (error.code === 'ENOENT') {
+                    return {
+                        isValid: false,
+                        errorMessage: `Java executable not found at '${config.java}'. Please install Java 8 or higher and ensure it's in your PATH, or configure the correct path in PlantUML settings.`
+                    };
+                } else if (error.code === 'ETIMEDOUT') {
+                    return {
+                        isValid: false,
+                        errorMessage: 'Java executable timed out during version check. Please check your Java installation.'
+                    };
+                } else {
+                    return {
+                        isValid: false,
+                        errorMessage: `Failed to execute Java: ${error.message}. Please check your Java installation and PATH configuration.`
+                    };
+                }
+            }
+            
+            // Parse Java version from stderr (Java outputs version info to stderr)
+            const versionOutput = result.stderr || result.stdout || '';
+            const versionMatch = versionOutput.match(/version "([^"]+)"/i) || versionOutput.match(/openjdk ([\d\.]+)/);
+            
+            if (versionMatch) {
+                const javaVersion = versionMatch[1];
+                const majorVersion = this.extractMajorJavaVersion(javaVersion);
+                
+                if (majorVersion < 8) {
+                    return {
+                        isValid: false,
+                        errorMessage: `Java ${javaVersion} detected, but PlantUML requires Java 8 or higher. Please upgrade your Java installation.`,
+                        javaVersion
+                    };
+                }
+                
+                console.log(`Java ${javaVersion} detected and validated for PlantUML rendering.`);
+                return {
+                    isValid: true,
+                    javaVersion
+                };
+            } else {
+                return {
+                    isValid: false,
+                    errorMessage: 'Could not determine Java version. Please ensure you have Java 8 or higher installed.'
+                };
+            }
+            
+        } catch (error) {
+            return {
+                isValid: false,
+                errorMessage: `Java validation failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your Java installation.`
+            };
+        }
+    }
+
+    private extractMajorJavaVersion(versionString: string): number {
+        // Handle different Java version formats:
+        // Java 8: "1.8.0_XXX" -> 8
+        // Java 9+: "11.0.X", "17.0.X" -> 11, 17
+        const parts = versionString.split('.');
+        if (parts.length >= 2 && parts[0] === '1') {
+            // Java 8 format: 1.8.x
+            return parseInt(parts[1], 10);
+        } else {
+            // Java 9+ format: 11.x, 17.x
+            return parseInt(parts[0], 10);
+        }
     }
 }
 
@@ -412,8 +574,8 @@ export { localRender };
 // Configuration validation helper
 function validatePlantUMLConfig(): string | null {
     const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
-    const layoutEngine = workspaceConfig.get<string>('layoutEngine', 'dot');
-    const dotPath = workspaceConfig.get<string>('dotPath');
+     const layoutEngine = workspaceConfig.get<string>('layoutEngine', 'dot');
+     const dotPath = workspaceConfig.get<string>('dotPath');
     
     console.log(`PlantUML Configuration - Layout Engine: ${layoutEngine}, DOT Path: ${dotPath || 'auto-detect'}`);
     
