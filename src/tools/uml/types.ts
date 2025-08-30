@@ -30,7 +30,7 @@ export interface SessionData {
 export type DiagramType = '' | 'activity' | 'sequence' | 'usecase' | 'class' | 'component';
 
 export interface WebviewMessage {
-    command: 'sendRequirement' | 'renderSpecificUML' | 'exportSVG' | 'clearChat' | 'importChat' | 'exportChat' | 'editAndResendUserMsg' | 'deleteUserMsgAndFollowing' | 'onboardingComplete' | 'onboardingSkip' | 'generateExample';
+    command: 'sendRequirement' | 'renderSpecificUML' | 'clearChat' | 'importChat' | 'exportChat' | 'editAndResendUserMsg' | 'deleteUserMsgAndFollowing' | 'onboardingComplete' | 'onboardingSkip' | 'generateExample' | 'exportDiagram';
     [key: string]: any;
 }
 
