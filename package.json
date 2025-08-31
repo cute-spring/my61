@@ -65,6 +65,10 @@
         "title": "Preview PlantUML Diagram"
       },
       {
+        "command": "copilotTools.previewSmartPlantUML",
+        "title": "Smart PlantUML Preview (Auto-detect)"
+      },
+      {
         "command": "extension.umlChatPanel",
         "title": "UML Chat Designer (AI-powered)"
       },
@@ -98,6 +102,10 @@
         {
           "command": "copilotTools.previewAntUML",
           "when": "editorHasSelection"
+        },
+        {
+          "command": "copilotTools.previewSmartPlantUML",
+          "when": "editorTextFocus"
         }
       ],
       "explorer/context": [
@@ -128,6 +136,11 @@
         "command": "copilotTools.previewAntUML",
         "key": "ctrl+alt+u",
         "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "copilotTools.previewSmartPlantUML",
+        "key": "ctrl+alt+shift+u",
+        "when": "editorTextFocus"
       },
       {
         "command": "copilotTools.configurePlantUML",

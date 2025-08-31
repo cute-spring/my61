@@ -1,0 +1,144 @@
+@startuml activity-diagram
+!theme plain
+title User Login Activity Diagram
+
+start
+:User enters credentials;
+if (Valid credentials?) then (yes)
+  :Login successful;
+  :Redirect to dashboard;
+else (no)
+  :Show error message;
+  :Return to login page;
+endif
+stop
+@enduml
+
+@startuml sequence-diagram
+!theme plain
+title API Authentication Sequence
+
+actor User
+participant "Web App" as WA
+participant "Auth Service" as AS
+participant "Database" as DB
+
+User -> WA: Login request
+WA -> AS: Validate credentials
+AS -> DB: Query user data
+DB --> AS: User data
+AS --> WA: Authentication token
+WA --> User: Login success
+@enduml
+
+@startuml class-diagram
+!theme plain
+title User Management Class Diagram
+
+class User {
+  -id: string
+  -username: string
+  -email: string
+  -password: string
+  +login(): boolean
+  +logout(): void
+  +updateProfile(): void
+}
+
+class UserService {
+  +authenticate(credentials): User
+  +createUser(userData): User
+  +updateUser(id, data): User
+  +deleteUser(id): boolean
+}
+
+class Database {
+  +connect(): void
+  +query(sql): ResultSet
+  +close(): void
+}
+
+UserService --> User : manages
+UserService --> Database : uses
+@enduml
+
+@startuml component-diagram
+!theme plain
+title System Architecture Components
+
+package "Frontend" {
+  [React App]
+  [Redux Store]
+}
+
+package "Backend" {
+  [API Gateway]
+  [Auth Service]
+  [User Service]
+}
+
+package "Data Layer" {
+  [PostgreSQL]
+  [Redis Cache]
+}
+
+[React App] --> [API Gateway] : HTTP/REST
+[API Gateway] --> [Auth Service]
+[API Gateway] --> [User Service]
+[Auth Service] --> [PostgreSQL]
+[User Service] --> [PostgreSQL]
+[User Service] --> [Redis Cache]
+@enduml
+
+@startuml usecase-diagram
+!theme plain
+title User Management Use Cases
+
+actor "Admin" as admin
+actor "Regular User" as user
+
+rectangle "User Management System" {
+  usecase "Login" as UC1
+  usecase "Register" as UC2
+  usecase "Update Profile" as UC3
+  usecase "Delete Account" as UC4
+  usecase "Manage Users" as UC5
+  usecase "View Reports" as UC6
+}
+
+user --> UC1
+user --> UC2
+user --> UC3
+user --> UC4
+
+admin --> UC1
+admin --> UC5
+admin --> UC6
+
+UC5 ..> UC4 : includes
+UC6 ..> UC5 : extends
+@enduml
+
+@startuml state-diagram
+!theme plain
+title User Session State Diagram
+
+[*] --> Logged_Out
+
+Logged_Out --> Authenticating : login_attempt
+Authenticating --> Logged_In : success
+Authenticating --> Logged_Out : failure
+
+Logged_In --> Active : user_activity
+Logged_In --> Idle : no_activity
+
+Active --> Idle : timeout
+Idle --> Active : user_activity
+Idle --> Logged_Out : session_timeout
+
+Logged_In --> Logged_Out : logout
+Active --> Logged_Out : logout
+Idle --> Logged_Out : logout
+
+Logged_Out --> [*]
+@enduml
