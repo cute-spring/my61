@@ -200,6 +200,49 @@
           "default": true,
           "description": "Show PlantUML layout engine status in the status bar for quick visibility and configuration."
         },
+        "umlChatDesigner.plantuml.svg.fontsize": {
+          "type": "number",
+          "default": 14,
+          "minimum": 8,
+          "maximum": 72,
+          "description": "Font size for SVG output (in points). Higher values produce larger, more readable text."
+        },
+        "umlChatDesigner.plantuml.svg.minlen": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.5,
+          "maximum": 10,
+          "description": "Minimum edge length for SVG layout. Higher values create more spaced-out diagrams."
+        },
+        "umlChatDesigner.plantuml.svg.dpi": {
+          "type": "number",
+          "default": 96,
+          "minimum": 72,
+          "maximum": 300,
+          "description": "DPI (dots per inch) for SVG rendering. Higher values produce sharper output."
+        },
+        "umlChatDesigner.plantuml.java.heapSize": {
+          "type": "string",
+          "default": "1024m",
+          "pattern": "^[0-9]+[kmgKMG]?$",
+          "description": "Java heap size for PlantUML rendering (e.g., '512m', '2g'). Increase for large diagrams."
+        },
+        "umlChatDesigner.plantuml.commandArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional command-line arguments for PlantUML JAR execution."
+        },
+        "umlChatDesigner.plantuml.jarArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional JVM arguments for PlantUML JAR execution (e.g., '-Dfile.encoding=UTF-8')."
+        },
         "copilotTools.analytics.enabled": {
           "type": "boolean",
           "default": true,

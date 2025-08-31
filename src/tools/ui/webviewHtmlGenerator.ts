@@ -174,14 +174,6 @@ export class WebviewHtmlGenerator {
                             </svg>
                         </button>
                         <div class="export-dropdown-content" id="exportDropdown">
-                            <button class="export-option" data-format="svg" title="Export as SVG">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                                    <polyline points="21 15 16 10 5 21"/>
-                                </svg>
-                                Export SVG
-                            </button>
                             <button class="export-option" data-format="png" title="Export as PNG">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -656,7 +648,10 @@ export class WebviewHtmlGenerator {
             if (h.role === 'bot') {
                 const isActive = index === lastBotMessageIndex;
                 const isLoading = h.message === 'Generating diagram, please wait...';
-                return `\n                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this)">\n                    <b>Bot:</b> ${messageContent}\n                </div>`;
+                return `
+                <div class="bot-message ${isActive ? 'active-message' : ''}${isLoading ? ' loading-message' : ''}" onclick="handleBotMessageClick(this, event)">
+                    <b>Bot:</b> ${messageContent}
+                </div>`;
             }
             
             // User message with edit button
@@ -4027,9 +4022,21 @@ export class WebviewHtmlGenerator {
             updateLanguage('en');
 
             // --- Click handler for historical bot messages ---
-            function handleBotMessageClick(element) {
+            function handleBotMessageClick(element, event) {
+                // Prevent event bubbling to avoid conflicts with other click handlers
+                if (event) {
+                    event.stopPropagation();
+                }
+                
                 document.querySelectorAll('.bot-message').forEach(el => el.classList.remove('active-message'));
                 element.classList.add('active-message');
+                
+                // Close export dropdown when bot message is clicked
+                const exportDropdownContainer = document.querySelector('.export-dropdown');
+                if (exportDropdownContainer) {
+                    exportDropdownContainer.classList.remove('show');
+                }
+                
                 const messageText = element.querySelector('pre').textContent;
                 const umlRegex = /@startuml([\\s\\S]*?)@enduml/;
                 const match = messageText.match(umlRegex);
@@ -4565,25 +4572,53 @@ export class WebviewHtmlGenerator {
                 const zoomOutButton = setupButton(document.getElementById('zoomOutBtn'), 'zoomOut');
                 const zoomResetButton = setupButton(document.getElementById('zoomResetBtn'), 'zoomReset');
                 
-                // Setup export functionality
-                const exportBtn = document.getElementById('exportBtn');
-                const exportDropdown = document.getElementById('exportDropdown');
-                const exportDropdownContainer = exportBtn?.parentElement;
-                
-                if (exportBtn && exportDropdown) {
-                    // Toggle dropdown on export button click
-                    exportBtn.addEventListener('click', function(e) {
+                // Setup export functionality using the same pattern as zoom buttons
+                function setupExportButton() {
+                    const exportBtn = document.getElementById('exportBtn');
+                    const exportDropdown = document.getElementById('exportDropdown');
+                    const exportDropdownContainer = exportBtn?.parentElement;
+                    
+                    if (!exportBtn || !exportDropdown) return;
+                    
+                    // Remove all existing listeners by cloning the button
+                    const newExportBtn = exportBtn.cloneNode(true);
+                    exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+                    
+                    // Ensure dropdown starts in closed state
+                    exportDropdownContainer.classList.remove('show');
+                    
+                    // Add ONLY click event to prevent double execution
+                    newExportBtn.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        
+                        console.log('Export button clicked');
+                        
+                        // Close any other open dropdowns first
+                        document.querySelectorAll('.export-dropdown.show').forEach(dropdown => {
+                            if (dropdown !== exportDropdownContainer) {
+                                dropdown.classList.remove('show');
+                            }
+                        });
+                        
+                        // Toggle this dropdown
                         exportDropdownContainer.classList.toggle('show');
-                    });
+                        
+                        return false;
+                    }, { passive: false, capture: true });
                     
-                    // Handle export option clicks
+                    // Handle export option clicks with the same robust pattern
                     const exportOptions = exportDropdown.querySelectorAll('.export-option');
                     exportOptions.forEach(option => {
-                        option.addEventListener('click', function(e) {
+                        // Clone each option to remove existing listeners
+                        const newOption = option.cloneNode(true);
+                        option.parentNode.replaceChild(newOption, option);
+                        
+                        newOption.addEventListener('click', function(e) {
                             e.preventDefault();
                             e.stopPropagation();
+                            e.stopImmediatePropagation();
                             
                             const format = this.getAttribute('data-format');
                             console.log('Export requested:', format);
@@ -4596,23 +4631,34 @@ export class WebviewHtmlGenerator {
                             
                             // Close dropdown
                             exportDropdownContainer.classList.remove('show');
-                        });
+                            
+                            return false;
+                        }, { passive: false, capture: true });
                     });
                     
-                    // Close dropdown when clicking outside
-                    document.addEventListener('click', function(e) {
+                    // Close dropdown when clicking outside with robust event handling
+                    const outsideClickHandler = function(e) {
                         if (!exportDropdownContainer.contains(e.target)) {
                             exportDropdownContainer.classList.remove('show');
                         }
-                    });
+                    };
+                    
+                    // Remove any existing outside click handlers
+                    document.removeEventListener('click', outsideClickHandler);
+                    document.addEventListener('click', outsideClickHandler, { passive: false, capture: true });
+                    
+                    return newExportBtn;
                 }
+                
+                // Setup export button with the same robust pattern as zoom buttons
+                const exportButton = setupExportButton();
                 
                 console.log('Windows-optimized zoom controls setup completed');
                 console.log('Buttons configured:', {
                     zoomIn: !!zoomInButton,
                     zoomOut: !!zoomOutButton,
                     zoomReset: !!zoomResetButton,
-                    export: !!exportBtn
+                    export: !!exportButton
                 });
                 
                 // Test zoom functionality

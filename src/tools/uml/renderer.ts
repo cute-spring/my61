@@ -121,7 +121,13 @@ export class UMLRenderer {
      */
     private createJavaRequiredSVG(): string {
         return `<svg width="500" height="300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 300">
-            <rect width="500"
+            <rect width="500" height="300" fill="#f8f8f8" stroke="#ccc"/>
+            <text x="250" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#d73027">Java Required</text>
+            <text x="250" y="80" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#333">Java executable not found.</text>
+            <text x="250" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">To use UML diagram generation, please:</text>
+            <text x="250" y="140" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666">1. Install Java 8 or higher from https://adoptium.net/</text>
+            <text x="250" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666">2. Ensure Java is in your system PATH</text>
+            <text x="250" y="180" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666">3. Or configure the Java path in VS Code settings</text>
             <text x="250" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#999">For now, you can still chat about UML concepts</text>
         </svg>`;
     }
