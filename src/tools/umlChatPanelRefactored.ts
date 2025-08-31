@@ -651,20 +651,25 @@ async function handleExportDiagram(
             return;
         }
 
-        const diagramService = new DiagramService();
+        // Use singleton instance with improved error handling
+        const diagramService = DiagramService.getInstance();
         const result = await diagramService.exportDiagram({
             plantUML: currentPlantUML,
             format: format
         });
         
         if (!result.success) {
-            throw new Error(result.error || 'Export failed');
+            // Error message is already shown by DiagramService
+            console.error('Export failed:', result.error || result.message);
+            return;
         }
         
-        vscode.window.showInformationMessage(`Diagram exported successfully as ${format.toUpperCase()}.`);
+        // Success message is already shown by DiagramService
+        console.log('Export completed successfully:', result.filePath);
     } catch (error) {
         console.error('Export diagram error:', error);
-        vscode.window.showErrorMessage(`Failed to export diagram: ${error}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        vscode.window.showErrorMessage(`Failed to export diagram: ${errorMessage}`);
     }
 }
 
