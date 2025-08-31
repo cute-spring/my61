@@ -138,6 +138,9 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
             { enableScripts: true, retainContextWhenHidden: true }
         );
 
+        // Store document reference in panel for navigation
+        (panel as any)._sourceDocument = document;
+
         // Get document statistics for enhanced UI
         const stats = SmartDiagramDetector.getDocumentStats(document);
         
@@ -153,10 +156,11 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                     await this.renderDiagram(panel, diagram);
                     break;
                 case 'navigateDiagram':
-                    await this.handleDiagramNavigation(panel, document, message.direction);
+                    console.log('Handling navigation:', message.direction);
+                    await this.handleDiagramNavigation(panel, (panel as any)._sourceDocument, message.direction);
                     break;
                 case 'showStats':
-                    await this.showDocumentStats(panel, document);
+                    await this.showDocumentStats(panel, (panel as any)._sourceDocument);
                     break;
             }
         });
@@ -194,16 +198,22 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
         document: vscode.TextDocument, 
         direction: 'next' | 'previous'
     ): Promise<void> {
-        const editor = vscode.window.activeTextEditor;
+        // Find any editor with the same document, not just the active one
+        let editor = vscode.window.activeTextEditor;
         if (!editor || editor.document !== document) {
-            return;
+            // Look for any visible editor with this document
+            editor = vscode.window.visibleTextEditors.find(e => e.document === document);
+            if (!editor) {
+                // Open the document and get the editor
+                const textDocument = await vscode.workspace.openTextDocument(document.uri);
+                editor = await vscode.window.showTextDocument(textDocument, vscode.ViewColumn.One);
+            }
         }
 
         const currentPosition = editor.selection.active;
         const targetDiagram = direction === 'next' 
             ? SmartDiagramDetector.findNextDiagram(document, currentPosition)
             : SmartDiagramDetector.findPreviousDiagram(document, currentPosition);
-
         if (targetDiagram) {
             // Move cursor to the target diagram
             const newSelection = new vscode.Selection(targetDiagram.startPosition, targetDiagram.startPosition);
@@ -359,6 +369,9 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    cursor: grab;
+                    touch-action: none;
+                    user-select: none;
                 }
                 
                 #preview {
@@ -370,6 +383,8 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                     position: relative;
                     overflow: hidden;
                     cursor: grab;
+                    touch-action: none;
+                    user-select: none;
                 }
                 
                 #preview svg {
@@ -389,32 +404,7 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                     font-size: 12px;
                 }
                 
-                .stats-panel {
-                    position: absolute;
-                    top: 50px;
-                    right: 16px;
-                    background-color: var(--vscode-panel-background);
-                    border: 1px solid var(--vscode-panel-border);
-                    border-radius: 6px;
-                    padding: 12px;
-                    min-width: 200px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    z-index: 1000;
-                    display: none;
-                }
-                
-                .stats-title {
-                    font-weight: 600;
-                    margin-bottom: 8px;
-                    color: var(--vscode-foreground);
-                }
-                
-                .stats-item {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 4px;
-                    font-size: 12px;
-                }
+
             </style>
         </head>
         <body>
@@ -431,9 +421,6 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                     <button class="btn btn-secondary" id="nextBtn" onclick="navigateDiagram('next')">
                         Next →
                     </button>
-                    <button class="btn btn-secondary" onclick="toggleStats()">
-                        📊 Stats
-                    </button>
                 </div>
                 
                 <div class="zoom-controls">
@@ -448,20 +435,7 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                 <div id="errorMessage" class="error-message" style="display: none;"></div>
             </div>
             
-            <div id="statsPanel" class="stats-panel">
-                <div class="stats-title">Document Statistics</div>
-                <div class="stats-item">
-                    <span>Total Diagrams:</span>
-                    <span>${stats.totalDiagrams}</span>
-                </div>
-                <div class="stats-item">
-                    <span>Average Length:</span>
-                    <span>${stats.averageDiagramLength} chars</span>
-                </div>
-                ${Object.entries(stats.diagramTypes).map(([type, count]) => 
-                    `<div class="stats-item"><span>${type}:</span><span>${count}</span></div>`
-                ).join('')}
-            </div>
+
             
             <script>
                 const vscode = acquireVsCodeApi();
@@ -480,11 +454,6 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                 // Navigation functions
                 function navigateDiagram(direction) {
                     vscode.postMessage({ command: 'navigateDiagram', direction });
-                }
-                
-                function toggleStats() {
-                    const panel = document.getElementById('statsPanel');
-                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
                 }
                 
                 // Message handling
@@ -513,7 +482,6 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                             break;
                         case 'showMessage':
                             // Show temporary message (could implement toast notification)
-                            console.log('Navigation message:', message.message);
                             break;
                         case 'showStats':
                             // Update stats panel with new data
@@ -521,7 +489,14 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                     }
                 });
                 
-                // Zoom and pan implementation (simplified version)
+                // Touch gesture variables
+                let isDragging = false;
+                let lastTouchX = 0;
+                let lastTouchY = 0;
+                let initialDistance = 0;
+                let initialScale = 1;
+                
+                // Zoom and pan implementation with touch support
                 function applyTransform() {
                     const svgEl = document.querySelector('#preview svg');
                     if (!svgEl) return;
@@ -547,7 +522,112 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                     applyTransform();
                 }
                 
-                // Event listeners
+                function getDistance(touch1, touch2) {
+                    const dx = touch1.clientX - touch2.clientX;
+                    const dy = touch1.clientY - touch2.clientY;
+                    return Math.sqrt(dx * dx + dy * dy);
+                }
+                
+                function getTouchCenter(touch1, touch2) {
+                    return {
+                        x: (touch1.clientX + touch2.clientX) / 2,
+                        y: (touch1.clientY + touch2.clientY) / 2
+                    };
+                }
+                
+                // Touch event handlers
+                const previewEl = document.getElementById('preview');
+                
+                previewEl.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    
+                    if (e.touches.length === 1) {
+                        // Single finger - start panning
+                        isDragging = true;
+                        lastTouchX = e.touches[0].clientX;
+                        lastTouchY = e.touches[0].clientY;
+                    } else if (e.touches.length === 2) {
+                        // Two fingers - start pinch zoom
+                        isDragging = false;
+                        initialDistance = getDistance(e.touches[0], e.touches[1]);
+                        initialScale = currentZoom;
+                    }
+                });
+                
+                previewEl.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    
+                    if (e.touches.length === 1 && isDragging) {
+                        // Single finger - pan
+                        const deltaX = e.touches[0].clientX - lastTouchX;
+                        const deltaY = e.touches[0].clientY - lastTouchY;
+                        
+                        currentPanX += deltaX;
+                        currentPanY += deltaY;
+                        
+                        lastTouchX = e.touches[0].clientX;
+                        lastTouchY = e.touches[0].clientY;
+                        
+                        applyTransform();
+                    } else if (e.touches.length === 2) {
+                        // Two fingers - pinch zoom
+                        const currentDistance = getDistance(e.touches[0], e.touches[1]);
+                        const scale = (currentDistance / initialDistance) * initialScale;
+                         const clampedScale = Math.max(minZoom, Math.min(maxZoom, scale));
+                         
+                         currentZoom = clampedScale;
+                         applyTransform();
+                    }
+                });
+                
+                previewEl.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    isDragging = false;
+                });
+                
+                // Mouse event handlers for desktop compatibility
+                previewEl.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    lastTouchX = e.clientX;
+                    lastTouchY = e.clientY;
+                    previewEl.style.cursor = 'grabbing';
+                });
+                
+                previewEl.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        const deltaX = e.clientX - lastTouchX;
+                        const deltaY = e.clientY - lastTouchY;
+                        
+                        currentPanX += deltaX;
+                        currentPanY += deltaY;
+                        
+                        lastTouchX = e.clientX;
+                        lastTouchY = e.clientY;
+                        
+                        applyTransform();
+                    }
+                });
+                
+                previewEl.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    previewEl.style.cursor = 'grab';
+                });
+                
+                previewEl.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                    previewEl.style.cursor = 'grab';
+                });
+                
+                // Wheel zoom for desktop
+                 previewEl.addEventListener('wheel', (e) => {
+                     e.preventDefault();
+                     const delta = e.deltaY > 0 ? -zoomStep : zoomStep;
+                     const newZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom + delta));
+                     currentZoom = newZoom;
+                     applyTransform();
+                 });
+                
+                // Button event listeners
                 document.getElementById('zoomInBtn').addEventListener('click', () => {
                     applyZoom(currentZoom + zoomStep);
                 });
