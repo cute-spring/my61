@@ -177,7 +177,7 @@ function getWebviewContent(plantUMLText: string): string {
 
         <script>
             const vscode = acquireVsCodeApi();
-            let currentZoom = 1.0;
+            let currentZoom = 1.5;
             const minZoom = 0.1;
             const maxZoom = 5.0;
             const zoomStep = 0.2;
@@ -237,7 +237,7 @@ function getWebviewContent(plantUMLText: string): string {
             function updateZoomButtons() {
                 zoomInBtn.disabled = currentZoom >= maxZoom;
                 zoomOutBtn.disabled = currentZoom <= minZoom;
-                zoomResetBtn.disabled = Math.abs(currentZoom - 1.0) < 0.01;
+                zoomResetBtn.disabled = Math.abs(currentZoom - 1.5) < 0.01;
             }
             
             function applyZoom(newZoom) {
@@ -270,7 +270,7 @@ function getWebviewContent(plantUMLText: string): string {
             });
             
             zoomResetBtn.addEventListener('click', () => {
-                applyZoom(1.0);
+                applyZoom(1.5);
                 resetPan();
             });
             
@@ -434,10 +434,12 @@ function getWebviewContent(plantUMLText: string): string {
                 const message = event.data;
                 if (message.command === 'updatePreview') {
                     previewDiv.innerHTML = message.svgContent;
-                    // Reset zoom and pan when new content is loaded
-                    currentZoom = 1.0;
+                    // Reset pan and zoom when new content is loaded
+                    currentZoom = 1.5;
                     currentPanX = 0;
                     currentPanY = 0;
+                    // Apply the initial zoom transform
+                    applyTransform();
                     updateZoomButtons();
                 }
             });
