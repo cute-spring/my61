@@ -291,7 +291,6 @@ export class DiagramService {
     private addHighDpiSettings(content: string): string {
         // Consistent settings for PNG export to match SVG size
         const dpiSettings = [
-            '!option handwritten true',
             'skinparam dpi 300',
             'skinparam backgroundColor #FFFFFF',
             'skinparam svgDimensionStyle false'
@@ -318,7 +317,6 @@ export class DiagramService {
     private addSvgSizeSettings(content: string): string {
         // Consistent settings for SVG export to match PNG size
         const sizeSettings = [
-            '!option handwritten true',
             'skinparam dpi 300',
             'skinparam svgDimensionStyle false',
             'skinparam backgroundColor #FFFFFF'
