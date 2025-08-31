@@ -33,6 +33,8 @@ export class DiagramService {
     private renderer: UMLRenderer;
     private readonly MAX_RETRY_ATTEMPTS = 3;
     private readonly RETRY_DELAY_MS = 1000;
+    private readonly activeExports: Map<string, Promise<ExportResult>> = new Map();
+    private readonly maxConcurrentExports = 3;
 
     private constructor() {
         this.renderer = new UMLRenderer();
@@ -49,6 +51,41 @@ export class DiagramService {
      * Export diagram to specified format
      */
     async exportDiagram(options: ExportOptions): Promise<ExportResult> {
+        // Create a unique key for this export operation
+        const exportKey = `${options.format}-${Buffer.from(options.plantUML).toString('base64').substring(0, 32)}`;
+        
+        // Check if the same export is already in progress
+        if (this.activeExports.has(exportKey)) {
+            console.log('Export already in progress, returning existing promise');
+            return await this.activeExports.get(exportKey)!;
+        }
+        
+        // Check concurrency limits
+        if (this.activeExports.size >= this.maxConcurrentExports) {
+            return {
+                success: false,
+                error: 'Too many concurrent exports in progress. Please try again later.',
+                message: 'Export queue is full'
+            };
+        }
+        
+        // Create and track the export promise
+        const exportPromise = this.performExport(options);
+        this.activeExports.set(exportKey, exportPromise);
+        
+        try {
+            const result = await exportPromise;
+            return result;
+        } finally {
+            // Always clean up the active export tracking
+            this.activeExports.delete(exportKey);
+        }
+    }
+    
+    /**
+     * Perform the actual export operation
+     */
+    private async performExport(options: ExportOptions): Promise<ExportResult> {
         try {
             // Show progress indicator
             return await vscode.window.withProgress({
@@ -98,12 +135,34 @@ export class DiagramService {
         } catch (error: any) {
             const errorMessage = error.message || String(error);
             console.error('Export error:', errorMessage);
-            ErrorHandler.handle(createError(ErrorCode.RENDER_FAILURE, errorMessage));
-            vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
+            
+            // Enhanced error handling with proper categorization
+            let errorCode = ErrorCode.RENDER_FAILURE;
+            let userMessage = 'Export failed';
+            
+            if (errorMessage.includes('ENOENT')) {
+                errorCode = ErrorCode.RENDER_JAVA_MISSING;
+                userMessage = 'Required file not found. Please check PlantUML setup.';
+            } else if (errorMessage.includes('EACCES') || errorMessage.includes('permission')) {
+                errorCode = ErrorCode.IO_SAVE_FAIL;
+                userMessage = 'Permission denied. Please check file permissions.';
+            } else if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+                errorCode = ErrorCode.LLM_TIMEOUT;
+                userMessage = 'Operation timed out. Please try again.';
+            } else if (errorMessage.includes('queue is full')) {
+                errorCode = ErrorCode.RENDER_FAILURE;
+                userMessage = 'Too many exports in progress. Please wait and try again.';
+            } else if (errorMessage.includes('syntax') || errorMessage.includes('Syntax')) {
+                errorCode = ErrorCode.RENDER_SYNTAX;
+                userMessage = 'PlantUML syntax error. Please check your diagram code.';
+            }
+            
+            ErrorHandler.handle(createError(errorCode, errorMessage));
+            vscode.window.showErrorMessage(`${userMessage}: ${errorMessage}`);
             return {
                 success: false,
                 error: errorMessage,
-                message: `Export failed: ${errorMessage}`
+                message: `${userMessage}: ${errorMessage}`
             };
         }
     }
@@ -309,6 +368,26 @@ export class DiagramService {
 
         return { isValid: true };
     }
+    
+    /**
+     * Determine if an error is retryable
+     */
+    private isErrorRetryable(errorMessage: string): boolean {
+        // Non-retryable errors (permanent failures)
+        const nonRetryablePatterns = [
+            'syntax error',
+            'invalid plantuml',
+            'permission denied',
+            'eacces',
+            'file not found',
+            'enoent',
+            'queue is full',
+            'too many concurrent'
+        ];
+        
+        const lowerError = errorMessage.toLowerCase();
+        return !nonRetryablePatterns.some(pattern => lowerError.includes(pattern));
+    }
 
     /**
      * Export with retry mechanism
@@ -344,8 +423,17 @@ export class DiagramService {
 
                 lastError = result.error || result.message || 'Unknown error';
                 
+                // Check if error is retryable
+                const isRetryable = this.isErrorRetryable(lastError);
+                if (!isRetryable) {
+                    console.log(`Non-retryable error encountered: ${lastError}`);
+                    break; // Exit retry loop for non-retryable errors
+                }
+                
                 if (attempt < this.MAX_RETRY_ATTEMPTS) {
-                    await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY_MS));
+                    const delay = this.RETRY_DELAY_MS * attempt; // Exponential backoff
+                    progress.report({ message: `Retrying in ${delay}ms...` });
+                    await new Promise(resolve => setTimeout(resolve, delay));
                 }
             } catch (error: any) {
                 lastError = error.message || String(error);

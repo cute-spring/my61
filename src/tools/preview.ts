@@ -86,6 +86,35 @@ function processWrapper(process: childProcess.ChildProcess, savePath?: string): 
     return new Promise((resolve, reject) => {
         let stdout: Buffer[] = [];
         let stderr: Buffer[] = [];
+        let isResolved = false;
+        
+        // Set up timeout to prevent hanging processes
+        const timeout = setTimeout(() => {
+            if (!isResolved) {
+                console.warn('PlantUML process timeout, killing process');
+                try {
+                    process.kill('SIGTERM');
+                    // Force kill after 2 seconds if SIGTERM doesn't work
+                    setTimeout(() => {
+                        if (!process.killed) {
+                            process.kill('SIGKILL');
+                        }
+                    }, 2000);
+                } catch (error) {
+                    console.error('Error killing PlantUML process:', error);
+                }
+                isResolved = true;
+                reject(new Error('PlantUML process timeout after 30 seconds'));
+            }
+        }, 30000); // 30 second timeout
+        
+        // Clean up function
+        const cleanup = () => {
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+        };
+        
         if (process.stdout) {
             process.stdout.on("data", (data: Buffer) => stdout.push(data));
         }
@@ -94,13 +123,32 @@ function processWrapper(process: childProcess.ChildProcess, savePath?: string): 
         }
         process.on("error", (err) => {
             console.error('PlantUML process error:', err);
-            reject(err);
+            if (!isResolved) {
+                isResolved = true;
+                cleanup();
+                reject(err);
+            }
         });
         process.on("close", (code) => {
+            if (isResolved) {
+                return; // Already resolved/rejected
+            }
+            
+            isResolved = true;
+            cleanup();
+            
             const stderrOutput = Buffer.concat(stderr).toString();
             if (code === 0) {
                 const out = Buffer.concat(stdout);
-                if (savePath) { fs.writeFileSync(savePath, out); }
+                if (savePath) { 
+                    try {
+                        fs.writeFileSync(savePath, out);
+                    } catch (writeError) {
+                        console.error('Error writing PlantUML output to file:', writeError);
+                        reject(writeError);
+                        return;
+                    }
+                }
                 
                 // Log information about which layout engine was actually used
                 const config = vscode.workspace.getConfiguration('plantuml');
@@ -156,9 +204,52 @@ function processWrapper(process: childProcess.ChildProcess, savePath?: string): 
 // --- Main LocalRender class ---
 
 class LocalRender {
+    private activeProcesses: Set<childProcess.ChildProcess> = new Set();
+    private readonly maxConcurrentProcesses = 3;
+    
     constructor(private getJarPath: () => string) {}
+    
     limitConcurrency(): boolean {
-        return true;
+        return this.activeProcesses.size >= this.maxConcurrentProcesses;
+    }
+    
+    /**
+     * Clean up all active processes
+     */
+    cleanup(): void {
+        console.log(`Cleaning up ${this.activeProcesses.size} active PlantUML processes`);
+        for (const process of this.activeProcesses) {
+            try {
+                if (!process.killed) {
+                    process.kill('SIGTERM');
+                    // Force kill after 2 seconds if needed
+                    setTimeout(() => {
+                        if (!process.killed) {
+                            process.kill('SIGKILL');
+                        }
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Error killing process during cleanup:', error);
+            }
+        }
+        this.activeProcesses.clear();
+    }
+    
+    /**
+     * Register a process for tracking
+     */
+    private registerProcess(process: childProcess.ChildProcess): void {
+        this.activeProcesses.add(process);
+        
+        // Auto-cleanup when process exits
+        process.on('exit', () => {
+            this.activeProcesses.delete(process);
+        });
+        
+        process.on('error', () => {
+            this.activeProcesses.delete(process);
+        });
     }
 
     formats(): string[] {
@@ -301,8 +392,15 @@ class LocalRender {
                 console.log('PlantUML execution command:', config.java, params.join(' '));
                 console.log('PlantUML diagram content preview:', diagram.content.substring(0, 100) + '...');
 
+                // Check concurrency limits before spawning
+                if (this.limitConcurrency()) {
+                    console.warn('PlantUML concurrency limit reached, rejecting request');
+                    throw new Error('PlantUML rendering queue is full. Please try again later.');
+                }
+                
                 let proc = childProcess.spawn(config.java, params);
                 processes.push(proc);
+                this.registerProcess(proc);
 
                 if (proc.killed) {
                     cancelled = true;

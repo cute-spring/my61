@@ -378,7 +378,15 @@ async function handleRenderSpecificUML(
     const currentEngine = chatManager.getCurrentEngine();
     
     try {
-        chatManager.updatePlantUML(umlCode);
+        // Extract PlantUML content between @startuml and @enduml tags
+        // The webview sends the full block, but ChatManager expects only the content
+        let plantUMLContent = umlCode;
+        const plantUMLMatch = umlCode.match(/@startuml\s*\n([\s\S]*?)\n@enduml/);
+        if (plantUMLMatch) {
+            plantUMLContent = plantUMLMatch[1].trim();
+        }
+        
+        chatManager.updatePlantUML(plantUMLContent);
         
         // Find which bot message contains this UML code and set it as selected
         const chatHistory = chatManager.getChatHistory();
@@ -417,6 +425,7 @@ async function handleRenderSpecificUML(
             }
         } else {
             // For PlantUML, render in the unified panel
+            // Use the full UML code (with tags) for rendering
             try {
                 const svgContent = await factory.renderDiagram(currentEngine, umlCode);
                 panel.webview.postMessage({
@@ -651,10 +660,31 @@ async function handleExportDiagram(
             return;
         }
 
+        // Check if the PlantUML content is meaningful (not just empty tags)
+        let contentToCheck = currentPlantUML;
+        if (currentPlantUML.trim().startsWith('@startuml')) {
+            // Extract content between @startuml and @enduml tags
+            const match = currentPlantUML.match(/@startuml\s*\n([\s\S]*?)\n@enduml/);
+            contentToCheck = match ? match[1].trim() : '';
+        }
+        
+        // Check if there's actual diagram content (not just whitespace)
+        if (!contentToCheck || contentToCheck.trim() === '') {
+            vscode.window.showWarningMessage('No diagram content to export. Please generate a diagram first.');
+            return;
+        }
+
+        // Wrap PlantUML content with @startuml/@enduml tags if not already present
+        // ChatManager stores only the content, but DiagramService expects the full block
+        let fullPlantUML = currentPlantUML;
+        if (!currentPlantUML.trim().startsWith('@startuml')) {
+            fullPlantUML = `@startuml\n${currentPlantUML}\n@enduml`;
+        }
+
         // Use singleton instance with improved error handling
         const diagramService = DiagramService.getInstance();
         const result = await diagramService.exportDiagram({
-            plantUML: currentPlantUML,
+            plantUML: fullPlantUML,
             format: format
         });
         
