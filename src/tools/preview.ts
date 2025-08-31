@@ -557,60 +557,7 @@ export function activate(context: vscode.ExtensionContext, plantumlJarPathFromMa
     resolvedPlantumlJarPath = plantumlJarPathFromMain;
     localRender = new LocalRender(() => config.jar());
 
-    let disposable = vscode.commands.registerCommand('extension.previewAntUML', async () => {
-        let editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showErrorMessage("No active editor.");
-            return;
-        }
 
-        let document = editor.document;
-        let plantUMLText = document.getText();
-        let diagram = {
-            parentUri: document.uri,
-            dir: path.dirname(document.uri.fsPath),
-            pageCount: 1,
-            content: plantUMLText,
-            path: document.uri.fsPath,
-            name: path.basename(document.uri.fsPath)
-        };
-
-        const panel = vscode.window.createWebviewPanel(
-            'plantUMLPreview',
-            'PlantUML Preview',
-            vscode.ViewColumn.Two,
-            { enableScripts: true, retainContextWhenHidden: true }
-        );
-
-        panel.webview.html = getWebviewContent(plantUMLText);
-
-        panel.webview.onDidReceiveMessage(async message => {
-            if (message.command === 'render') {
-                let format = "svg";
-                let tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plantuml-'));
-                let savePath = path.join(tempDir, "preview.svg");
-
-                try {
-                    // Use the text from the webview if provided
-                    if (message.plantumlText) {
-                        diagram.content = message.plantumlText;
-                    }
-                    let task = localRender.render(diagram, format, savePath);
-                    let buffers = await task.promise;
-
-                    if (buffers && buffers.length > 0) {
-                        let svgContent = buffers[0].toString('utf-8');
-                        panel.webview.postMessage({ command: 'updatePreview', svgContent: svgContent });
-                    }
-                } catch (err: any) {
-                    let errorMsg = err && err.stack ? err.stack : (err && err.message ? err.message : JSON.stringify(err));
-                    vscode.window.showErrorMessage(`Failed to render PlantUML diagram: ${errorMsg}`);
-                }
-            }
-        }, undefined, context.subscriptions);
-    });
-
-    context.subscriptions.push(disposable);
 }
 
 export function deactivate() {}
@@ -625,42 +572,297 @@ function getWebviewContent(plantUMLText: string): string {
         <title>PlantUML Preview</title>
         <style>
             body {
-                font-family: Arial, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 margin: 0;
                 padding: 0;
                 display: flex;
                 flex-direction: column;
+                height: 100vh;
+                background-color: var(--vscode-editor-background);
+                color: var(--vscode-editor-foreground);
+                overflow: hidden;
+            }
+            
+            .editor-section {
+                flex: 0 0 auto;
+                padding: 16px;
+                border-bottom: 1px solid var(--vscode-panel-border);
+                background-color: var(--vscode-panel-background);
+            }
+            
+            #plantumlText {
+                width: 100%;
+                height: 120px;
+                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                font-size: 13px;
+                background-color: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                border: 1px solid var(--vscode-input-border);
+                border-radius: 4px;
+                padding: 8px;
+                resize: vertical;
+                outline: none;
+            }
+            
+            #renderButton {
+                margin-top: 12px;
+                padding: 8px 16px;
+                background-color: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 13px;
+                transition: background-color 0.2s;
+            }
+            
+            #renderButton:hover {
+                background-color: var(--vscode-button-hoverBackground);
+            }
+            
+            .preview-container {
+                flex: 1;
+                position: relative;
+                overflow: hidden;
+                background-color: var(--vscode-editor-background);
+                display: flex;
                 align-items: center;
                 justify-content: center;
-                height: 100vh;
             }
+            
             #preview {
-                margin-top: 20px;
-                border: 1px solid #ccc;
-                padding: 10px;
-                background-color: #f9f9f9;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            #preview svg {
+                max-width: 100%;
+                max-height: 100%;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transform-origin: center center;
+            }
+            
+            /* Enterprise-Grade Zoom Controls */
+            .zoom-controls {
+                position: absolute !important;
+                bottom: 24px !important;
+                right: 24px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+                z-index: 1000 !important;
+                pointer-events: auto !important;
+                user-select: none !important;
+                background: transparent !important;
+                animation: zoomControlsAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            }
+            
+            @keyframes zoomControlsAppear {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+            
+            .zoom-btn {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8)) !important;
+                border: 1px solid rgba(0, 122, 204, 0.2) !important;
+                border-radius: 10px !important;
+                padding: 0 !important;
+                cursor: pointer !important;
+                color: #007acc !important;
+                box-shadow: 
+                    0 2px 8px rgba(0, 122, 204, 0.08),
+                    0 1px 4px rgba(0, 0, 0, 0.04),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                width: 40px !important;
+                height: 40px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                backdrop-filter: blur(12px) !important;
+                outline: none !important;
+                font-size: 0 !important;
+            }
+            
+            .zoom-btn svg {
+                width: 16px !important;
+                height: 16px !important;
+                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            }
+            
+            .zoom-btn:hover {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)) !important;
+                border-color: rgba(0, 122, 204, 0.4) !important;
+                color: #005fa3 !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 
+                    0 6px 20px rgba(0, 122, 204, 0.15),
+                    0 3px 10px rgba(0, 0, 0, 0.08),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+            }
+            
+            .zoom-btn:hover svg {
+                transform: scale(1.15) !important;
+            }
+            
+            .zoom-btn:active {
+                transform: translateY(-1px) !important;
+                box-shadow: 
+                    0 3px 12px rgba(0, 122, 204, 0.12),
+                    0 2px 6px rgba(0, 0, 0, 0.06) !important;
+            }
+            
+            .zoom-btn:active svg {
+                transform: scale(0.9) !important;
+            }
+            
+            .zoom-btn:disabled {
+                opacity: 0.5 !important;
+                cursor: not-allowed !important;
+                transform: none !important;
             }
         </style>
     </head>
     <body>
-        <textarea id="plantumlText" rows="10" cols="50" style="width: 100%; height: 200px; margin-top: 20px;">${plantUMLText}</textarea>
-        <button id="renderButton" style="margin-top: 10px;">Render Diagram</button>
-        <div id="preview"></div>
+        <div class="editor-section">
+            <textarea id="plantumlText" placeholder="Enter your PlantUML code here...">${plantUMLText}</textarea>
+            <button id="renderButton">Render Diagram</button>
+        </div>
+        
+        <div class="preview-container">
+            <div id="preview"></div>
+            
+            <!-- Zoom Controls -->
+            <div class="zoom-controls">
+                <button class="zoom-btn zoom-in" id="zoomInBtn" title="Zoom In (Ctrl + +)" aria-label="Zoom In">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        <line x1="11" y1="8" x2="11" y2="14"/>
+                        <line x1="8" y1="11" x2="14" y2="11"/>
+                    </svg>
+                </button>
+                <button class="zoom-btn zoom-out" id="zoomOutBtn" title="Zoom Out (Ctrl + -)" aria-label="Zoom Out">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        <line x1="8" y1="11" x2="14" y2="11"/>
+                    </svg>
+                </button>
+                <button class="zoom-btn zoom-reset" id="zoomResetBtn" title="Reset Zoom (Ctrl + 0)" aria-label="Reset Zoom">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
 
         <script>
             const vscode = acquireVsCodeApi();
-
-            document.getElementById('renderButton').addEventListener('click', () => {
-                const plantumlText = document.getElementById('plantumlText').value;
+            let currentZoom = 1.0;
+            const minZoom = 0.1;
+            const maxZoom = 5.0;
+            const zoomStep = 0.2;
+            
+            // Get DOM elements
+            const renderButton = document.getElementById('renderButton');
+            const plantumlTextArea = document.getElementById('plantumlText');
+            const previewDiv = document.getElementById('preview');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const zoomResetBtn = document.getElementById('zoomResetBtn');
+            
+            // Render button functionality
+            renderButton.addEventListener('click', () => {
+                const plantumlText = plantumlTextArea.value;
                 vscode.postMessage({ command: 'render', plantumlText: plantumlText });
             });
-
+            
+            // Zoom functionality
+            function updateZoomButtons() {
+                zoomInBtn.disabled = currentZoom >= maxZoom;
+                zoomOutBtn.disabled = currentZoom <= minZoom;
+                zoomResetBtn.disabled = Math.abs(currentZoom - 1.0) < 0.01;
+            }
+            
+            function applyZoom(newZoom) {
+                currentZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+                const svgElement = previewDiv.querySelector('svg');
+                if (svgElement) {
+                    svgElement.style.transform = \`scale(\${currentZoom})\`;
+                }
+                updateZoomButtons();
+            }
+            
+            // Zoom controls event listeners
+            zoomInBtn.addEventListener('click', () => {
+                applyZoom(currentZoom + zoomStep);
+            });
+            
+            zoomOutBtn.addEventListener('click', () => {
+                applyZoom(currentZoom - zoomStep);
+            });
+            
+            zoomResetBtn.addEventListener('click', () => {
+                applyZoom(1.0);
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (event) => {
+                if (event.ctrlKey || event.metaKey) {
+                    switch(event.key) {
+                        case '+':
+                        case '=':
+                            event.preventDefault();
+                            if (!zoomInBtn.disabled) zoomInBtn.click();
+                            break;
+                        case '-':
+                            event.preventDefault();
+                            if (!zoomOutBtn.disabled) zoomOutBtn.click();
+                            break;
+                        case '0':
+                            event.preventDefault();
+                            if (!zoomResetBtn.disabled) zoomResetBtn.click();
+                            break;
+                    }
+                }
+            });
+            
+            // Mouse wheel zoom
+            previewDiv.addEventListener('wheel', (event) => {
+                if (event.ctrlKey || event.metaKey) {
+                    event.preventDefault();
+                    const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+                    applyZoom(currentZoom * zoomFactor);
+                }
+            });
+            
+            // Handle messages from extension
             window.addEventListener('message', event => {
                 const message = event.data;
                 if (message.command === 'updatePreview') {
-                    document.getElementById('preview').innerHTML = \`<svg>\${message.svgContent}</svg>\`;
+                    previewDiv.innerHTML = \`<svg>\${message.svgContent}</svg>\`;
+                    // Reset zoom when new content is loaded
+                    currentZoom = 1.0;
+                    updateZoomButtons();
                 }
             });
+            
+            // Initialize zoom buttons
+            updateZoomButtons();
         </script>
     </body>
     </html>
