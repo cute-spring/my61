@@ -60,9 +60,10 @@
         "command": "copilotTools.openSettings",
         "title": "Copilot Tools: Open Settings"
       },
+
       {
-        "command": "copilotTools.previewAntUML",
-        "title": "Preview PlantUML Diagram"
+        "command": "copilotTools.previewSmartPlantUML",
+        "title": "Smart PlantUML Preview (Auto-detect)"
       },
       {
         "command": "extension.umlChatPanel",
@@ -95,9 +96,10 @@
           "command": "copilotTools.refineJira",
           "when": "editorHasSelection"
         },
+
         {
-          "command": "copilotTools.previewAntUML",
-          "when": "editorHasSelection"
+          "command": "copilotTools.previewSmartPlantUML",
+          "when": "editorTextFocus"
         }
       ],
       "explorer/context": [
@@ -124,10 +126,11 @@
         "key": "ctrl+alt+j",
         "when": "editorTextFocus && editorHasSelection"
       },
+
       {
-        "command": "copilotTools.previewAntUML",
-        "key": "ctrl+alt+u",
-        "when": "editorTextFocus && editorHasSelection"
+        "command": "copilotTools.previewSmartPlantUML",
+        "key": "ctrl+alt+shift+u",
+        "when": "editorTextFocus"
       },
       {
         "command": "copilotTools.configurePlantUML",
