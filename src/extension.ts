@@ -5,7 +5,6 @@ import { openCopilotToolsSettingsWebview } from './tools/config/settingsWebview'
 import { EmailRefineTool } from './tools/email/emailRefineTool';
 import { TranslateTool } from './tools/translate/translateTool';
 import { JiraRefineTool } from './tools/jira/jiraRefineTool';
-import { PlantUMLPreviewTool } from './tools/uml/plantUMLPreviewTool';
 import { EnhancedPlantUMLPreviewTool } from './tools/uml/enhancedPlantUMLPreviewTool';
 import { activateUMLChatPanel } from './tools/umlChatPanelRefactored';
 import { localRender, activate as activatePreview } from './tools/preview';
@@ -161,7 +160,6 @@ export async function activate(context: vscode.ExtensionContext) {
     new EmailRefineTool(),
     new TranslateTool(),
     new JiraRefineTool(),
-    new PlantUMLPreviewTool(),
     new EnhancedPlantUMLPreviewTool()
   ];
 
