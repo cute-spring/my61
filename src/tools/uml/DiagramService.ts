@@ -204,7 +204,6 @@ export class DiagramService {
             // Write SVG to file
             await fs.promises.writeFile(filePath, svgContent, 'utf-8');
             
-            vscode.window.showInformationMessage(`SVG exported successfully to ${path.basename(filePath)}`);
             return {
                 success: true,
                 filePath: filePath,
@@ -271,7 +270,6 @@ export class DiagramService {
             // Write PNG buffer to file
             await fs.promises.writeFile(filePath, buffer);
             
-            vscode.window.showInformationMessage(`PNG exported successfully to ${path.basename(filePath)}`);
             return {
                 success: true,
                 filePath: filePath,
