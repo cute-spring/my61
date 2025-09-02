@@ -1,26 +1,73 @@
 # Copilot-Powered Productivity VS Code Extension
 
-A modular, extensible productivity extension for VS Code, powered by Copilot/LLM APIs. Includes tools for Email Refinement, English/Chinese Translation, and Jira Description Refinement.
+A modular, extensible productivity extens### How to Use
+
+1. **Start a New 4. **View and Interact with the Diagram**
+   - The right panel displays the generated UML diagram as SVG.
+   - Use the zoom controls (+, −, ⌂) or keyboard shortcuts (Ctrl+Plus/Minus/0) to zoom and reset.
+   - Pan the diagram by dragging or using scrollbars if zoomed in.
+
+5. **Iterate and Refine**
+   - Edit any previous user message by clicking the ✏️ button, then resend to update the diagram.
+   - Click on any bot message to preview the corresponding diagram version.
+
+6. **Save and Load Sessions**
+   - Save the chat session for future editing or collaboration.
+   - Import a previous session to continue work.
+
+7. **Session Management**
+   - Use "Clear Chat" to start over.
+   - Use "Import" to load a previous session or "Save" to archive your current work.en the UML Chat Designer from the VS Code command palette or sidebar.
+   - In the enhanced left panel, type your system/process description or requirement in natural language.
+   - **New**: Enjoy the expanded input area (300px height) with auto-resize functionality for comfortable long-text entry.
+
+2. **Enhanced Input Experience**
+   - **Character Counter**: Monitor your input length with color-coded feedback (gray/yellow/red based on length).
+   - **Clear Button**: Quickly clear input with the convenient clear button (appears when text is present).
+   - **Auto-Resize**: Input area automatically expands as you type, up to 300px height.
+   - **Improved Styling**: Modern design with better focus states and visual feedback.
+
+3. **Select Diagram Type (Optional)**
+   - Use the "Diagram Type" dropdown to specify the UML diagram you want (e.g., Class Diagram).
+   - Leave it as "Auto-detect" if you're unsure; the tool will choose the best type.
+
+4. **Send Your Requirement**
+   - Click "Send" or press Enter.
+   - The Copilot LLM will reply with an explanation, the detected diagram type, and the PlantUML code.de, powered by Copilot/LLM APIs. Includes tools for Email Refinement, English/Chinese Translation, and Jira Description Refinement.
 
 ## Features
 
 ### Core Productivity Tools
 
-- **🎯 Refine Email**: Select email text, get a professional rewrite and subject suggestions. Diff/split view, quick pick for subject lines, accept/refine/copy options.
+- **🎯 Refine Email**: Select email text, get a professional rewrite and subject suggestions. Enhanced with prominent action buttons, quick actions bar, and improved UI with copy/refine options.
 - **🌏 Translate Text**: English ↔ Chinese (Simplified/Traditional, auto-detect). Popup/quick pick for output, configurable default, copy/replace/insert options.
 - **📋 Refine Jira**: Select Jira description, get a structured, concise version. Side-by-side diff, accept/refine/copy options.
-- **📊 Preview UML**: Generate PlantUML diagrams from selected text with live preview.
-- **🤖 UML Designer**: AI-powered, chat-driven tool for creating and refining UML diagrams through natural language conversation.
+- **📊 Preview UML**: Generate PlantUML diagrams from selected text with live preview and automatic layout engine configuration.
+- **🤖 UML Designer**: AI-powered, chat-driven tool for creating and refining UML diagrams through natural language conversation. Features enhanced input experience with expanded text area, character counter, and improved keyboard shortcuts.
 
 ### Additional Features
 
 - **Settings Management**: Configure API key, translation defaults, feature toggles, and PlantUML settings.
 - **Usage Analytics**: Track feature usage with privacy-focused local analytics and optional export.
 - **Extensible Framework**: Add new tools by implementing a simple interface and registering with ToolManager.
+- **Auto-Configuration**: Automatic PlantUML layout engine detection and configuration for zero-setup experience.
+- **Enhanced UI/UX**: Improved input controls, visual feedback, and user interaction patterns across all tools.
 
 ## UML Chat Designer
 
-The UML Chat Designer is an AI-powered, chat-driven tool for generating and refining UML diagrams directly in VS Code. Describe your requirements in natural language, and the tool will generate PlantUML code and a live diagram preview. Supports iterative design, diagram type selection, chat history, and more.
+The UML Chat Designer is an AI-powered, chat-driven tool for generating and refining UML diagrams directly in VS Code. Describe your requirements in natural language, and the tool will generate PlantUML code and a live diagram preview. 
+
+**Latest Enhancements:**
+- **Expanded Input Experience**: Enhanced input textarea with 300px max height (2.5x larger), auto-resize functionality, and improved visual design
+- **Smart Input Features**: Real-time character counter with color-coded feedback, clear input button, and enhanced keyboard shortcuts
+- **Better User Interface**: Modern styling with focus states, smooth transitions, and improved readability
+
+### Key Features
+- Iterative design through natural language conversation
+- Automatic diagram type detection and selection  
+- Chat history with message editing capabilities
+- Session save/load functionality
+- Live diagram preview with zoom and pan controls
 
 ### Prerequisites
 
@@ -37,12 +84,13 @@ See [PLANTUML_SETUP.md](PLANTUML_SETUP.md) for detailed setup instructions.
 The extension **automatically detects and configures** the best available PlantUML layout engine on first run, providing a seamless out-of-the-box experience:
 
 #### **🤖 Automatic Configuration**
-- **DOT Engine Detection**: Automatically searches for and validates Graphviz/DOT installations
-- **Execution Validation**: Tests actual diagram processing capability, not just file existence
+- **Zero-Setup Experience**: Extension automatically detects and configures the best available PlantUML layout engine on first activation
+- **DOT Engine Detection**: Automatically searches for and validates Graphviz/DOT installations with enhanced execution testing
+- **Execution Validation**: Tests actual diagram processing capability using complex diagrams with DOT-specific features (clusters, constraints, hierarchies)
 - **Enterprise-Ready**: Handles security restrictions and permission issues gracefully
 - **Smart Fallback**: Falls back to Smetana (pure Java) when DOT is unavailable or blocked
-- **Zero Configuration**: Works immediately without manual setup
-- **Preserve User Settings**: Respects existing manual configurations
+- **Zero Configuration**: Works immediately without manual setup for optimal user experience
+- **Preserve User Settings**: Respects existing manual configurations and never overrides user choices
 
 #### **🎯 Layout Engines**
 - **DOT Engine** (preferred): Uses Graphviz/DOT for high-quality diagram layout. Auto-detected if available.
@@ -60,6 +108,7 @@ While auto-detection handles most cases, you can still manually configure:
 2. Choose between auto-detection, manual configuration, or reset to auto-detection
 3. For manual mode: Select layout engine and custom paths
 4. Test your configuration with the UML Chat Designer
+5. Use `Run PlantUML Auto-Detection` to re-run automatic detection at any time
 
 #### **📊 Status Visibility**
 - **Status Bar Indicator**: Always visible in VS Code status bar (left side)
@@ -184,8 +233,27 @@ This extension contributes the following settings:
 
 Access these through the Command Palette for configuration and management:
 - `Copilot Tools: Open Settings` - Configure extension settings
-- `Configure PlantUML Layout Engine and DOT Path` - Set up diagram rendering
+- `Configure PlantUML (Manual Override)` - Set up diagram rendering with manual configuration
+- `Run PlantUML Auto-Detection` - Re-run automatic PlantUML configuration
 - `Show Usage Analytics Dashboard` - View feature usage statistics
+
+## Recent Enhancements (v0.0.10)
+
+### 🚀 **Zero-Configuration PlantUML Experience**
+- **Automatic Setup**: Extension now automatically detects and configures the best available PlantUML layout engine on first activation
+- **Enhanced DOT Validation**: Tests complex diagrams with DOT-specific features requiring actual execution validation
+- **Enterprise Support**: Gracefully handles security restrictions and blocked executables
+- **Smart Migration**: Preserves existing user configurations while offering auto-detection benefits
+
+### 🎨 **Enhanced Email Refiner**
+- **Prominent Action Buttons**: New quick actions bar with prominent green/yellow button styling
+- **Improved Visual Hierarchy**: Copy and refine buttons now appear prominently at the top of the panel
+- **Better User Experience**: Enhanced hover effects and visual feedback for all actions
+
+### ✨ **UML Chat Designer Input Improvements**
+- **Expanded Input Area**: 2.5x larger input textarea (300px max height) for comfortable long-text entry
+- **Smart Features**: Real-time character counter, auto-resize functionality, and quick clear button
+- **Modern UI**: Enhanced styling with better focus states, smooth transitions, and improved readability
 
 ## Privacy
 
