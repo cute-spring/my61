@@ -12,7 +12,7 @@ This document describes the comprehensive interactive controls implemented for t
 - **Zoom In Button (+)**: Increases zoom by 0.1 increments
 - **Zoom Out Button (−)**: Decreases zoom by 0.1 increments  
 - **Reset Button (⌂)**: Resets zoom to 1.0 and pan to (0,0)
-- **Range**: 0.1x to 5.0x zoom levels
+- **Range**: 0.2x to 3.0x zoom levels - optimized for usability and performance
 - **Windows Compatibility**: Uses CSS `zoom` property for better Windows performance
 
 #### Implementation Details
@@ -213,8 +213,8 @@ panZoomInstance.getZoom()
 ### Zoom State
 ```typescript
 let currentZoomLevel = 1.0;      // Current zoom multiplier
-const minZoom = 0.1;             // Minimum zoom level
-const maxZoom = 5.0;             // Maximum zoom level
+const minZoom = 0.2;             // Minimum zoom level (optimized)
+const maxZoom = 3.0;             // Maximum zoom level (optimized)
 const zoomStep = 0.1;            // Button zoom increment
 ```
 

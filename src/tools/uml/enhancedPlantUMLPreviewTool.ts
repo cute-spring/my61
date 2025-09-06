@@ -448,8 +448,8 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                 let lastPanX = 0;
                 let lastPanY = 0;
                 const zoomStep = 0.1;
-                const minZoom = 0.1;
-                const maxZoom = 5.0;
+                const minZoom = 0.2;
+                const maxZoom = 3.0;
                 
                 // Navigation functions
                 function navigateDiagram(direction) {

@@ -773,8 +773,8 @@ function getWebviewContent(plantUMLText: string): string {
         <script>
             const vscode = acquireVsCodeApi();
             let currentZoom = 1.0;
-            const minZoom = 0.1;
-            const maxZoom = 5.0;
+            const minZoom = 0.2;
+                const maxZoom = 3.0;
             const zoomStep = 0.1;
             
             // Get DOM elements

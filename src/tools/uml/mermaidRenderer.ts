@@ -312,7 +312,7 @@ export class MermaidRenderer {
         let currentZoom = 1;
         const zoomStep = 0.1;
         const minZoom = 0.3;
-        const maxZoom = 3;
+                const maxZoom = 2.5;
 
         // Initialize Mermaid
         async function initializeMermaid() {

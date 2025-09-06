@@ -4403,8 +4403,8 @@ export class WebviewHtmlGenerator {
                 
                 // Simple, robust zoom implementation for Windows
                 let currentZoomLevel = 1.0;
-                const minZoom = 0.1;
-                const maxZoom = 5.0;
+                const minZoom = 0.2;
+                const maxZoom = 3.0;
                 const zoomStep = 0.1;
                 
                 function applyZoom(newZoom, svgEl) {
@@ -4679,7 +4679,7 @@ export class WebviewHtmlGenerator {
             let currentMermaidPanY = 0;
             const mermaidZoomStep = 0.1;
             const mermaidMinZoom = 0.3;
-            const mermaidMaxZoom = 3;
+                const mermaidMaxZoom = 2.5;
             
             async function renderMermaidDiagram(mermaidCode) {
                 const mermaidPreview = document.getElementById('mermaidPreview');

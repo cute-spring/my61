@@ -13,8 +13,8 @@ This document details all interactive features implemented in the UML Chat Panel
 - **Reset Button (⌂)**: Resets zoom to 1.0 and clears pan offset
 
 #### Zoom Range & Constraints
-- **Minimum Zoom**: 0.1 (10%)
-- **Maximum Zoom**: 5.0 (500%)
+- **Minimum Zoom**: 0.2 (20%) - optimized for usability
+- **Maximum Zoom**: 3.0 (300%) - optimized for performance
 - **Zoom Step**: 0.1 (10% increments)
 - **Default Zoom**: 1.0 (100%)
 
@@ -71,8 +71,8 @@ This document details all interactive features implemented in the UML Chat Panel
 #### Zoom State Variables
 ```javascript
 let currentZoomLevel = 1.0;        // Current zoom multiplier
-const minZoom = 0.1;               // Minimum allowed zoom
-const maxZoom = 5.0;               // Maximum allowed zoom
+const minZoom = 0.2;               // Minimum allowed zoom (optimized for usability)
+const maxZoom = 3.0;               // Maximum allowed zoom (optimized for performance)
 const zoomStep = 0.1;              // Button zoom increment
 ```
 
