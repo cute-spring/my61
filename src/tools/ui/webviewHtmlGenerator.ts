@@ -4405,7 +4405,7 @@ export class WebviewHtmlGenerator {
                 let currentZoomLevel = 1.0;
                 const minZoom = 0.1;
                 const maxZoom = 5.0;
-                const zoomStep = 0.2;
+                const zoomStep = 0.1;
                 
                 function applyZoom(newZoom, svgEl) {
                     newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
@@ -4677,7 +4677,7 @@ export class WebviewHtmlGenerator {
             let currentMermaidZoom = 1;
             let currentMermaidPanX = 0;
             let currentMermaidPanY = 0;
-            const mermaidZoomStep = 0.2;
+            const mermaidZoomStep = 0.1;
             const mermaidMinZoom = 0.3;
             const mermaidMaxZoom = 3;
             

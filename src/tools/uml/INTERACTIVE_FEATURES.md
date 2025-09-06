@@ -8,14 +8,14 @@ This document details all interactive features implemented in the UML Chat Panel
 ### 1. Zoom Controls
 
 #### Button-Based Zoom
-- **Zoom In Button (+)**: Increases zoom by 0.2 (20%)
-- **Zoom Out Button (−)**: Decreases zoom by 0.2 (20%)  
+- **Zoom In Button (+)**: Increases zoom by 0.1 (10%)
+- **Zoom Out Button (−)**: Decreases zoom by 0.1 (10%)  
 - **Reset Button (⌂)**: Resets zoom to 1.0 and clears pan offset
 
 #### Zoom Range & Constraints
 - **Minimum Zoom**: 0.1 (10%)
 - **Maximum Zoom**: 5.0 (500%)
-- **Zoom Step**: 0.2 (20% increments)
+- **Zoom Step**: 0.1 (10% increments)
 - **Default Zoom**: 1.0 (100%)
 
 #### Platform-Specific Implementation
@@ -73,7 +73,7 @@ This document details all interactive features implemented in the UML Chat Panel
 let currentZoomLevel = 1.0;        // Current zoom multiplier
 const minZoom = 0.1;               // Minimum allowed zoom
 const maxZoom = 5.0;               // Maximum allowed zoom
-const zoomStep = 0.2;              // Button zoom increment
+const zoomStep = 0.1;              // Button zoom increment
 ```
 
 #### Pan State Variables

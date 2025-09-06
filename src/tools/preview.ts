@@ -775,7 +775,7 @@ function getWebviewContent(plantUMLText: string): string {
             let currentZoom = 1.0;
             const minZoom = 0.1;
             const maxZoom = 5.0;
-            const zoomStep = 0.2;
+            const zoomStep = 0.1;
             
             // Get DOM elements
             const renderButton = document.getElementById('renderButton');

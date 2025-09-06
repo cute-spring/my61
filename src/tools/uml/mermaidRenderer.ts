@@ -310,7 +310,7 @@ export class MermaidRenderer {
         const vscode = acquireVsCodeApi();
         let mermaidInitialized = false;
         let currentZoom = 1;
-        const zoomStep = 0.2;
+        const zoomStep = 0.1;
         const minZoom = 0.3;
         const maxZoom = 3;
 

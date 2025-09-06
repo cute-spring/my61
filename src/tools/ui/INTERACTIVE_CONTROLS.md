@@ -9,8 +9,8 @@ This document describes the comprehensive interactive controls implemented for t
 ### 1. **Zoom Controls**
 
 #### Button-Based Zoom
-- **Zoom In Button (+)**: Increases zoom by 0.2 increments
-- **Zoom Out Button (−)**: Decreases zoom by 0.2 increments  
+- **Zoom In Button (+)**: Increases zoom by 0.1 increments
+- **Zoom Out Button (−)**: Decreases zoom by 0.1 increments  
 - **Reset Button (⌂)**: Resets zoom to 1.0 and pan to (0,0)
 - **Range**: 0.1x to 5.0x zoom levels
 - **Windows Compatibility**: Uses CSS `zoom` property for better Windows performance
@@ -215,7 +215,7 @@ panZoomInstance.getZoom()
 let currentZoomLevel = 1.0;      // Current zoom multiplier
 const minZoom = 0.1;             // Minimum zoom level
 const maxZoom = 5.0;             // Maximum zoom level
-const zoomStep = 0.2;            // Button zoom increment
+const zoomStep = 0.1;            // Button zoom increment
 ```
 
 ### Pan State

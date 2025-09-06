@@ -447,7 +447,7 @@ export class EnhancedPlantUMLPreviewTool implements ICopilotTool {
                 let isPanning = false;
                 let lastPanX = 0;
                 let lastPanY = 0;
-                const zoomStep = 0.2;
+                const zoomStep = 0.1;
                 const minZoom = 0.1;
                 const maxZoom = 5.0;
                 
