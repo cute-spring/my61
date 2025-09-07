@@ -8,6 +8,7 @@ import { JiraRefineTool } from './tools/jira/jiraRefineTool';
 import { EnhancedPlantUMLPreviewTool } from './tools/uml/enhancedPlantUMLPreviewTool';
 import { activateUMLChatPanel } from './tools/umlChatPanelRefactored';
 import { localRender, activate as activatePreview } from './tools/preview';
+import { registerResilienceTests } from './core/resilience/test-resilience.js';
 import { UsageAnalytics, trackUsage } from './analytics';
 import { AnalyticsDashboard } from './tools/analytics/analyticsDashboard';
 import * as path from 'path';
@@ -192,6 +193,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('copilotTools.showAnalytics', () => showAnalytics(context)),
     vscode.commands.registerCommand('extension.openUmlChatFile', (uri: vscode.Uri) => openUmlChatFile(context, uri))
   );
+
+  // Register resilience testing commands
+  registerResilienceTests(context);
 
   // Register custom editor provider for .umlchat files
   const umlChatEditorProvider = new UmlChatEditorProvider(context);

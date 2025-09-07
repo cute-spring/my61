@@ -4,6 +4,7 @@ import * as childProcess from "child_process";
 import * as path from "path";
 import * as os from "os";
 import { PlantUMLDownloader } from './utils/plantUMLDownloader';
+import { ResilientRenderer } from '../core/resilience/resilientRenderer.js';
 
 // --- Inlined config, common, tools ---
 
@@ -258,6 +259,43 @@ class LocalRender {
 
     render(diagram: any, format: string, savePath?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
         return this.createTask(diagram, "-pipe", savePath, format);
+    }
+    
+    /**
+     * Enhanced render method with automatic retry and error recovery
+     */
+    async renderWithRecovery(diagram: any, format: string, savePath?: string, maxRetries: number = 3): Promise<Buffer[]> {
+        let lastError: Error | null = null;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`PlantUML render attempt ${attempt}/${maxRetries}`);
+                const result = this.render(diagram, format, savePath);
+                const buffers = await result.promise;
+                
+                if (buffers && buffers.length > 0) {
+                    console.log(`PlantUML render succeeded on attempt ${attempt}`);
+                    return buffers;
+                }
+                
+                throw new Error('Empty render result');
+            } catch (error) {
+                lastError = error as Error;
+                console.warn(`PlantUML render attempt ${attempt} failed:`, error);
+                
+                // Clean up any failed processes
+                this.cleanup();
+                
+                // Wait before retry (exponential backoff)
+                if (attempt < maxRetries) {
+                    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+                    console.log(`Waiting ${delay}ms before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        
+        throw lastError || new Error('All render attempts failed');
     }
 
     getMapData(diagram: any, savePath?: string): { processes: childProcess.ChildProcess[], promise: Promise<Buffer[]> } {
@@ -548,6 +586,7 @@ class LocalRender {
 }
 
 let localRender: LocalRender;
+let resilientRenderer: ResilientRenderer;
 
 // --- VSCode extension activation ---
 
@@ -556,7 +595,9 @@ export function activate(context: vscode.ExtensionContext, plantumlJarPathFromMa
     extensionContext = context;
     resolvedPlantumlJarPath = plantumlJarPathFromMain;
     localRender = new LocalRender(() => config.jar());
-
+    
+    // Initialize resilient renderer with enhanced error recovery
+    resilientRenderer = ResilientRenderer.getInstance();
 
 }
 
@@ -869,7 +910,35 @@ function getWebviewContent(plantUMLText: string): string {
     `;
 }
 
-export { localRender };
+export { localRender, resilientRenderer };
+
+/**
+ * Render diagram with enhanced error recovery and resilience
+ */
+export async function renderDiagramResilient(
+    diagram: any,
+    format: string = 'svg',
+    savePath?: string
+): Promise<Buffer> {
+    if (!resilientRenderer) {
+        throw new Error('Resilient renderer not initialized. Call activate() first.');
+    }
+    
+    const result = await resilientRenderer.renderDiagram(diagram, {
+        format,
+        savePath,
+        timeout: 30000, // 30 second timeout
+        fallbackFormats: ['svg', 'png'],
+        enableGracefulDegradation: true
+    });
+    
+    if (!result.success || !result.buffer) {
+        const errorMessage = result.error?.message || 'Rendering failed';
+        throw new Error(errorMessage);
+    }
+    
+    return result.buffer;
+}
 
 // Configuration validation helper
 function validatePlantUMLConfig(): string | null {

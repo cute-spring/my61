@@ -37,20 +37,14 @@ export class WebviewHtmlGenerator {
                 <div id="chat">${chatHtml}</div>
                 <div id="inputArea">
                     <div class="input-controls">
-                        <label for="engineType" class="engine-type-label">Engine:</label>
-                        <select id="engineType" class="engine-type-select" title="Select Rendering Engine">${this.generateEngineOptions()}</select>
-                        <label for="diagramType" class="diagram-type-label">Type:</label>
-                        <select id="diagramType" class="diagram-type-select" title="Select Diagram Type">${diagramTypeOptions}</select>
-                        <button id="testPromptBtn" class="test-prompt-btn" title="Insert test prompt for easy testing">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                            Test Prompt
-                        </button>
+                        <div class="control-row">
+                            <label for="engineType" class="engine-type-label">Engine:</label>
+                            <select id="engineType" class="engine-type-select" title="Select Rendering Engine">${this.generateEngineOptions()}</select>
+                        </div>
+                        <div class="control-row">
+                            <label for="diagramType" class="diagram-type-label">Type:</label>
+                            <select id="diagramType" class="diagram-type-select" title="Select Diagram Type">${diagramTypeOptions}</select>
+                        </div>
                     </div>
                     <div class="textarea-container">
                         <textarea id="requirementInput" placeholder="Describe your UML requirement... (Press Enter to send, Shift+Enter for new line, Esc to clear)"></textarea>
@@ -702,7 +696,7 @@ export class WebviewHtmlGenerator {
             }
             #container { display: flex; height: 100vh; }
             #leftPanel { 
-                width: 25vw; 
+                width: 28vw; 
                 min-width: 320px; 
                 max-width: 800px; 
                 display: flex; 
@@ -1252,9 +1246,17 @@ export class WebviewHtmlGenerator {
             /* --- Enhanced Input Controls --- */
             .input-controls {
                 display: flex;
-                align-items: center;
+                flex-direction: row;
+                flex-wrap: wrap;
                 margin-bottom: 8px;
                 gap: 12px;
+            }
+            
+            .control-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 140px;
             }
             
             .diagram-type-label {
@@ -1308,7 +1310,7 @@ export class WebviewHtmlGenerator {
                 padding: 6px 12px;
                 font-size: 0.875rem;
                 color: var(--vscode-input-foreground, #374151);
-                min-width: 100px;
+                min-width: 140px;
                 font-weight: 500;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -1327,41 +1329,7 @@ export class WebviewHtmlGenerator {
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
             }
             
-            .test-prompt-btn {
-                background: linear-gradient(135deg, #28a745, #20c997);
-                color: white;
-                border: 2px solid #28a745;
-                padding: 8px 12px;
-                border-radius: 8px;
-                font-size: 0.875rem;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
-                letter-spacing: -0.01em;
-                white-space: nowrap;
-            }
-            
-            .test-prompt-btn:hover {
-                background: linear-gradient(135deg, #218838, #1ea085);
-                border-color: #1e7e34;
-                transform: translateY(-1px);
-                box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
-            }
-            
-            .test-prompt-btn:active {
-                transform: translateY(0);
-                box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
-            }
-            
-            .test-prompt-btn svg {
-                width: 16px;
-                height: 16px;
-                flex-shrink: 0;
-            }
+
             
             .textarea-container {
                 position: relative;
@@ -1892,6 +1860,52 @@ export class WebviewHtmlGenerator {
                 .next-btn, .prev-btn, .finish-btn, .skip-btn {
                     padding: 8px 16px;
                     font-size: 0.85em;
+                }
+            }
+
+            /* --- Responsive Design for Chat History --- */
+            @media (max-width: 1200px) {
+                #leftPanel {
+                    width: 32vw;
+                    min-width: 300px;
+                }
+            }
+            
+            @media (max-width: 600px) {
+                #leftPanel {
+                    width: 40vw;
+                    min-width: 280px;
+                }
+                
+                .input-controls {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                
+                .control-row {
+                    min-width: unset;
+                }
+                
+                .engine-type-select,
+                .diagram-type-select {
+                    width: 100%;
+                    min-width: unset;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                #leftPanel {
+                    width: 100vw;
+                    min-width: unset;
+                    max-width: 100vw;
+                }
+                
+                #rightPanel {
+                    display: none;
+                }
+                
+                .input-controls {
+                    gap: 6px;
                 }
             }
 
@@ -4178,16 +4192,7 @@ export class WebviewHtmlGenerator {
             };
             saveChatBtn.onclick = () => vscode.postMessage({ command: 'exportChat' });
             
-            // Test prompt button functionality
-            const testPromptBtn = document.getElementById('testPromptBtn');
-            testPromptBtn.onclick = () => {
-                const testPrompt = "Design a secure payment processing system sequence diagram including user authentication, payment gateway integration, fraud detection, bank communication, and transaction settlement";
-                requirementInput.value = testPrompt;
-                requirementInput.style.height = '80px';
-                autoResizeTextarea();
-                updateCharCounter();
-                requirementInput.focus();
-            };
+
             
             expandBtn.onclick = () => {
                 const isFullscreen = leftPanel.classList.toggle('fullscreen');
@@ -5040,7 +5045,9 @@ export class WebviewHtmlGenerator {
                         const center = getTouchCenter(touch1, touch2);
                         
                         if (lastTouchDistance > 0) {
-                            const zoomFactor = currentDistance / lastTouchDistance;
+                            // Reduce zoom sensitivity by 10x for smoother touch zoom
+                            const rawZoomFactor = currentDistance / lastTouchDistance;
+                            const zoomFactor = 1 + (rawZoomFactor - 1) * 0.1;
                             
                             // Detect which container is active for zoom
                             const mermaidContainer = document.getElementById('mermaidContainer');

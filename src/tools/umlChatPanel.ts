@@ -726,9 +726,9 @@ function getWebviewContent(chatHistory: { role: 'user' | 'bot', message: string 
             }
             #container { display: flex; height: 100vh; }
             #leftPanel { 
-                width: 20vw; 
-                min-width: 320px; 
-                max-width: 900px; 
+                width: 35vw; 
+                min-width: 450px; 
+                max-width: 1200px; 
                 display: flex; 
                 flex-direction: column; 
                 height: 100vh; 

@@ -26,9 +26,9 @@ export const ZOOM_CONFIG = {
 } as const;
 
 export const UI_CONFIG = {
-    MIN_PANEL_WIDTH: 320,
-    MAX_PANEL_WIDTH: 900,
-    DEFAULT_PANEL_WIDTH: '20vw'
+    MIN_PANEL_WIDTH: 450,
+    MAX_PANEL_WIDTH: 1200,
+    DEFAULT_PANEL_WIDTH: '35vw'
 } as const;
 
 
