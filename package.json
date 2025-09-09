@@ -80,6 +80,10 @@
       {
         "command": "copilotTools.showAnalytics",
         "title": "Show Usage Analytics Dashboard"
+      },
+      {
+        "command": "copilotTools.evaluateWithAI",
+        "title": "AI智能评分系统"
       }
     ],
     "menus": {
@@ -100,6 +104,10 @@
         {
           "command": "copilotTools.previewSmartPlantUML",
           "when": "editorTextFocus"
+        },
+        {
+          "command": "copilotTools.evaluateWithAI",
+          "when": "editorHasSelection"
         }
       ],
       "explorer/context": [
@@ -136,6 +144,11 @@
         "command": "copilotTools.configurePlantUML",
         "key": "ctrl+alt+p",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "copilotTools.evaluateWithAI",
+        "key": "ctrl+alt+s",
+        "when": "editorTextFocus && editorHasSelection"
       }
     ],
     "configuration": {
@@ -281,6 +294,30 @@
           "items": { "type": "string" },
           "default": ["copilot"],
           "description": "Ordered model preference list. First available will be used; falls back automatically."
+        },
+        "copilotTools.features.aiScoring": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable AI Scoring tool"
+        },
+        "copilotTools.scoring.defaultRubricId": {
+          "type": "string",
+          "description": "Default rubric ID for quick evaluation"
+        },
+        "copilotTools.scoring.autoSaveResults": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically save evaluation results"
+        },
+        "copilotTools.scoring.showConfidence": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show confidence scores in evaluation results"
+        },
+        "copilotTools.scoring.enableAnalytics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable usage analytics for scoring system"
         }
       }
     }

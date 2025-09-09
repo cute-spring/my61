@@ -6,6 +6,7 @@ import { EmailRefineTool } from './tools/email/emailRefineTool';
 import { TranslateTool } from './tools/translate/translateTool';
 import { JiraRefineTool } from './tools/jira/jiraRefineTool';
 import { EnhancedPlantUMLPreviewTool } from './tools/uml/enhancedPlantUMLPreviewTool';
+import { AIScoringTool } from './tools/scoring/aiScoringTool';
 import { activateUMLChatPanel } from './tools/umlChatPanelRefactored';
 import { localRender, activate as activatePreview } from './tools/preview';
 import { UsageAnalytics, trackUsage } from './analytics';
@@ -160,7 +161,8 @@ export async function activate(context: vscode.ExtensionContext) {
     new EmailRefineTool(),
     new TranslateTool(),
     new JiraRefineTool(),
-    new EnhancedPlantUMLPreviewTool()
+    new EnhancedPlantUMLPreviewTool(),
+    new AIScoringTool(context)
   ];
 
   tools.forEach(tool => toolManager.registerTool(tool));
