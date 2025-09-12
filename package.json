@@ -198,6 +198,22 @@
           "description": "Path to the DOT executable (auto-detected on first run if available). Only used when layoutEngine is 'dot'. Leave empty to use auto-detected path or system PATH.",
           "scope": "machine-overridable"
         },
+        "plantuml.javaPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Optional. Full path to the Java executable used to run PlantUML (e.g., /usr/bin/java or C:\\Program Files\\Java\\jdk-17\\bin\\java). If not set, the system PATH and JAVA_HOME will be used.",
+          "scope": "machine-overridable"
+        },
+        "plantuml.java.heapSize": {
+          "type": "string",
+          "default": "2048m",
+          "pattern": "^[0-9]+[kmgKMG]?$",
+          "description": "Java heap size for PlantUML rendering (e.g., '512m', '2g'). Increase for large diagrams.",
+          "scope": "resource"
+        },
         "plantuml.showStatusBar": {
           "type": "boolean",
           "default": true,
@@ -226,7 +242,7 @@
         },
         "umlChatDesigner.plantuml.java.heapSize": {
           "type": "string",
-          "default": "1024m",
+          "default": "2048m",
           "pattern": "^[0-9]+[kmgKMG]?$",
           "description": "Java heap size for PlantUML rendering (e.g., '512m', '2g'). Increase for large diagrams."
         },

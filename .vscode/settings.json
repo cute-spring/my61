@@ -1,3 +1,4 @@
 {
-  "umlChatDesigner.features.mermaidEngine": true
+  "umlChatDesigner.features.mermaidEngine": true,
+  "plantuml.java.heapSize": "4096m"
 }

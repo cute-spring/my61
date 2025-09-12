@@ -173,13 +173,9 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   try {
+    // Initialize PlantUML preview subsystem with resolved jar path
     plantumlJarPath = await getPlantumlJar(context);
-    if (plantumlJarPath) {
-      activatePreview(context, plantumlJarPath); // Pass the JAR path to preview
-    } else {
-      vscode.window.showErrorMessage('Could not find or download PlantUML.jar. Please set the path in settings.');
-      activatePreview(context, undefined); // Still activate preview, but with undefined path
-    }
+    activatePreview(context, plantumlJarPath || undefined);
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to activate PlantUML extension: ${error}`);
     activatePreview(context, undefined);
@@ -1129,3 +1125,6 @@ async function showAnalytics(context: vscode.ExtensionContext): Promise<void> {
     vscode.window.showErrorMessage('Failed to open analytics dashboard');
   }
 }
+
+export { localRender } from './tools/preview';
+export { whenPreviewReady } from './tools/preview';

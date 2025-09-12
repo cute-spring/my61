@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { UMLRenderer } from './renderer';
 import { localRender } from '../preview';
+import { whenPreviewReady } from '../../extension';
 import { ErrorHandler } from '../../core/errorHandler';
 import { createError, ErrorCode } from '../../core/errors';
 
@@ -87,22 +88,29 @@ export class DiagramService {
      */
     private async performExport(options: ExportOptions): Promise<ExportResult> {
         try {
+            // Ensure preview subsystem is fully initialized to reduce init timing issues
+            try {
+                await whenPreviewReady();
+            } catch {
+                // If readiness check fails, proceed anyway; downstream checks will surface errors
+            }
+
+            // Validate input early
+            const validation = this.validateExportOptions(options);
+            if (!validation.isValid) {
+                return {
+                    success: false,
+                    error: validation.error || 'Invalid export options',
+                    message: validation.error || 'Invalid export options'
+                };
+            }
+
             // Show progress indicator
             return await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: `Exporting diagram as ${options.format.toUpperCase()}...`,
                 cancellable: true
             }, async (progress, token) => {
-                // Validate input
-                const validation = this.validateExportOptions(options);
-                if (!validation.isValid) {
-                    return {
-                        success: false,
-                        error: validation.error || 'Invalid export options',
-                        message: validation.error || 'Invalid export options'
-                    };
-                }
-
                 progress.report({ increment: 20, message: 'Validating content...' });
 
                 // Check if operation was cancelled
@@ -110,7 +118,7 @@ export class DiagramService {
                     return {
                         success: false,
                         message: 'Export cancelled by user'
-                    };
+                    } as ExportResult;
                 }
 
                 // Get workspace folder for saving
@@ -119,7 +127,7 @@ export class DiagramService {
                     return {
                         success: false,
                         error: 'No workspace folder found. Please open a folder in VS Code.'
-                    };
+                    } as ExportResult;
                 }
 
                 // Generate filename if not provided
@@ -133,13 +141,13 @@ export class DiagramService {
                 return await this.exportWithRetry(options, filePath, progress, token);
             });
         } catch (error: any) {
-            const errorMessage = error.message || String(error);
+            const errorMessage = error?.message ? String(error.message) : String(error);
             console.error('Export error:', errorMessage);
-            
+
             // Enhanced error handling with proper categorization
             let errorCode = ErrorCode.RENDER_FAILURE;
             let userMessage = 'Export failed';
-            
+
             if (errorMessage.includes('ENOENT')) {
                 errorCode = ErrorCode.RENDER_JAVA_MISSING;
                 userMessage = 'Required file not found. Please check PlantUML setup.';
@@ -152,11 +160,11 @@ export class DiagramService {
             } else if (errorMessage.includes('queue is full')) {
                 errorCode = ErrorCode.RENDER_FAILURE;
                 userMessage = 'Too many exports in progress. Please wait and try again.';
-            } else if (errorMessage.includes('syntax') || errorMessage.includes('Syntax')) {
+            } else if (errorMessage.toLowerCase().includes('syntax')) {
                 errorCode = ErrorCode.RENDER_SYNTAX;
                 userMessage = 'PlantUML syntax error. Please check your diagram code.';
             }
-            
+
             ErrorHandler.handle(createError(errorCode, errorMessage));
             vscode.window.showErrorMessage(`${userMessage}: ${errorMessage}`);
             return {

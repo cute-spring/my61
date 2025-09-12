@@ -11,6 +11,10 @@ let extensionRoot: string | undefined;
 let resolvedPlantumlJarPath: string | undefined;
 let extensionContext: vscode.ExtensionContext | undefined;
 
+// Add a readiness gate so exporters can wait until preview.activate completes
+let previewReadyResolve: (() => void) | undefined;
+const previewReady: Promise<void> = new Promise((resolve) => { previewReadyResolve = resolve; });
+
 const config = {
     java: "java",
     jar: () => {
@@ -319,14 +323,19 @@ class LocalRender {
                     '-Duser.country=US'
                 ];
 
-                // Add Java heap size configuration
-                const heapSize = workspaceConfig.get<string>('java.heapSize', '1024m');
+                // Add Java heap size configuration (prefer plantuml.java.heapSize, fallback to legacy keys)
+                const heapSize = vscode.workspace.getConfiguration('plantuml').get<string>('java.heapSize')
+                    || vscode.workspace.getConfiguration().get<string>('umlChatDesigner.plantuml.java.heapSize')
+                    || workspaceConfig.get<string>('java.heapSize', '2048m');
                 javaArgs.push(`-Xmx${heapSize}`);
 
-                // SVG-specific quality settings from configuration
-                const svgFontSize = workspaceConfig.get<number>('svg.fontsize', 14);
-                const svgMinLen = workspaceConfig.get<number>('svg.minlen', 1);
-                const svgDpi = workspaceConfig.get<number>('svg.dpi', 96);
+                // SVG-specific quality settings from configuration (prefer namespaced keys)
+                const svgFontSize = vscode.workspace.getConfiguration().get<number>('umlChatDesigner.plantuml.svg.fontsize')
+                    ?? workspaceConfig.get<number>('svg.fontsize', 14);
+                const svgMinLen = vscode.workspace.getConfiguration().get<number>('umlChatDesigner.plantuml.svg.minlen')
+                    ?? workspaceConfig.get<number>('svg.minlen', 1);
+                const svgDpi = vscode.workspace.getConfiguration().get<number>('umlChatDesigner.plantuml.svg.dpi')
+                    ?? workspaceConfig.get<number>('svg.dpi', 96);
                 
                 const svgQualityArgs = [
                     `-Dsvg.fontsize=${svgFontSize}`,
@@ -348,8 +357,9 @@ class LocalRender {
                     layoutArgs.push('-Dsmetana=true');
                 }
 
-                // Add user-defined JAR arguments
-                const userJarArgs = workspaceConfig.get<string[]>('jarArgs', []);
+                // Add user-defined JAR arguments (support legacy and new keys)
+                const userJarArgs = vscode.workspace.getConfiguration().get<string[]>('umlChatDesigner.plantuml.jarArgs')
+                    || workspaceConfig.get<string[]>('jarArgs', []);
                 
                 let params = [...javaArgs, ...svgQualityArgs, ...layoutArgs, ...userJarArgs];
 
@@ -358,8 +368,9 @@ class LocalRender {
                 // Add layout engine args after JAR but before other options
                 params.push(...config.commandArgs(diagram.parentUri));
 
-                // Add user-defined command arguments from workspace configuration
-                const userCommandArgs = workspaceConfig.get<string[]>('commandArgs', []);
+                // Add user-defined command arguments from workspace configuration (support legacy and new keys)
+                const userCommandArgs = vscode.workspace.getConfiguration().get<string[]>('umlChatDesigner.plantuml.commandArgs')
+                    || workspaceConfig.get<string[]>('commandArgs', []);
                 params.push(...userCommandArgs);
 
                 params.push(
@@ -389,7 +400,7 @@ class LocalRender {
                 params.unshift('-Dplantuml.include.path=' + includePath);
                 params.push(...config.jarArgs(diagram.parentUri));
 
-                console.log('PlantUML execution command:', config.java, params.join(' '));
+                console.log('PlantUML execution command:', this.getJavaPath(), params.join(' '));
                 console.log('PlantUML diagram content preview:', diagram.content.substring(0, 100) + '...');
 
                 // Check concurrency limits before spawning
@@ -398,7 +409,7 @@ class LocalRender {
                     throw new Error('PlantUML rendering queue is full. Please try again later.');
                 }
                 
-                let proc = childProcess.spawn(config.java, params);
+                let proc = childProcess.spawn(this.getJavaPath(), params);
                 processes.push(proc);
                 this.registerProcess(proc);
 
@@ -429,7 +440,7 @@ class LocalRender {
 
     private getLayoutEngine(): string {
         const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
-         const configuredEngine = workspaceConfig.get<string>('layoutEngine', 'smetana');
+        const configuredEngine = workspaceConfig.get<string>('layoutEngine', 'smetana');
         
         // Auto-detect and fallback logic
         if (configuredEngine === 'dot') {
@@ -445,7 +456,7 @@ class LocalRender {
 
     private getDotPath(): string | null {
         const workspaceConfig = vscode.workspace.getConfiguration('plantuml');
-         const configuredPath = workspaceConfig.get<string>('dotPath');
+        const configuredPath = workspaceConfig.get<string>('dotPath');
         
         if (configuredPath) {
             return configuredPath;
@@ -469,9 +480,26 @@ class LocalRender {
         return null;
     }
 
+    // Resolve Java executable from settings or environment
+    private getJavaPath(): string {
+        const plConfig = vscode.workspace.getConfiguration('plantuml');
+        const configured = plConfig.get<string>('javaPath');
+        if (configured && fs.existsSync(configured)) {
+            return configured;
+        }
+        const javaHome = process.env.JAVA_HOME;
+        if (javaHome) {
+            const candidate = path.join(javaHome, 'bin', process.platform === 'win32' ? 'java.exe' : 'java');
+            if (fs.existsSync(candidate)) {
+                return candidate;
+            }
+        }
+        return 'java';
+    }
+
     private validateJavaInstallation(): { isValid: boolean; errorMessage?: string; javaVersion?: string } {
         try {
-            const result = childProcess.spawnSync(config.java, ['-version'], { 
+            const result = childProcess.spawnSync(this.getJavaPath(), ['-version'], { 
                 encoding: 'utf8',
                 timeout: 5000 // 5 second timeout
             });
@@ -481,7 +509,7 @@ class LocalRender {
                 if (error.code === 'ENOENT') {
                     return {
                         isValid: false,
-                        errorMessage: `Java executable not found at '${config.java}'. Please install Java 8 or higher and ensure it's in your PATH, or configure the correct path in PlantUML settings.`
+                        errorMessage: `Java executable not found at '${this.getJavaPath()}'. Please install Java 8 or higher and ensure it's in your PATH, or configure the correct path in PlantUML settings.`
                     };
                 } else if (error.code === 'ETIMEDOUT') {
                     return {
@@ -556,8 +584,12 @@ export function activate(context: vscode.ExtensionContext, plantumlJarPathFromMa
     extensionContext = context;
     resolvedPlantumlJarPath = plantumlJarPathFromMain;
     localRender = new LocalRender(() => config.jar());
+    // Signal readiness
+    if (previewReadyResolve) { previewReadyResolve(); }
+}
 
-
+export async function whenPreviewReady(): Promise<void> {
+    return previewReady;
 }
 
 export function deactivate() {}
