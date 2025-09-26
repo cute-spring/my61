@@ -80,6 +80,34 @@
       {
         "command": "copilotTools.showAnalytics",
         "title": "Show Usage Analytics Dashboard"
+      },
+      {
+        "command": "confluence.chatWithPage",
+        "title": "Chat with Confluence Page"
+      },
+      {
+        "command": "confluence.chatWithSelectedURL",
+        "title": "Chat with Selected Confluence URL"
+      },
+      {
+        "command": "confluence.setPat",
+        "title": "Set Confluence Personal Access Token"
+      },
+      {
+        "command": "confluence.refreshContext",
+        "title": "Refresh Confluence Context"
+      },
+      {
+        "command": "confluence.clearContext",
+        "title": "Clear Confluence Context"
+      },
+      {
+        "command": "confluence.showSettings",
+        "title": "Confluence Settings"
+      },
+      {
+        "command": "confluence.testConnection",
+        "title": "Test Confluence Connection"
       }
     ],
     "menus": {
@@ -100,6 +128,10 @@
         {
           "command": "copilotTools.previewSmartPlantUML",
           "when": "editorTextFocus"
+        },
+        {
+          "command": "confluence.chatWithSelectedURL",
+          "when": "editorHasSelection"
         }
       ],
       "explorer/context": [
@@ -281,6 +313,18 @@
           "items": { "type": "string" },
           "default": ["copilot"],
           "description": "Ordered model preference list. First available will be used; falls back automatically."
+        },
+        "confluence.baseUrl": {
+          "type": "string",
+          "description": "Base URL of your Confluence instance (e.g., https://your-company.atlassian.net)"
+        },
+        "confluence.patPageUrlMappings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "Mapping of Confluence domains to their Personal Access Token generation page URLs"
         }
       }
     }
@@ -303,9 +347,11 @@
   "devDependencies": {
     "@types/d3": "^7.4.3",
     "@types/dompurify": "^3.0.5",
+    "@types/jsdom": "^21.1.7",
     "@types/marked": "^5.0.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/turndown": "^5.0.5",
     "@types/vscode": "^1.96.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
@@ -325,8 +371,10 @@
     "@types/mermaid": "^9.2.0",
     "@types/uuid": "^10.0.0",
     "axios": "^1.10.0",
+    "jsdom": "^25.0.1",
     "marked": "^15.0.12",
     "mermaid": "^10.6.1",
+    "turndown": "^7.2.0",
     "uuid": "^11.1.0"
   }
 }

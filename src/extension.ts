@@ -10,6 +10,11 @@ import { activateUMLChatPanel } from './tools/umlChatPanelRefactored';
 import { localRender, activate as activatePreview } from './tools/preview';
 import { UsageAnalytics, trackUsage } from './analytics';
 import { AnalyticsDashboard } from './tools/analytics/analyticsDashboard';
+import { ConfluenceChatParticipant } from './tools/confluence/chatParticipant';
+import { ConfluenceCommands } from './tools/confluence/commands';
+import { ConfluenceStatusBar } from './tools/confluence/statusBar';
+import { ConfluenceService } from './tools/confluence/confluenceService';
+import { ConfluenceContentProcessor } from './tools/confluence/contentProcessor';
 import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios';
@@ -186,6 +191,29 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   activateUMLChatPanel(context);
+
+  // Initialize Confluence integration
+  try {
+    const confluenceService = ConfluenceService.getInstance(context);
+    const confluenceStatusBar = new ConfluenceStatusBar();
+    const confluenceContentProcessor = new ConfluenceContentProcessor();
+    const confluenceCommands = new ConfluenceCommands(confluenceService, null as any); // Will be set after chat participant creation
+    const confluenceChatParticipant = new ConfluenceChatParticipant(confluenceService, confluenceContentProcessor);
+
+    // Update commands with chat participant reference
+    (confluenceCommands as any).chatParticipant = confluenceChatParticipant;
+
+    // Register Confluence commands
+    confluenceCommands.registerCommands(context);
+
+    // Add to subscriptions for proper cleanup
+    context.subscriptions.push(confluenceStatusBar);
+
+    console.log('Confluence integration activated successfully');
+  } catch (error) {
+    console.error('Failed to activate Confluence integration:', error);
+    vscode.window.showWarningMessage('Confluence integration failed to initialize. Some features may not be available.');
+  }
 
   context.subscriptions.push(
     vscode.commands.registerCommand('copilotTools.configurePlantUML', () => configurePlantUML()),
