@@ -1,0 +1,7 @@
+[
+    {
+        "name": "Default Instance",
+        "baseUrl": "https://your-company.atlassian.net",
+        "patPageUrl": "https://your-company.atlassian.net/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens"
+    }
+]

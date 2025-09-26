@@ -8,12 +8,14 @@ import {
     ConfluenceError,
     PatGenerationInfo 
 } from './types';
+import { SimpleCache } from '../../core/cache/cache';
 
 export class ConfluenceService {
     private static instance: ConfluenceService;
     private axiosInstance: AxiosInstance;
     private context: vscode.ExtensionContext;
     private secretStorage: vscode.SecretStorage;
+    private pageCache: SimpleCache<ConfluencePage>;
 
     private constructor(context: vscode.ExtensionContext) {
         this.context = context;
@@ -25,6 +27,7 @@ export class ConfluenceService {
                 'Content-Type': 'application/json'
             }
         });
+        this.pageCache = new SimpleCache<ConfluencePage>(300); // Cache for 5 minutes
     }
 
     public static getInstance(context?: vscode.ExtensionContext): ConfluenceService {
@@ -42,55 +45,56 @@ export class ConfluenceService {
         const baseUrl = config.get<string>('baseUrl');
         const patPageUrlMappings = config.get<Record<string, string>>('patPageUrlMappings', {});
 
-        if (!baseUrl) {
-            throw this.createError('INVALID_URL', 'Confluence base URL is not configured. Please set confluence.baseUrl in settings.');
-        }
-
         return {
-            baseUrl: baseUrl.replace(/\/$/, ''), // Remove trailing slash
+            baseUrl: baseUrl ? baseUrl.replace(/\/$/, '') : '', // Remove trailing slash
             patPageUrlMappings
         };
     }
 
     /**
-     * Get stored Personal Access Token
+     * Get stored Personal Access Token for a given base URL
      */
-    private async getPat(): Promise<string | undefined> {
-        return await this.secretStorage.get('confluence.pat');
+    private async getPat(baseUrl: string): Promise<string | undefined> {
+        if (!baseUrl) return undefined;
+        return await this.secretStorage.get(`confluence.pat.${baseUrl}`);
     }
 
     /**
-     * Store Personal Access Token securely
+     * Store Personal Access Token securely for a given base URL
      */
-    public async setPat(pat: string): Promise<void> {
-        await this.secretStorage.store('confluence.pat', pat);
+    public async setPat(baseUrl: string, pat: string): Promise<void> {
+        if (!baseUrl) {
+            throw this.createError('INVALID_URL', 'Cannot set PAT without a valid base URL.');
+        }
+        await this.secretStorage.store(`confluence.pat.${baseUrl}`, pat);
     }
 
     /**
-     * Clear stored Personal Access Token
+     * Clear stored Personal Access Token for a given base URL
      */
-    public async clearPat(): Promise<void> {
-        await this.secretStorage.delete('confluence.pat');
+    public async clearPat(baseUrl: string): Promise<void> {
+        if (!baseUrl) return;
+        await this.secretStorage.delete(`confluence.pat.${baseUrl}`);
     }
 
     /**
      * Validate authentication by making a test API call
      */
-    public async validateAuth(): Promise<ConfluenceAuthInfo> {
-        const config = this.getConfig();
-        const pat = await this.getPat();
+    public async validateAuth(baseUrl: string): Promise<ConfluenceAuthInfo> {
+        const pat = await this.getPat(baseUrl);
 
         if (!pat) {
             return {
                 pat: '',
-                baseUrl: config.baseUrl,
-                isValid: false
+                baseUrl: baseUrl,
+                isValid: false,
+                error: this.createError('AUTH_FAILED', 'Personal Access Token is not configured.')
             };
         }
 
         try {
             const response = await this.axiosInstance.get(
-                `${config.baseUrl}/rest/api/user/current`,
+                `${baseUrl}/rest/api/user/current`,
                 {
                     headers: {
                         'Authorization': `Bearer ${pat}`
@@ -100,14 +104,44 @@ export class ConfluenceService {
 
             return {
                 pat,
-                baseUrl: config.baseUrl,
+                baseUrl: baseUrl,
                 isValid: response.status === 200
             };
         } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const axiosError = error as AxiosError;
+                if (axiosError.response) {
+                    switch (axiosError.response.status) {
+                        case 401:
+                        case 403:
+                            return {
+                                pat,
+                                baseUrl: baseUrl,
+                                isValid: false,
+                                error: this.createError('AUTH_FAILED', 'Authentication failed. Please check your Personal Access Token.', axiosError.response.status)
+                            };
+                        default:
+                            return {
+                                pat,
+                                baseUrl: baseUrl,
+                                isValid: false,
+                                error: this.createError('NETWORK_ERROR', `A network error occurred (Status: ${axiosError.response.status}). Please check your Confluence URL and network connection.`, axiosError.response.status)
+                            };
+                    }
+                } else if (axiosError.request) {
+                    return {
+                        pat,
+                        baseUrl: baseUrl,
+                        isValid: false,
+                        error: this.createError('NETWORK_ERROR', 'A network error occurred. The request was made but no response was received. Please check your Confluence URL and network connection.')
+                    };
+                }
+            }
             return {
                 pat,
-                baseUrl: config.baseUrl,
-                isValid: false
+                baseUrl: baseUrl,
+                isValid: false,
+                error: this.createError('UNKNOWN', `An unknown error occurred during authentication: ${error}`)
             };
         }
     }
@@ -137,14 +171,20 @@ export class ConfluenceService {
     /**
      * Validate if a string is a valid Confluence URL
      */
-    public isValidConfluenceUrl(url: string): boolean {
+    public isValidConfluenceUrl(url: string, baseUrl?: string): boolean {
         try {
             const urlObj = new URL(url);
             const config = this.getConfig();
-            const baseUrlObj = new URL(config.baseUrl);
+            const finalBaseUrl = baseUrl || config.baseUrl;
+
+            if (!finalBaseUrl) {
+                return false; // Cannot validate without a base URL
+            }
+
+            const baseUrlObj = new URL(finalBaseUrl);
             
-            // Check if the URL belongs to the configured Confluence instance
-            return urlObj.hostname === baseUrlObj.hostname && 
+            // Allow subdomains of the base URL
+            return urlObj.hostname.endsWith(baseUrlObj.hostname) && 
                    (url.includes('/pages/') || url.includes('/display/') || url.includes('pageId='));
         } catch {
             return false;
@@ -154,9 +194,21 @@ export class ConfluenceService {
     /**
      * Fetch page content from Confluence API
      */
-    public async fetchPageContent(pageId: string): Promise<ConfluencePage> {
-        const config = this.getConfig();
-        const pat = await this.getPat();
+    public async fetchPageContent(pageId: string, forceRefresh = false): Promise<ConfluencePage> {
+        const cacheKey = `page-${pageId}`;
+        if (!forceRefresh) {
+            const cachedPage = this.pageCache.get(cacheKey);
+            if (cachedPage) {
+                return cachedPage;
+            }
+        }
+
+        const baseUrl = this.getBaseUrlForPage(pageId);
+        if (!baseUrl) {
+            throw this.createError('INVALID_URL', 'Could not determine Confluence base URL for the page.');
+        }
+
+        const pat = await this.getPat(baseUrl);
 
         if (!pat) {
             throw this.createError('AUTH_FAILED', 'Personal Access Token is not configured. Please run "Confluence: Set PAT" command.');
@@ -164,7 +216,7 @@ export class ConfluenceService {
 
         try {
             const response = await this.axiosInstance.get<ConfluencePageContent>(
-                `${config.baseUrl}/rest/api/content/${pageId}?expand=body.view,version`,
+                `${baseUrl}/rest/api/content/${pageId}?expand=body.view,version`,
                 {
                     headers: {
                         'Authorization': `Bearer ${pat}`
@@ -173,9 +225,9 @@ export class ConfluenceService {
             );
 
             const pageData = response.data;
-            const pageUrl = `${config.baseUrl}${pageData._links.webui}`;
+            const pageUrl = `${baseUrl}${pageData._links.webui}`;
 
-            return {
+            const page: ConfluencePage = {
                 id: pageData.id,
                 title: pageData.title,
                 url: pageUrl,
@@ -183,28 +235,36 @@ export class ConfluenceService {
                 lastModified: pageData.version.when,
                 version: pageData.version.number
             };
+
+            this.pageCache.set(cacheKey, page);
+            return page;
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 const axiosError = error as AxiosError;
-                switch (axiosError.response?.status) {
-                    case 401:
-                    case 403:
-                        throw this.createError('AUTH_FAILED', 'Authentication failed. Please check your Personal Access Token.');
-                    case 404:
-                        throw this.createError('PAGE_NOT_FOUND', `Page with ID ${pageId} not found or you don't have permission to access it.`);
-                    default:
-                        throw this.createError('NETWORK_ERROR', `Network error: ${axiosError.message}`);
+                if (axiosError.response) {
+                    switch (axiosError.response.status) {
+                        case 401:
+                        case 403:
+                            throw this.createError('AUTH_FAILED', 'Authentication failed. Please check your Personal Access Token and permissions for the page.', axiosError.response.status);
+                        case 404:
+                            throw this.createError('PAGE_NOT_FOUND', `Page with ID ${pageId} not found. Please check the URL and your permissions.`, axiosError.response.status);
+                        default:
+                            throw this.createError('NETWORK_ERROR', `A network error occurred (Status: ${axiosError.response.status}). Please check your Confluence URL and network connection.`, axiosError.response.status);
+                    }
+                } else if (axiosError.request) {
+                    throw this.createError('NETWORK_ERROR', 'A network error occurred. The request was made but no response was received. Please check your Confluence URL and network connection.');
                 }
             }
-            throw this.createError('UNKNOWN', `Failed to fetch page content: ${error}`);
+            throw this.createError('UNKNOWN', `An unknown error occurred while fetching the page: ${error}`);
         }
     }
 
     /**
      * Fetch page content by URL
      */
-    public async fetchPageByUrl(url: string): Promise<ConfluencePage> {
-        if (!this.isValidConfluenceUrl(url)) {
+    public async fetchPageByUrl(url: string, forceRefresh = false): Promise<ConfluencePage> {
+        const baseUrl = this.getBaseUrlFromUrl(url);
+        if (!this.isValidConfluenceUrl(url, baseUrl)) {
             throw this.createError('INVALID_URL', 'Invalid Confluence URL format.');
         }
 
@@ -213,38 +273,39 @@ export class ConfluenceService {
             throw this.createError('INVALID_URL', 'Could not extract page ID from URL.');
         }
 
-        return await this.fetchPageContent(pageId);
+        return await this.fetchPageContent(pageId, forceRefresh);
     }
 
     /**
      * Generate PAT page URL based on configuration
      */
-    public getPatGenerationInfo(): PatGenerationInfo {
+    public getPatGenerationInfo(baseUrl?: string): PatGenerationInfo {
         const config = this.getConfig();
-        
+        const finalBaseUrl = baseUrl || config.baseUrl;
+
         // Check for custom mapping first
         for (const [urlPattern, patUrl] of Object.entries(config.patPageUrlMappings || {})) {
-            if (config.baseUrl.includes(urlPattern)) {
+            if (finalBaseUrl.includes(urlPattern)) {
                 return {
                     url: patUrl,
-                    isCloud: config.baseUrl.includes('.atlassian.net'),
+                    isCloud: finalBaseUrl.includes('.atlassian.net'),
                     displayUrl: patUrl
                 };
             }
         }
 
         // Auto-detect based on URL pattern
-        const isCloud = config.baseUrl.includes('.atlassian.net');
+        const isCloud = finalBaseUrl.includes('.atlassian.net');
         let patUrl: string;
 
         if (isCloud) {
             // Atlassian Cloud PAT URL
-            const match = config.baseUrl.match(/https:\/\/([^.]+)\.atlassian\.net/);
+            const match = finalBaseUrl.match(/https:\/\/([^.]+)\.atlassian\.net/);
             const siteName = match ? match[1] : 'your-site';
             patUrl = `https://id.atlassian.com/manage-profile/security/api-tokens`;
         } else {
             // Server/Data Center PAT URL
-            patUrl = `${config.baseUrl}/plugins/personal-access-tokens/access-tokens.action`;
+            patUrl = `${finalBaseUrl}/plugins/personal-access-tokens/access-tokens.action`;
         }
 
         return {
@@ -267,12 +328,49 @@ export class ConfluenceService {
     /**
      * Test connection to Confluence instance
      */
-    public async testConnection(): Promise<boolean> {
+    public async testConnection(baseUrl: string): Promise<boolean> {
         try {
-            const authInfo = await this.validateAuth();
+            const authInfo = await this.validateAuth(baseUrl);
             return authInfo.isValid;
         } catch {
             return false;
         }
+    }
+
+    private getBaseUrlFromUrl(url: string): string {
+        const urlObj = new URL(url);
+        return `${urlObj.protocol}//${urlObj.hostname}`;
+    }
+
+    private getBaseUrlForPage(pageId: string): string | undefined {
+        // This is a placeholder. In a real implementation, you would have a way
+        // to map a pageId to a baseUrl. This could be a cache, a lookup service,
+        // or by finding the page in the context of a known space/instance.
+        // For now, we'll use the first configured base URL as a fallback.
+        const config = this.getConfig();
+        return config.baseUrl;
+    }
+
+    public getAllConfiguredBaseUrls(): string[] {
+        const config = this.getConfig();
+        const urls = new Set<string>();
+
+        if (config.baseUrl) {
+            urls.add(config.baseUrl);
+        }
+
+        const patMappings = config.patPageUrlMappings || {};
+        for (const key in patMappings) {
+            if (Object.prototype.hasOwnProperty.call(patMappings, key)) {
+                try {
+                    const url = new URL(key);
+                    urls.add(url.origin);
+                } catch (error) {
+                    // Ignore invalid URLs in mappings
+                }
+            }
+        }
+
+        return Array.from(urls);
     }
 }

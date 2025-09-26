@@ -2,9 +2,14 @@
  * Type definitions for Confluence Page Chat feature
  */
 
-export interface ConfluenceConfig {
+export interface ConfluenceInstance {
+    name: string;
     baseUrl: string;
-    patPageUrlMappings?: Record<string, string>;
+    patPageUrl?: string;
+}
+
+export interface ConfluenceConfig {
+    instances: ConfluenceInstance[];
 }
 
 export interface ConfluencePage {
@@ -58,10 +63,11 @@ export interface ConfluenceAuthInfo {
     pat: string;
     baseUrl: string;
     isValid: boolean;
+    error?: ConfluenceError;
 }
 
 /**
- * Confluence chat context containing the loaded page information
+ * Represents a Confluence page with its basic information
  */
 export interface ConfluenceChatContext {
     pageUrl: string;

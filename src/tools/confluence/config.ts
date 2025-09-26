@@ -1,149 +1,102 @@
 import * as vscode from 'vscode';
-import { ConfluenceConfig } from './types';
+import { ConfluenceConfig, ConfluenceInstance } from './types';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class ConfluenceConfigManager {
-    private static readonly CONFIG_SECTION = 'confluence';
-    
-    /**
-     * Get the current Confluence configuration
-     */
-    public static getConfig(): ConfluenceConfig {
-        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
-        const baseUrl = config.get<string>('baseUrl');
-        const patPageUrlMappings = config.get<Record<string, string>>('patPageUrlMappings', {});
+    private static readonly CONFIG_FILE_NAME = 'confluence-instances.json';
 
-        if (!baseUrl) {
-            throw new Error('Confluence base URL is not configured. Please set confluence.baseUrl in settings.');
+    private static getConfigFilePath(): string {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders) {
+            throw new Error('No workspace folder is open.');
         }
-
-        return {
-            baseUrl: baseUrl.replace(/\/$/, ''), // Remove trailing slash
-            patPageUrlMappings
-        };
+        return path.join(workspaceFolders[0].uri.fsPath, '.vscode', this.CONFIG_FILE_NAME);
     }
 
-    /**
-     * Update the base URL configuration
-     */
-    public static async setBaseUrl(baseUrl: string): Promise<void> {
-        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
-        await config.update('baseUrl', baseUrl, vscode.ConfigurationTarget.Global);
+    public static getConfig(): ConfluenceConfig {
+        const configPath = this.getConfigFilePath();
+        if (!fs.existsSync(configPath)) {
+            return { instances: [] };
+        }
+        const rawData = fs.readFileSync(configPath, 'utf-8');
+        const instances = JSON.parse(rawData) as ConfluenceInstance[];
+        return { instances };
     }
 
-    /**
-     * Add or update a PAT page URL mapping
-     */
-    public static async addPatPageUrlMapping(domain: string, patPageUrl: string): Promise<void> {
-        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
-        const currentMappings = config.get<Record<string, string>>('patPageUrlMappings', {});
-        
-        currentMappings[domain] = patPageUrl;
-        
-        await config.update('patPageUrlMappings', currentMappings, vscode.ConfigurationTarget.Global);
+    public static async setConfig(config: ConfluenceConfig): Promise<void> {
+        const configPath = this.getConfigFilePath();
+        const data = JSON.stringify(config.instances, null, 4);
+        fs.writeFileSync(configPath, data, 'utf-8');
     }
 
-    /**
-     * Remove a PAT page URL mapping
-     */
-    public static async removePatPageUrlMapping(domain: string): Promise<void> {
-        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
-        const currentMappings = config.get<Record<string, string>>('patPageUrlMappings', {});
-        
-        delete currentMappings[domain];
-        
-        await config.update('patPageUrlMappings', currentMappings, vscode.ConfigurationTarget.Global);
+    public static async addInstance(instance: ConfluenceInstance): Promise<void> {
+        const config = this.getConfig();
+        config.instances.push(instance);
+        await this.setConfig(config);
     }
 
-    /**
-     * Get all PAT page URL mappings
-     */
-    public static getPatPageUrlMappings(): Record<string, string> {
-        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
-        return config.get<Record<string, string>>('patPageUrlMappings', {});
+    public static async updateInstance(name: string, updatedInstance: ConfluenceInstance): Promise<void> {
+        const config = this.getConfig();
+        const index = config.instances.findIndex(inst => inst.name === name);
+        if (index !== -1) {
+            config.instances[index] = updatedInstance;
+            await this.setConfig(config);
+        }
     }
 
-    /**
-     * Validate the current configuration
-     */
+    public static async removeInstance(name: string): Promise<void> {
+        const config = this.getConfig();
+        config.instances = config.instances.filter(inst => inst.name !== name);
+        await this.setConfig(config);
+    }
+
     public static validateConfig(): { isValid: boolean; errors: string[] } {
         const errors: string[] = [];
-        
-        try {
-            const config = this.getConfig();
-            
-            // Validate base URL
-            if (!config.baseUrl) {
-                errors.push('Base URL is required');
+        const config = this.getConfig();
+
+        if (!config.instances || config.instances.length === 0) {
+            errors.push('No Confluence instances configured.');
+            return { isValid: false, errors };
+        }
+
+        for (const instance of config.instances) {
+            if (!instance.name) {
+                errors.push('Instance name is required.');
+            }
+            if (!instance.baseUrl) {
+                errors.push(`Base URL is required for instance: ${instance.name}`);
             } else {
                 try {
-                    new URL(config.baseUrl);
+                    new URL(instance.baseUrl);
                 } catch {
-                    errors.push('Base URL must be a valid URL');
+                    errors.push(`Invalid base URL for instance: ${instance.name}`);
                 }
             }
-            
-            // Validate PAT page URL mappings
-            for (const [domain, url] of Object.entries(config.patPageUrlMappings || {})) {
-                if (!domain || !url) {
-                    errors.push(`Invalid PAT page URL mapping: ${domain} -> ${url}`);
-                    continue;
-                }
-                
-                try {
-                    new URL(url);
-                } catch {
-                    errors.push(`Invalid PAT page URL for domain ${domain}: ${url}`);
-                }
-            }
-            
-        } catch (error) {
-            errors.push(error instanceof Error ? error.message : 'Unknown configuration error');
         }
-        
+
         return {
             isValid: errors.length === 0,
             errors
         };
     }
 
-    /**
-     * Reset configuration to defaults
-     */
-    public static async resetConfig(): Promise<void> {
-        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
-        await config.update('baseUrl', undefined, vscode.ConfigurationTarget.Global);
-        await config.update('patPageUrlMappings', {}, vscode.ConfigurationTarget.Global);
-    }
-
-    /**
-     * Show configuration quick pick for easy setup
-     */
     public static async showConfigurationQuickPick(): Promise<void> {
         const items = [
             {
-                label: '$(gear) Set Base URL',
-                description: 'Configure your Confluence instance URL',
-                action: 'setBaseUrl'
+                label: '$(add) Add New Instance',
+                description: 'Add a new Confluence instance',
+                action: 'addInstance'
             },
             {
-                label: '$(key) Manage PAT Settings',
-                description: 'Set up Personal Access Token',
-                action: 'managePat'
+                label: '$(gear) Manage Instances',
+                description: 'Edit or remove existing instances',
+                action: 'manageInstances'
             },
             {
-                label: '$(link) Manage PAT Page URLs',
-                description: 'Configure PAT generation page URLs',
-                action: 'managePatUrls'
-            },
-            {
-                label: '$(check) Test Connection',
-                description: 'Test your Confluence connection',
-                action: 'testConnection'
-            },
-            {
-                label: '$(refresh) Reset Configuration',
-                description: 'Reset all Confluence settings',
-                action: 'reset'
+                label: '$(check) Test Connections',
+                description: 'Test all configured Confluence connections',
+                action: 'testConnections'
             }
         ];
 
@@ -153,161 +106,105 @@ export class ConfluenceConfigManager {
 
         if (selected) {
             switch (selected.action) {
-                case 'setBaseUrl':
-                    await this.promptForBaseUrl();
+                case 'addInstance':
+                    await this.promptForNewInstance();
                     break;
-                case 'managePat':
-                    await vscode.commands.executeCommand('confluence.setPat');
+                case 'manageInstances':
+                    await this.manageInstances();
                     break;
-                case 'managePatUrls':
-                    await this.managePatUrls();
-                    break;
-                case 'testConnection':
+                case 'testConnections':
                     await vscode.commands.executeCommand('confluence.testConnection');
                     break;
-                case 'reset':
-                    await this.confirmAndResetConfig();
-                    break;
             }
         }
     }
 
-    /**
-     * Prompt user for base URL
-     */
-    private static async promptForBaseUrl(): Promise<void> {
+    private static async promptForNewInstance(): Promise<void> {
+        const name = await vscode.window.showInputBox({
+            prompt: 'Enter a name for the new instance',
+            placeHolder: 'e.g., Personal Confluence'
+        });
+        if (!name) return;
+
         const baseUrl = await vscode.window.showInputBox({
-            prompt: 'Enter your Confluence base URL',
-            placeHolder: 'https://your-company.atlassian.net or https://confluence.your-company.com',
-            validateInput: (value) => {
-                if (!value) {
-                    return 'Base URL is required';
-                }
-                try {
-                    new URL(value);
-                    return null;
-                } catch {
-                    return 'Please enter a valid URL';
-                }
-            }
+            prompt: 'Enter the base URL for the new instance',
+            placeHolder: 'https://your-company.atlassian.net'
+        });
+        if (!baseUrl) return;
+
+        const patPageUrl = await vscode.window.showInputBox({
+            prompt: 'Enter the PAT generation page URL (optional)',
+            placeHolder: 'https://your-company.atlassian.net/secure/ViewProfile.jspa?selectedTab=...'
         });
 
-        if (baseUrl) {
-            await this.setBaseUrl(baseUrl);
-            vscode.window.showInformationMessage('Confluence base URL updated successfully!');
-        }
+        const newInstance: ConfluenceInstance = { name, baseUrl, patPageUrl };
+        await this.addInstance(newInstance);
+        vscode.window.showInformationMessage(`Confluence instance '${name}' added successfully!`);
     }
 
-    /**
-     * Manage PAT page URLs
-     */
-    private static async managePatUrls(): Promise<void> {
-        const mappings = this.getPatPageUrlMappings();
-        const items: Array<{
-            label: string;
-            description: string;
-            action: string;
-            domain?: string;
-        }> = [
-            {
-                label: '$(add) Add New Mapping',
-                description: 'Add a new domain -> PAT page URL mapping',
-                action: 'add'
-            },
-            ...Object.entries(mappings).map(([domain, url]) => ({
-                label: `$(link) ${domain}`,
-                description: url,
-                action: 'edit',
-                domain
-            }))
-        ];
+    private static async manageInstances(): Promise<void> {
+        const config = this.getConfig();
+        const items = config.instances.map(inst => ({
+            label: `$(cloud) ${inst.name}`,
+            description: inst.baseUrl,
+            action: 'editInstance',
+            instanceName: inst.name
+        }));
 
         const selected = await vscode.window.showQuickPick(items, {
-            placeHolder: 'Manage PAT page URL mappings'
+            placeHolder: 'Select an instance to manage'
         });
 
         if (selected) {
-            if (selected.action === 'add') {
-                await this.addNewPatUrlMapping();
-            } else if (selected.action === 'edit' && selected.domain) {
-                await this.editPatUrlMapping(selected.domain);
-            }
+            await this.editInstance(selected.instanceName);
         }
     }
 
-    /**
-     * Add new PAT URL mapping
-     */
-    private static async addNewPatUrlMapping(): Promise<void> {
-        const domain = await vscode.window.showInputBox({
-            prompt: 'Enter the domain (e.g., your-company.atlassian.net)',
-            placeHolder: 'your-company.atlassian.net'
-        });
-
-        if (!domain) return;
-
-        const url = await vscode.window.showInputBox({
-            prompt: 'Enter the PAT generation page URL',
-            placeHolder: 'https://your-company.atlassian.net/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens'
-        });
-
-        if (url) {
-            await this.addPatPageUrlMapping(domain, url);
-            vscode.window.showInformationMessage(`PAT page URL mapping added for ${domain}`);
-        }
-    }
-
-    /**
-     * Edit existing PAT URL mapping
-     */
-    private static async editPatUrlMapping(domain: string): Promise<void> {
-        const mappings = this.getPatPageUrlMappings();
-        const currentUrl = mappings[domain];
+    private static async editInstance(instanceName: string): Promise<void> {
+        const config = this.getConfig();
+        const instance = config.instances.find(inst => inst.name === instanceName);
+        if (!instance) return;
 
         const action = await vscode.window.showQuickPick([
-            { label: '$(edit) Edit URL', action: 'edit' },
-            { label: '$(trash) Remove Mapping', action: 'remove' }
+            { label: '$(edit) Edit Instance', action: 'edit' },
+            { label: '$(trash) Remove Instance', action: 'remove' }
         ], {
-            placeHolder: `Manage mapping for ${domain}`
+            placeHolder: `Manage instance: ${instanceName}`
         });
 
         if (action?.action === 'edit') {
-            const newUrl = await vscode.window.showInputBox({
-                prompt: `Edit PAT page URL for ${domain}`,
-                value: currentUrl
+            const newName = await vscode.window.showInputBox({
+                prompt: 'Enter the new name for the instance',
+                value: instance.name
+            });
+            const newBaseUrl = await vscode.window.showInputBox({
+                prompt: 'Enter the new base URL for the instance',
+                value: instance.baseUrl
+            });
+            const newPatPageUrl = await vscode.window.showInputBox({
+                prompt: 'Enter the new PAT generation page URL (optional)',
+                value: instance.patPageUrl
             });
 
-            if (newUrl) {
-                await this.addPatPageUrlMapping(domain, newUrl);
-                vscode.window.showInformationMessage(`PAT page URL updated for ${domain}`);
+            if (newName && newBaseUrl) {
+                const updatedInstance: ConfluenceInstance = {
+                    name: newName,
+                    baseUrl: newBaseUrl,
+                    patPageUrl: newPatPageUrl
+                };
+                await this.updateInstance(instanceName, updatedInstance);
+                vscode.window.showInformationMessage(`Instance '${instanceName}' updated successfully!`);
             }
         } else if (action?.action === 'remove') {
             const confirm = await vscode.window.showWarningMessage(
-                `Remove PAT page URL mapping for ${domain}?`,
+                `Are you sure you want to remove the '${instanceName}' instance?`,
                 'Remove',
                 'Cancel'
             );
-
             if (confirm === 'Remove') {
-                await this.removePatPageUrlMapping(domain);
-                vscode.window.showInformationMessage(`PAT page URL mapping removed for ${domain}`);
+                await this.removeInstance(instanceName);
+                vscode.window.showInformationMessage(`Instance '${instanceName}' removed successfully.`);
             }
-        }
-    }
-
-    /**
-     * Confirm and reset configuration
-     */
-    private static async confirmAndResetConfig(): Promise<void> {
-        const confirm = await vscode.window.showWarningMessage(
-            'This will reset all Confluence configuration settings. Are you sure?',
-            'Reset',
-            'Cancel'
-        );
-
-        if (confirm === 'Reset') {
-            await this.resetConfig();
-            vscode.window.showInformationMessage('Confluence configuration has been reset.');
         }
     }
 }

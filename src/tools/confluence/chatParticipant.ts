@@ -47,178 +47,77 @@ export class ConfluenceChatParticipant {
         stream: vscode.ChatResponseStream,
         token: vscode.CancellationToken
     ): Promise<vscode.ChatResult> {
-        try {
-            // Handle slash commands
-            if (request.command) {
-                return await this.handleSlashCommand(request, stream, token);
-            }
-
-            // Check if we have a loaded page context
-            if (!this.currentContext) {
-                stream.markdown('No Confluence page is currently loaded. Use `/load <url>` to load a page first, or use the "Confluence: Chat with Page" command.');
-                return { metadata: { command: 'no-context' } };
-            }
-
-            // Process the user's question with the page context
-            return await this.processQuestionWithContext(request, stream, token);
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            stream.markdown(`❌ Error: ${errorMessage}`);
-            return { metadata: { command: 'error', error: errorMessage } };
+        if (request.command === 'load') {
+            return this.handleLoadCommand(request.prompt, stream, token);
+        } else if (request.command === 'info') {
+            return this.handleInfoCommand(stream);
+        } else if (request.command === 'refresh') {
+            return await this.handleRefreshCommand(stream);
+        } else if (request.command === 'clear') {
+            return await this.handleClearCommand(stream);
+        } else if (request.command === 'set_pat') {
+            return this.handleSetPatCommand(request.prompt, stream, token);
+        } else if (request.command === 'clear_pat') {
+            return this.handleClearPatCommand(request.prompt, stream, token);
+        } else if (request.command === 'check_auth') {
+            return this.handleCheckAuthCommand(request.prompt, stream, token);
+        } else if (request.command === 'gen_pat_url') {
+            return this.handleGeneratePatUrlCommand(request.prompt, stream);
+        } else {
+            return this.processQuestionWithContext(request, stream, token);
         }
     }
 
-    /**
-     * Handle slash commands
-     */
-    private async handleSlashCommand(
-        request: vscode.ChatRequest,
-        stream: vscode.ChatResponseStream,
-        token: vscode.CancellationToken
-    ): Promise<vscode.ChatResult> {
-        const command = request.command;
-        const prompt = request.prompt.trim();
-
-        switch (command) {
-            case 'load':
-                return await this.handleLoadCommand(prompt, stream, token);
-            
-            case 'refresh':
-                return await this.handleRefreshCommand(stream, token);
-            
-            case 'clear':
-                return await this.handleClearCommand(stream);
-            
-            case 'info':
-                return await this.handleInfoCommand(stream);
-            
-            default:
-                stream.markdown(`Unknown command: ${command}`);
-                return { metadata: { command: 'unknown-command' } };
-        }
-    }
-
-    /**
-     * Handle the /load command
-     */
     private async handleLoadCommand(
         url: string,
         stream: vscode.ChatResponseStream,
         token: vscode.CancellationToken
     ): Promise<vscode.ChatResult> {
         if (!url) {
-            stream.markdown('Please provide a Confluence page URL. Example: `/load https://your-confluence.com/pages/123456`');
+            stream.markdown('Please provide a Confluence URL to load. Usage: `/load <url>`');
             return { metadata: { command: 'load-no-url' } };
         }
 
         try {
             stream.progress('Loading Confluence page...');
-            
-            const pageContent = await this.confluenceService.fetchPageByUrl(url);
-            const processedContent = this.contentProcessor.processContent(
-                pageContent.content,
-                pageContent.title,
-                url,
-                pageContent.lastModified
-            );
+            await this.loadPageFromUrl(url);
 
-            // Check if content needs truncation
-            const { content: finalContent, wasTruncated } = this.contentProcessor.truncateContent(
-                processedContent.markdown,
-                ConfluenceChatParticipant.MAX_CONTEXT_LENGTH
-            );
+            if (this.currentContext) {
+                const { pageTitle, processedContent } = this.currentContext;
+                const { metadata, sections } = processedContent;
+                const truncated = processedContent.markdown.length < metadata.wordCount; // A simple check
 
-            this.currentContext = {
-                pageUrl: url,
-                pageTitle: pageContent.title,
-                processedContent: {
-                    ...processedContent,
-                    markdown: finalContent
-                },
-                loadedAt: new Date()
-            };
+                let message = `✅ Successfully loaded and processed page: **${pageTitle}**\n\n`;
+                message += `Word Count: ${metadata.wordCount}, Sections: ${sections.length}\n`;
+                if (truncated) {
+                    message += `*Note: The content has been truncated to fit within the context window.*\n`;
+                }
 
-            // Notify about successful load
-            let message = `✅ Successfully loaded: **${pageContent.title}**\n\n`;
-            message += `📊 **Page Statistics:**\n`;
-            message += `- Word count: ${processedContent.metadata.wordCount}\n`;
-            message += `- Sections: ${processedContent.sections.length}\n`;
-            message += `- Last modified: ${pageContent.lastModified}\n`;
-            
-            if (wasTruncated) {
-                message += `\n⚠️ **Note:** Content was truncated due to length. Some sections may not be available for context.`;
+                stream.markdown(message);
+                return { metadata: { command: 'load-success' } };
             }
-
-            message += `\n\nYou can now ask questions about this page content!`;
-
-            stream.markdown(message);
-
-            // Fire event to update status bar
-            this.onContextChanged();
-
-            return { metadata: { command: 'load-success', pageTitle: pageContent.title } };
-
+            return { metadata: { command: 'load-fail' } }; // Should not happen
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to load page';
-            stream.markdown(`❌ Failed to load page: ${errorMessage}`);
-            return { metadata: { command: 'load-error', error: errorMessage } };
+            return this.handleError(error, stream, 'load');
         }
     }
 
     /**
      * Handle the /refresh command
      */
-    private async handleRefreshCommand(
-        stream: vscode.ChatResponseStream,
-        token: vscode.CancellationToken
-    ): Promise<vscode.ChatResult> {
+    private async handleRefreshCommand(stream: vscode.ChatResponseStream): Promise<vscode.ChatResult> {
         if (!this.currentContext) {
-            stream.markdown('No page is currently loaded to refresh.');
+            stream.markdown('No page is currently loaded. Use `/load <url>` to load a page first.');
             return { metadata: { command: 'refresh-no-context' } };
         }
 
         try {
             stream.progress('Refreshing page content...');
-            
-            const pageContent = await this.confluenceService.fetchPageByUrl(this.currentContext.pageUrl);
-            const processedContent = this.contentProcessor.processContent(
-                pageContent.content,
-                pageContent.title,
-                this.currentContext.pageUrl,
-                pageContent.lastModified
-            );
-
-            const { content: finalContent, wasTruncated } = this.contentProcessor.truncateContent(
-                processedContent.markdown,
-                ConfluenceChatParticipant.MAX_CONTEXT_LENGTH
-            );
-
-            this.currentContext = {
-                ...this.currentContext,
-                processedContent: {
-                    ...processedContent,
-                    markdown: finalContent
-                },
-                loadedAt: new Date()
-            };
-
-            let message = `🔄 Successfully refreshed: **${pageContent.title}**\n\n`;
-            message += `Updated content loaded with ${processedContent.metadata.wordCount} words across ${processedContent.sections.length} sections.`;
-            
-            if (wasTruncated) {
-                message += `\n\n⚠️ **Note:** Content was truncated due to length.`;
-            }
-
-            stream.markdown(message);
-            this.onContextChanged();
-
+            await this.refreshContext();
+            stream.markdown(`🔄 Successfully refreshed page: **${this.currentContext.pageTitle}**`);
             return { metadata: { command: 'refresh-success' } };
-
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to refresh page';
-            stream.markdown(`❌ Failed to refresh page: ${errorMessage}`);
-            return { metadata: { command: 'refresh-error', error: errorMessage } };
+            return this.handleError(error, stream, 'refresh');
         }
     }
 
@@ -273,7 +172,7 @@ export class ConfluenceChatParticipant {
     }
 
     /**
-     * Process a question with the current page context
+     * Process a user's question with the current page context
      */
     private async processQuestionWithContext(
         request: vscode.ChatRequest,
@@ -281,22 +180,23 @@ export class ConfluenceChatParticipant {
         token: vscode.CancellationToken
     ): Promise<vscode.ChatResult> {
         if (!this.currentContext) {
-            throw new Error('No page context available');
+            stream.markdown('No Confluence page is currently loaded. Use `/load <url>` to load a page first, or use the "Confluence: Chat with Page" command.');
+            return { metadata: { command: 'no-context' } };
         }
 
-        const { processedContent, pageTitle, pageUrl } = this.currentContext;
-        const userQuestion = request.prompt;
-
-        // Find the most relevant section for potential citation
-        const relevantSection = this.contentProcessor.findRelevantSection(
-            processedContent.sections,
-            userQuestion
-        );
-
-        // Construct the context-enhanced prompt
-        const contextPrompt = this.buildContextPrompt(processedContent, userQuestion, pageTitle, pageUrl);
-
         try {
+            const { processedContent, pageTitle, pageUrl } = this.currentContext;
+            const userQuestion = request.prompt;
+
+            // Find the most relevant section for potential citation
+            const relevantSection = this.contentProcessor.findRelevantSection(
+                processedContent.sections,
+                userQuestion
+            );
+
+            // Construct the context-enhanced prompt
+            const contextPrompt = this.buildContextPrompt(processedContent, userQuestion, pageTitle, pageUrl);
+
             stream.progress('Analyzing page content...');
 
             // Send the request to the LLM
@@ -339,8 +239,7 @@ export class ConfluenceChatParticipant {
             };
 
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to process question';
-            throw new Error(`Failed to get response from language model: ${errorMessage}`);
+            return this.handleError(error, stream, 'question');
         }
     }
 
@@ -436,7 +335,7 @@ export class ConfluenceChatParticipant {
      */
     public async loadPageFromUrl(url: string): Promise<void> {
         try {
-            const pageContent = await this.confluenceService.fetchPageByUrl(url);
+            const pageContent = await this.confluenceService.fetchPageByUrl(url, true);
             const processedContent = this.contentProcessor.processContent(
                 pageContent.content,
                 pageContent.title,
@@ -507,4 +406,96 @@ export class ConfluenceChatParticipant {
     public dispose(): void {
         this.participant.dispose();
     }
+
+    private async handleSetPatCommand(
+        args: string,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken
+    ): Promise<vscode.ChatResult> {
+        const [baseUrl, pat] = args.split(' ').filter(Boolean);
+
+        if (!baseUrl || !pat) {
+            stream.markdown('Usage: `/set_pat <base_url> <personal_access_token>`');
+            return { metadata: { command: 'set_pat-invalid-args' } };
+        }
+
+        try {
+            stream.progress('Validating and storing new Personal Access Token...');
+            await this.confluenceService.setPat(baseUrl, pat);
+            const authInfo = await this.confluenceService.validateAuth(baseUrl);
+
+            if (authInfo.isValid) {
+                stream.markdown(`Successfully set and validated Personal Access Token for ${baseUrl}.`);
+                return { metadata: { command: 'set_pat-success' } };
+            } else {
+                stream.markdown(`Failed to validate the new Personal Access Token for ${baseUrl}. Please check the token and URL. Error: ${authInfo.error?.message}`)
+                return { metadata: { command: 'set_pat-validation-failed' } };
+            }
+        } catch (error: any) {
+            return this.handleError(error, stream, 'set_pat');
+        }
+    }
+
+    private async handleClearPatCommand(
+        baseUrl: string,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken
+    ): Promise<vscode.ChatResult> {
+        if (!baseUrl) {
+            stream.markdown('Usage: `/clear_pat <base_url>`');
+            return { metadata: { command: 'clear_pat-no-url' } };
+        }
+
+        try {
+            await this.confluenceService.clearPat(baseUrl);
+            stream.markdown(`Successfully cleared Personal Access Token for ${baseUrl}.`);
+            return { metadata: { command: 'clear_pat-success' } };
+        } catch (error: any) {
+            stream.markdown(`An error occurred while clearing the PAT: ${error.message}`);
+            return { metadata: { command: 'clear_pat-error' } };
+        }
+    }
+
+    private async handleCheckAuthCommand(
+        baseUrl: string,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken
+    ): Promise<vscode.ChatResult> {
+        if (!baseUrl) {
+            stream.markdown('Usage: `/check_auth <base_url>`');
+            return { metadata: { command: 'check_auth-no-url' } };
+        }
+
+        try {
+            stream.progress(`Checking authentication status for ${baseUrl}...`);
+            const authInfo = await this.confluenceService.validateAuth(baseUrl);
+            if (authInfo.isValid) {
+                stream.markdown(`Authentication for ${baseUrl} is successful.`);
+            } else {
+                stream.markdown(`Authentication for ${baseUrl} failed: ${authInfo.error?.message}`);
+            }
+            return { metadata: { command: 'check_auth-result' } };
+        } catch (error: any) {
+            return this.handleError(error, stream, 'check_auth');
+        }
+    }
+
+    private async handleGeneratePatUrlCommand(
+        baseUrl: string,
+        stream: vscode.ChatResponseStream
+    ): Promise<vscode.ChatResult> {
+        try {
+            const patInfo = this.confluenceService.getPatGenerationInfo(baseUrl);
+            stream.markdown(`You can generate a Personal Access Token for ${baseUrl || 'your Confluence instance'} here: [${patInfo.displayUrl}](${patInfo.url})`);
+            return { metadata: { command: 'gen_pat_url-success' } };
+        } catch (error: any) {
+            return this.handleError(error, stream, 'gen_pat_url');
+        }
+    }
+
+    private handleError(error: any, stream: vscode.ChatResponseStream, command: string): vscode.ChatResult {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    stream.markdown(`An error occurred during the \`${command}\` command: ${errorMessage}`);
+    return { metadata: { command: `${command}-error` } };
+}
 }

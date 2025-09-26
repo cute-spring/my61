@@ -29,37 +29,50 @@ export class ConfluenceCommands {
         commands.forEach(command => context.subscriptions.push(command));
     }
 
+    private async getBaseUrl(): Promise<string | undefined> {
+        const configuredBaseUrls = this.confluenceService.getAllConfiguredBaseUrls();
+
+        if (configuredBaseUrls.length === 0) {
+            const result = await vscode.window.showErrorMessage(
+                'No Confluence base URL is configured. Would you like to configure it now?',
+                'Configure', 'Cancel'
+            );
+            
+            if (result === 'Configure') {
+                await this.showSettings();
+            }
+            return undefined;
+        }
+
+        if (configuredBaseUrls.length === 1) {
+            return configuredBaseUrls[0];
+        }
+
+        return await vscode.window.showQuickPick(configuredBaseUrls, {
+            placeHolder: 'Select a Confluence instance',
+            title: 'Multiple Confluence Instances Found'
+        });
+    }
+
     /**
      * Command: Chat with Confluence Page
      * Prompts user for a URL and loads it into the chat context
      */
     private async chatWithPage(): Promise<void> {
         try {
-            // Check if configuration is set up
-            const config = this.confluenceService.getConfig();
-            if (!config.baseUrl) {
-                const result = await vscode.window.showErrorMessage(
-                    'Confluence base URL is not configured. Would you like to configure it now?',
-                    'Configure', 'Cancel'
-                );
-                
-                if (result === 'Configure') {
-                    await this.showSettings();
-                }
-                return;
-            }
+            const baseUrl = await this.getBaseUrl();
+            if (!baseUrl) return;
 
             // Check if PAT is configured
-            const authInfo = await this.confluenceService.validateAuth();
+            const authInfo = await this.confluenceService.validateAuth(baseUrl);
             if (!authInfo.isValid) {
                 const result = await vscode.window.showErrorMessage(
-                    'Confluence Personal Access Token is not configured or invalid. Would you like to set it up now?',
+                    `Confluence Personal Access Token is not configured or invalid for ${baseUrl}. Would you like to set it up now?`,
                     'Set PAT', 'Cancel'
                 );
                 
                 if (result === 'Set PAT') {
-                    await this.setPat();
-                    return;
+                    await this.setPat(baseUrl);
                 }
                 return;
             }
@@ -72,8 +85,8 @@ export class ConfluenceCommands {
                     if (!value) {
                         return 'URL is required';
                     }
-                    if (!this.confluenceService.isValidConfluenceUrl(value)) {
-                        return 'Please enter a valid Confluence page URL';
+                    if (!this.confluenceService.isValidConfluenceUrl(value, baseUrl)) {
+                        return `Please enter a valid Confluence page URL for ${baseUrl}`;
                     }
                     return null;
                 }
@@ -173,16 +186,15 @@ export class ConfluenceCommands {
      * Command: Set Personal Access Token
      * Prompts user to enter their Confluence PAT
      */
-    private async setPat(): Promise<void> {
+    private async setPat(baseUrl?: string): Promise<void> {
         try {
-            const config = this.confluenceService.getConfig();
-            if (!config.baseUrl) {
-                vscode.window.showErrorMessage('Please configure the Confluence base URL first in settings.');
+            const targetBaseUrl = baseUrl || await this.getBaseUrl();
+            if (!targetBaseUrl) {
                 return;
             }
 
             // Get PAT generation info
-            const patInfo = this.confluenceService.getPatGenerationInfo();
+            const patInfo = this.confluenceService.getPatGenerationInfo(targetBaseUrl);
             
             // Show information about where to get PAT
             const result = await vscode.window.showInformationMessage(
@@ -230,7 +242,7 @@ export class ConfluenceCommands {
             }
 
             // Store the PAT
-            await this.confluenceService.setPat(pat.trim());
+            await this.confluenceService.setPat(targetBaseUrl, pat.trim());
 
             // Test the connection
             await vscode.window.withProgress({
@@ -238,7 +250,7 @@ export class ConfluenceCommands {
                 title: 'Testing Confluence connection...',
                 cancellable: false
             }, async () => {
-                const isValid = await this.confluenceService.testConnection();
+                const isValid = await this.confluenceService.testConnection(targetBaseUrl);
                 
                 if (isValid) {
                     vscode.window.showInformationMessage('✅ Confluence Personal Access Token configured successfully!');
@@ -316,31 +328,27 @@ export class ConfluenceCommands {
      */
     private async testConnection(): Promise<void> {
         try {
+            const baseUrl = await this.getBaseUrl();
+            if (!baseUrl) return;
+
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: 'Testing Confluence connection...',
+                title: `Testing Confluence connection to ${baseUrl}...`,
                 cancellable: false
             }, async (progress) => {
-                progress.report({ increment: 30, message: 'Checking configuration...' });
+                progress.report({ increment: 50, message: 'Validating authentication...' });
                 
-                const config = this.confluenceService.getConfig();
-                if (!config.baseUrl) {
-                    throw new Error('Confluence base URL is not configured');
-                }
-
-                progress.report({ increment: 30, message: 'Validating authentication...' });
+                const authInfo = await this.confluenceService.validateAuth(baseUrl);
                 
-                const authInfo = await this.confluenceService.validateAuth();
-                
-                progress.report({ increment: 40, message: 'Testing API access...' });
+                progress.report({ increment: 50, message: 'Testing API access...' });
                 
                 if (authInfo.isValid) {
                     vscode.window.showInformationMessage(
-                        `✅ Connection successful!\n\nBase URL: ${config.baseUrl}\nAuthentication: Valid`
+                        `✅ Connection successful!\n\nBase URL: ${baseUrl}\nAuthentication: Valid`
                     );
                 } else {
                     vscode.window.showErrorMessage(
-                        `❌ Connection failed!\n\nBase URL: ${config.baseUrl}\nAuthentication: Invalid or missing PAT`
+                        `❌ Connection failed!\n\nBase URL: ${baseUrl}\nAuthentication: Invalid or missing PAT`
                     );
                 }
             });
@@ -389,9 +397,9 @@ export class ConfluenceCommands {
      * Show welcome message for first-time users
      */
     public async showWelcomeMessage(): Promise<void> {
-        const config = this.confluenceService.getConfig();
+        const configuredBaseUrls = this.confluenceService.getAllConfiguredBaseUrls();
         
-        if (!config.baseUrl) {
+        if (configuredBaseUrls.length === 0) {
             const result = await vscode.window.showInformationMessage(
                 '🎉 Welcome to Confluence Page Chat! To get started, you need to configure your Confluence settings.',
                 'Configure Now', 'Later'
@@ -401,16 +409,20 @@ export class ConfluenceCommands {
                 await this.showSettings();
             }
         } else {
-            // Check if PAT is configured
-            const authInfo = await this.confluenceService.validateAuth();
-            if (!authInfo.isValid) {
-                const result = await vscode.window.showInformationMessage(
-                    '🔐 Confluence is configured, but you need to set up your Personal Access Token to start chatting with pages.',
-                    'Set PAT', 'Later'
-                );
-
-                if (result === 'Set PAT') {
-                    await this.setPat();
+            // Check if PAT is configured for any of the base URLs
+            for (const baseUrl of configuredBaseUrls) {
+                const authInfo = await this.confluenceService.validateAuth(baseUrl);
+                if (!authInfo.isValid) {
+                    const result = await vscode.window.showInformationMessage(
+                        `🔐 Confluence is configured for ${baseUrl}, but you need to set up your Personal Access Token to start chatting with pages.`,
+                        'Set PAT', 'Later'
+                    );
+    
+                    if (result === 'Set PAT') {
+                        await this.setPat(baseUrl);
+                    }
+                    // Only prompt for one at a time
+                    return;
                 }
             }
         }

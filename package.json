@@ -320,11 +320,34 @@
         },
         "confluence.patPageUrlMappings": {
           "type": "object",
+          "description": "Mappings from Confluence domains to their PAT generation page URLs.",
+          "default": {},
           "additionalProperties": {
             "type": "string"
-          },
-          "default": {},
-          "description": "Mapping of Confluence domains to their Personal Access Token generation page URLs"
+          }
+        },
+        "confluence.instances": {
+          "type": "array",
+          "description": "A list of Confluence instances to connect to.",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "A unique name for the Confluence instance."
+              },
+              "baseUrl": {
+                "type": "string",
+                "description": "The base URL of the Confluence instance."
+              },
+              "patPageUrl": {
+                "type": "string",
+                "description": "The URL for generating a Personal Access Token (PAT)."
+              }
+            },
+            "required": ["name", "baseUrl"]
+          }
         }
       }
     }
